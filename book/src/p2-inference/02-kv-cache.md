@@ -6,7 +6,7 @@ The last chapter ended on a threat: as context grows, the KV cache read per toke
 
 ### What the cache stores, and why
 
-Attention at position $t$ needs the keys and values of every previous position $1 \ldots t$. Recomputing them each step would make decode quadratic in sequence length. Instead we compute each position's K and V once, during prefill or at the step that produced it, and cache them. Decode then reads the stored K and V and appends one new pair per layer. The cache trades memory for compute, and on this machine memory is the scarce resource, so the trade needs auditing.
+Attention at position $t$ needs the keys and values of every previous position $1 \ldots t$. Recomputing them each step would make decode quadratic in sequence length. Instead we compute each position's K and V once, during prefill or at the step that produced it, and cache them. Decode then reads the stored K and V and appends one new pair per layer. The cache trades memory for compute, and on this machine memory is the scarce resource, so the trade needs auditing. Without the cache, generating token $t$ would recompute the K and V of all $t-1$ prior positions at every step, making the total decode cost scale with the square of the sequence length; with it, each position's K and V are computed exactly once and then only read. The cache is therefore not an optimization you can toggle off on a whim, it is what makes autoregressive decoding linear instead of quadratic, and the price for that linearity is paid entirely in VRAM.
 
 ### The exact per-token byte formula
 

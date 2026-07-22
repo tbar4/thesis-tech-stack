@@ -37,6 +37,16 @@ Three programmatic verifiers cover most of the reasoning surface.
 2. **Symbolic equivalence.** For math where `1/2`, `0.5`, and `\frac{1}{2}` are the same answer, string match fails but a computer-algebra check succeeds. Parse both sides and test whether their difference simplifies to zero. This removes format sensitivity that regex cannot, at the cost of a parser that can itself misfire on adversarial strings.
 3. **Unit-test execution.** For code, correctness *is* "the tests pass". Extract the code, run it against a test suite, score by pass/fail. This is the most honest reasoning verifier there is (the compiler and the tests have no opinion) and the most dangerous to run, because it executes model-written code. That danger is what sandboxes exist for.
 
+```admonish derivation title="A binary verifier's average is the reward expectation RL optimizes"
+The reason a verifiable scorer graduates so cleanly into a reward is that its dataset average *is* the quantity reinforcement learning maximizes. Let the scorer be $v(y) \in \{0,1\}$ on a completion $y$, and let the model define a distribution $\pi_\theta(y \mid x)$ over completions for prompt $x$. The eval accuracy on a single prompt, estimated by sampling $E$ completions, is a Monte Carlo estimate of
+
+$$
+\bar{v}(x) = \mathbb{E}_{y \sim \pi_\theta(\cdot \mid x)}\bigl[v(y)\bigr] = \Pr[\text{model solves } x], \tag{1}
+$$
+
+which is exactly the per-prompt success probability $p$ from chapter 2's `pass@k`. Now set the reward equal to the scorer, $r(y) = v(y)$. The RL objective (Part V) is $J(\theta) = \mathbb{E}_x \mathbb{E}_{y \sim \pi_\theta}[r(y)] = \mathbb{E}_x[\bar{v}(x)]$, which is the dataset-averaged accuracy in equation (1). So training to maximize the reward is training to maximize the eval metric, provided the scorer used as reward is the identical function I measured with. That identity is the whole architectural bet of this book, and it holds only because $v$ is a deterministic verifiable function of $(y, \text{target})$: a model-graded $v$ would make $\bar{v}$ depend on a second noisy model, and equation (1) would estimate "what the judge thinks", not "whether the answer is right". Verifiability is what makes the measurement and the reward the same object.
+```
+
 ### Sandboxes: executing untrusted output safely
 
 The moment a scorer runs model-generated code, or a solver lets the model call tools that touch a shell, filesystem, or network, I am executing untrusted output on my machine. Inspect's answer is the **sandbox**: an isolated execution environment (Docker by default) that the solver and scorer reach through a `sandbox()` handle, with `sandbox().exec(...)` running commands inside the container rather than on the host. The container is disposable, resource-limited, and network-restricted, so a model that writes `rm -rf /` or tries to exfiltrate data hits container walls, not mine. For the thesis this matters twice: agentic evals (chapter 1's fourth family) need tools, and unit-test scorers need to run code, and both must be sandboxed. On the 16GB baseline machine the sandbox runs on CPU alongside the GPU-resident model server, so it costs container overhead, not VRAM.

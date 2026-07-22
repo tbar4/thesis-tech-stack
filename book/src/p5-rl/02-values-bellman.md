@@ -82,6 +82,28 @@ graph TD
 
 Reading the diagram top to bottom is one application of (4): sum over the action branches weighted by $\pi$, then over the outcome branches weighted by $p$, accumulating $r + \gamma v_\pi(\cdot)$ at the leaves.
 
+### The Bellman equation as a fixed point
+
+Equation (4) is not just a relationship, it is a *fixed-point* equation, and that framing is what guarantees policy evaluation actually converges. Stack the state values into a vector $\mathbf{v}_\pi \in \mathbb{R}^{|\mathcal{S}|}$, the expected rewards into $\mathbf{r}_\pi$, and the policy-induced transition probabilities into a matrix $P_\pi$ with entries $P_\pi(s,s') = \sum_a \pi(a\mid s)\sum_r p(s',r\mid s,a)$. Then (4) is the linear system
+
+$$
+\mathbf{v}_\pi = \mathbf{r}_\pi + \gamma P_\pi \mathbf{v}_\pi
+\quad\Longrightarrow\quad
+\mathbf{v}_\pi = (I - \gamma P_\pi)^{-1}\mathbf{r}_\pi. \tag{6}
+$$
+
+The inverse exists whenever $\gamma < 1$ because $\gamma P_\pi$ has spectral radius at most $\gamma < 1$ (rows of $P_\pi$ sum to one, so its eigenvalues lie in the unit disk), which makes $I - \gamma P_\pi$ nonsingular. For a small MDP you could literally solve (6) by matrix inversion. For anything large you iterate instead, and the reason iteration works is a contraction argument.
+
+```admonish derivation title="The Bellman operator is a contraction"
+Define the Bellman expectation operator $T_\pi$ acting on a value vector by $(T_\pi \mathbf{v})(s) = \sum_a \pi(a\mid s)\sum_{s',r}p(s',r\mid s,a)[r + \gamma \mathbf{v}(s')]$. For any two value vectors $\mathbf{u}, \mathbf{v}$, the immediate-reward terms cancel and
+
+$$
+\|T_\pi\mathbf{u} - T_\pi\mathbf{v}\|_\infty = \gamma\,\big\| P_\pi(\mathbf{u} - \mathbf{v})\big\|_\infty \le \gamma\,\|\mathbf{u} - \mathbf{v}\|_\infty,
+$$
+
+using that $P_\pi$ is a stochastic matrix, so applying it can only average, never amplify, the max-norm. Thus $T_\pi$ is a $\gamma$-contraction in the sup norm. By the Banach fixed-point theorem it has a unique fixed point, which is $\mathbf{v}_\pi$ by (4), and iterating $\mathbf{v} \leftarrow T_\pi\mathbf{v}$ from any starting vector converges to it geometrically at rate $\gamma$. The same argument with the optimality operator (the $\max$ version) proves value iteration converges, which is the algorithm in the lab.
+```
+
 ### Optimality: the best you can do
 
 Policy evaluation tells you how good a *given* policy is. Control asks for the *best* policy. Define the optimal value functions as the pointwise maximum over all policies:

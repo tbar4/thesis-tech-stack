@@ -40,6 +40,12 @@ $$
 
 The Markov property is not a law of nature. It is a modeling choice about what you put in the state. If your chosen state leaves out something the future depends on, you have a *partially observable* problem wearing an MDP costume, and your algorithms will quietly misbehave. Keep that in your pocket; it comes back when I map LLMs onto MDPs, because there the choice is unusually clean.
 
+### The reward hypothesis, and why a scalar is enough
+
+Before the return, a word on the reward itself, because the design of $R$ is where "evals as rewards" lives. Reinforcement learning rests on what Sutton and Barto call the *reward hypothesis*: that everything we mean by goals and purposes can be encoded as the maximization of the expected value of a single scalar signal. This is a strong claim and it is easy to underrate. It says you do not get a vector of objectives, you do not get gradients from the environment, you get one number per outcome, and the agent's entire job is to make the expectation of that number large.
+
+For my purposes the reward hypothesis is liberating rather than limiting, because an eval already *is* a scalarizer. A verifier that returns pass or fail, an Inspect scorer that returns a graded number in $[0,1]$, an exact-match check against a reference answer: each collapses a rich, messy transcript down to exactly the one scalar the reward hypothesis asks for. Parts III and IV were, in retrospect, an extended argument that these scalars are trustworthy and causally meaningful. Part V takes them at face value and feeds them in as $R$. The catch, which returns with force in Part VII on reward hacking, is that the agent optimizes the number you actually wrote down, not the intention behind it, so a sloppy scalar buys you a policy that games it.
+
 ### The return: what the agent actually maximizes
 
 The agent does not maximize the next reward. It maximizes cumulative reward over the future. The *return* from time $t$ is

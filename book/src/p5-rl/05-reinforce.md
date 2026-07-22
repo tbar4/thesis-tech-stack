@@ -115,6 +115,20 @@ $$
 The optimal baseline is a $\ell^2$-weighted average of the return, which is *close to* the expected return $\mathbb{E}[G] = v_\pi(s)$ but weighted by the squared score. In practice people use the plainer choice $b(s) = v_\pi(s)$, the value function, because it is intuitive ("compare the return to what you expected from this state") and nearly optimal. That single substitution, $b(s) = v_\pi(s)$, is what turns REINFORCE into an actor-critic method (Chapter 5.6): the "critic" is just a learned estimate of the variance-reducing baseline.
 ```
 
+### Where the variance actually comes from
+
+It helps to name the two sources of noise in the REINFORCE estimator separately, because the baseline attacks one of them and reward-to-go attacks the other. The law of total variance gives the decomposition cleanly.
+
+```admonish derivation title="Variance decomposition of the gradient estimator"
+Consider the single-step estimator $g = \ell\,(G - b)$ with $\ell = \nabla_\theta\log\pi_\theta(a\mid s)$, and decompose its variance by conditioning on the action $a$. The law of total variance states, for any random variables,
+
+$$
+\mathrm{Var}[g] = \underbrace{\mathbb{E}_a\big[\mathrm{Var}(g \mid a)\big]}_{\text{return noise}} + \underbrace{\mathrm{Var}_a\big[\mathbb{E}(g \mid a)\big]}_{\text{action noise}}. \tag{7}
+$$
+
+The first term is the variance *within* a fixed action: for a fixed $a$, $\ell$ is fixed, so this is $\ell^2\,\mathrm{Var}(G\mid a)$, the spread of the return caused by the stochastic environment and future actions. Reward-to-go attacks this term by stripping out the irrelevant past rewards that inflate $\mathrm{Var}(G\mid a)$. The second term is the variance *across* actions: how much the mean estimate $\ell\,(\,q_\pi(s,a) - b)$ swings as the sampled action changes. This is the term the baseline attacks. By centering the return on $b \approx v_\pi(s)$, the factor $(q_\pi(s,a) - b)$ becomes the advantage $A_\pi(s,a)$, which is small in magnitude and averages to zero, so its spread across actions shrinks. The two variance-reduction tricks are not redundant, they target the two orthogonal terms of (7), which is why real systems use both.
+```
+
 ### Advantage as the general form
 
 Put reward-to-go and a value baseline together. With $b(s_t) = v_\pi(s_t)$ and recalling that $\mathbb{E}[G_t\mid s_t, a_t] = q_\pi(s_t,a_t)$, the weight on the log-prob gradient becomes, in expectation,

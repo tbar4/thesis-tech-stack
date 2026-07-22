@@ -26,6 +26,8 @@ For each `substack-seed` I score three things, and those three decide whether it
 
 **Embargo status.** Does the post reveal thesis-specific results that are held until after the defense? A methods post ("here's the pattern for pre-answering a committee," chapter 9.2) is publishable now because it's about structure, not results. A post that shows the actual measured reasoning delta is `post-defense`. This is a hard gate: no scheduling clever enough to justify leaking the embargoed numbers early.
 
+Some seeds never become posts, and that's a feature. A book chapter can exist to complete an argument even when its idea is too incremental, too dependent, or too niche to hook a cold reader, and forcing every chapter into a post would dilute the series with weak entries. The map is allowed to say no. A seed that scores low on both standalone-ness and pull, and that isn't load-bearing for a later post's setup, gets marked as "book-only" and drops out of the calendar entirely. This is the editorial equivalent of the coverage check in chapter 9.2: the tool makes the decision visible rather than letting a weak post sneak in because it happened to have a seed. A shorter series of strong posts beats a complete-but-flat one, and the readers I keep are the ones who never got a dud.
+
 ```admonish gotcha
 The tempting failure is to publish the book in chapter order. Chapter order is optimized for the argument, which front-loads foundations (tensors, attention, the RL problem) that make dry standalone posts and bury the hooks that would actually grow an audience. Publishing in chapter order means your first eight posts are a graduate course nobody signed up for, and you lose the readers before you reach the loop that makes the whole thing exciting. Sequence for pull and standalone-ness, not for the table of contents. Lead with the most self-contained, most surprising seed you're allowed to publish, and let the foundations arrive as needed underneath the story.
 ```
@@ -64,7 +66,7 @@ I already run a substack-pipeline workflow that drafts and schedules posts. What
 
 ### Seeds as structured records
 
-Each `substack-seed` becomes a record: source chapter, a title, the three scores (standalone, pull, embargo), the arc it belongs to, and the hook. I keep these in one YAML file, because the seeds are authored across many chapters but scheduled as a single series, and a single file is the place where the whole series is visible at once. The scoring is a judgment call I make once per seed and then let the tool sequence.
+Each `substack-seed` becomes a record: source chapter, a title, the three scores (standalone, pull, embargo), the arc it belongs to, and the hook. I keep these in one YAML file, because the seeds are authored across many chapters but scheduled as a single series, and a single file is the place where the whole series is visible at once. The scoring is a judgment call I make once per seed and then let the tool sequence. I re-score only when a chapter changes substantively, so the calendar is stable between edits and I'm not re-litigating the whole series every week.
 
 ### A sequencer that emits the calendar
 
