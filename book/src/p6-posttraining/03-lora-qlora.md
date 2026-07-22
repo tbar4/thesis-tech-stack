@@ -41,7 +41,7 @@ NF4 is a per-block, quantile-based, 4-bit code. Build it in three moves.
 
 $$q_i = \frac{1}{2}\!\left(\Phi^{-1}\!\Big(\frac{i + 1}{2^{a} + 1}\Big) + \Phi^{-1}\!\Big(\frac{i + 2}{2^{a} + 1}\Big)\right), \tag{6.3.4}$$
 
-evaluated on each side and then normalized so the levels span $[-1, 1]$. The result is a fixed 16-entry lookup table, denser near zero and sparser in the tails, exactly matching where Gaussian weights concentrate.
+where $a = 3$ is the one-sided exponent (so each grid has $2^a = 8$ offsets) and $i$ runs over that side's index range, $i = 0, \dots, 2^a - 1$; equation (6.3.4) is evaluated once on the negative side and once on the non-negative side and then normalized so the levels span $[-1, 1]$. The result is a fixed 16-entry lookup table, denser near zero and sparser in the tails, exactly matching where Gaussian weights concentrate.
 
 **2. Per-block absmax scaling.** Real weights are not unit-variance, and their scale varies across the tensor, so NF4 normalizes in small blocks. Partition the weight tensor into contiguous blocks of $B$ elements (QLoRA uses $B = 64$). For each block, compute the absolute maximum $s = \max_j |w_j|$ and store it as the block's scale. Each weight is normalized to $[-1, 1]$ and mapped to the nearest quantile level,
 

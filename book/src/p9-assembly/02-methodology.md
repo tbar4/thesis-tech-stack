@@ -56,7 +56,7 @@ A methodology chapter is stronger when it knows where it ends. Not every threat 
 
 The causal audit from chapter 4.6 is the single most useful methodology exhibit in the book, because it is already written in the register a committee wants: a DAG, an enumerated threat list, and a mitigation for each threat with a pointer to where it was handled. In the thesis I quote it verbatim rather than paraphrase, so the methodology chapter and the causal chapter cannot drift apart. The audit's estimand, quoted as it appears in chapter 4.6, is:
 
-> "Estimand. Causal effect of GRPO verifiable-reward training on SDA pass@1: E[score | do(train)] - E[score | do(no train)]." (chapter 4.6, causal audit v1.0)
+> "Estimand. Causal effect of GRPO verifiable-reward training on Space Domain Awareness (SDA) pass@1: E[score | do(train)] - E[score | do(no train)]." (chapter 4.6, causal audit v1.0)
 
 That one line does more work in a committee room than any results table, because it states plainly that the target is the causal effect of the training intervention on the score under a do-operation, not the raw movement of reward, and that my design is built to tell those two apart. The audit's threats table, also quoted verbatim in the thesis, enumerates the specific ways the delta can be confounded or short-circuited (judge revision drift, pre-existing optimizer drift, pipeline-invariant drift across pre and post, verbosity as a construct confound, judge self-preference, contamination, item/seed/machine specificity, sampling noise, and selection on a collider) and points each at its mitigation chapter. The methodology chapter's job is to reproduce that table and let it stand.
 
@@ -148,7 +148,7 @@ claims:
 version: "v1.0"
 source: "chapter 4.6, causal audit v1.0"
 framing: >
-  Estimand. Causal effect of GRPO verifiable-reward training on SDA pass@1:
+  Estimand. Causal effect of GRPO verifiable-reward training on Space Domain Awareness (SDA) pass@1:
   E[score | do(train)] - E[score | do(no train)].
 threats:
   - name: "Judge revision differs pre vs post"

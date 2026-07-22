@@ -66,7 +66,7 @@ The shape of that budget is the whole reason the loop closes on this card. The e
 
 ### Throughput: where the time actually goes
 
-A GRPO step is generation-bound, not gradient-bound, and the roofline from Part II says why. The optimizer step touches only the 33M LoRA parameters, a trivial amount of compute and memory traffic. The forward/backward over the sampled completions is real work but bounded. The generation, though, decodes $G \times C = 8 \times 768 = 6144$ tokens per prompt-group, autoregressively, and decode is memory-bandwidth-bound: every token read the whole weight set. The 4-bit Qwen3-4B has a batch-1 decode ceiling of
+A GRPO step is generation-bound, not gradient-bound, and the roofline from Part II says why. The optimizer step touches only the 33M LoRA parameters, a trivial amount of compute and memory traffic. The forward/backward over the sampled completions is real work but bounded. The generation, though, decodes $G \times C = 8 \times 768 = 6144$ tokens per prompt-group, autoregressively, and decode is memory-bandwidth-bound: every token read the whole weight set. The RTX 5080's memory bandwidth is about 960 GB/s ($BW = 9.6\times10^{11}$ B/s), from the hardware baseline and the Part II roofline. The 4-bit Qwen3-4B has a batch-1 decode ceiling of
 
 $$
 \text{tok/s}_{\max} = \frac{BW}{B_{\text{read}}} = \frac{9.6\times10^{11}}{2.07\times10^{9}} \approx 464\ \text{tok/s},

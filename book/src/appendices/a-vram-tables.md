@@ -194,6 +194,12 @@ $$\text{tok/s}_{\max} = \frac{BW}{B_{\text{read}}}, \qquad BW = 9.6\times10^{11}
 | Qwen3-14B AWQ | $8.3\times10^{9}$ | ~116 |
 | gpt-oss-20b MXFP4 (active $3.6\times10^{9}$) | $\approx2.5\times10^{9}$ | ~384 |
 
+The gpt-oss $B_{\text{read}}$ is higher than the active-expert MLP bytes alone
+($3.6\times10^{9} \times 0.53 \approx 1.9\times10^{9}$): it adds the non-MXFP4
+bytes read every token (attention, embeddings, and the router, all kept in
+higher precision) on top of the active-expert bytes, which is where the extra
+$\approx0.6\times10^{9}$ comes from.
+
 These are ceilings, not predictions; the real measured tok/s sits under them by the
 kernel-overhead + sampling + KV-read gap the roofline lab plots. Record measured
 values with date and driver.
@@ -280,16 +286,16 @@ above.
 ```admonish vram-budget title="GRPO levers on 16 GiB, in order of bluntness"
 When GRPO OOMs, pull these in order (each is a term in the budget above):
 
-1. **Group size $G$** — linear in generation KV. $G{:}8\to4$ halves the 1.13 GiB
+1. **Group size $G$**: linear in generation KV. $G{:}8\to4$ halves the 1.13 GiB
    live KV (and the slab that pages it).
-2. **Generation length $S_{\text{gen}}$** — linear in generation KV *and* in
+2. **Generation length $S_{\text{gen}}$**: linear in generation KV *and* in
    rollout time. Cap it to what the reward actually needs.
-3. **KV dtype FP8** — halves $B_{\text{tok}}$, halving generation KV.
-4. **Batch / gradient accumulation** — trade wall-clock for activation memory;
+3. **KV dtype FP8**: halves $B_{\text{tok}}$, halving generation KV.
+4. **Batch / gradient accumulation**: trade wall-clock for activation memory;
    accumulate over micro-batches instead of one big batch.
-5. **Gradient checkpointing** — already assumed on; it is the difference between
+5. **Gradient checkpointing**: already assumed on; it is the difference between
    "fits" and "OOM" for activations.
-6. **Policy size** — the repertoire caps training policies at $\le 4$B for exactly
+6. **Policy size**: the repertoire caps training policies at $\le 4$B for exactly
    this reason; a 1.7B policy roughly halves base + activations.
 
 The full budget lands at ~6.9 GiB (mirroring *GRPO on 16GB* line for line),

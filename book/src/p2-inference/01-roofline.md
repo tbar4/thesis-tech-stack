@@ -52,7 +52,7 @@ In prefill, each weight matrix $W$ is read from memory once and multiplied again
 
 $$I_{\text{prefill}} \approx \frac{2 S d^2}{2 d^2} = S \quad \left[\frac{\text{FLOP}}{\text{byte}}\right]$$
 
-The intensity scales with the prompt length $S$. Because $I_{\text{prefill}} \approx S$, you need a prompt longer than the ridge point ($S \gtrsim 470$) to cross onto the compute roof; feed a prompt of more than ~500 tokens and $I_{\text{prefill}}$ sails past the ridge, landing you firmly on the compute-bound roof. This is why prefill throughput is quoted in the thousands of tokens per second and why a long prompt costs time roughly in proportion to its length: you are billing the compute account.
+The intensity scales with the prompt length $S$. Because $I_{\text{prefill}} \approx S$, you need a prompt longer than the ridge point to cross onto the compute roof. With the placeholder $P_{\text{peak}}$ the ridge sits at hundreds of tokens (exact value pending the datasheet peak-FLOPs), so a prompt of that order and up lands $I_{\text{prefill}}$ firmly on the compute-bound roof. The placeholder only locates the ridge approximately; stamp the real RTX 5080 BF16 peak and recompute before quoting a hard threshold. Either way the shape holds: prefill throughput is quoted in the thousands of tokens per second, and a long prompt costs time roughly in proportion to its length, because you are billing the compute account.
 
 ### Why decode is bandwidth-bound
 

@@ -55,7 +55,7 @@ Now plug this into the Bradley-Terry preference model from chapter 6.4. Recall e
 
 $$\hat r_\theta(x, y_w) - \hat r_\theta(x, y_l) = \beta\, \log \frac{\pi_\theta(y_w \mid x)}{\pi_{\text{ref}}(y_w \mid x)} - \beta\, \log \frac{\pi_\theta(y_l \mid x)}{\pi_{\text{ref}}(y_l \mid x)}. \tag{6.5.10}$$
 
-**Here is the miracle.** The intractable constant $\beta \log Z(x)$ from equation (6.5.8) is the *same* for both $y_w$ and $y_l$ (it depends only on the prompt $x$), so it *cancels in the difference*. The partition function that forced PPO to exist has vanished. Substitute equation (6.5.10) into the Bradley-Terry loss of equation (6.4.3):
+**Here is the miracle.** The intractable constant $\beta \log Z(x)$ from equation (6.5.8) is the *same* for both $y_w$ and $y_l$ (it depends only on the prompt $x$), so it *cancels in the difference*. The partition function that forced PPO to exist has vanished. Recall the Bradley-Terry negative log-likelihood of equation (6.4.3), which trains on a preference pair by maximizing the log-probability that the winner beats the loser: $\mathcal{L} = -\log \sigma\big(r(x, y_w) - r(x, y_l)\big)$. Substitute equation (6.5.10) into it:
 
 $$\boxed{\;\mathcal{L}_{\text{DPO}}(\theta) = -\,\mathbb{E}_{(x, y_w, y_l)}\!\left[\log \sigma\!\left(\beta \log \frac{\pi_\theta(y_w \mid x)}{\pi_{\text{ref}}(y_w \mid x)} - \beta \log \frac{\pi_\theta(y_l \mid x)}{\pi_{\text{ref}}(y_l \mid x)}\right)\right].\;} \tag{6.5.11}$$
 
