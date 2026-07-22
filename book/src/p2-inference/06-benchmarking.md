@@ -4,6 +4,10 @@ The runbook stands up a server; this chapter measures it honestly. That qualifie
 
 The stakes are higher here than in a one-off benchmark blog post precisely because this number gets reused. Later parts of the thesis will hold the serving substrate fixed and vary something upstream (a quantization choice, a training checkpoint, a sampling setting) and ask whether throughput or latency moved. That comparison is only meaningful if the baseline was measured with enough rigor that I know its noise floor and its exact conditions. A baseline recorded sloppily is not just wrong once, it silently corrupts every downstream comparison that leans on it, and I will not know, because the corruption looks like a plausible number. So the discipline in this chapter is not perfectionism for its own sake; it is the minimum required for the baseline to be a foundation rather than a liability.
 
+```admonish read-along
+**[AIE] Huyen, *AI Engineering*, chapter 9** covers inference optimization from the production side: the same latency and throughput metrics, batching tradeoffs, and quantization levers this chapter measures, framed as engineering decisions. Read it for the breadth; this chapter supplies the measurement discipline.
+```
+
 ## Theory
 
 ### Latency and throughput are different axes, and they trade off
