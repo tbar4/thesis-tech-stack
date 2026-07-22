@@ -1,0 +1,5 @@
+# Reference books are large copyrighted binaries; keep them out of the repo.
+# Track only this directory's README and .gitignore.
+*
+!.gitignore
+!README.md
