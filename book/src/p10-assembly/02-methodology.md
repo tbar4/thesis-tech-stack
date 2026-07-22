@@ -46,7 +46,7 @@ Read that diagram as the table of contents for the methodology chapter. Each lea
 
 **Statistics: "is this improvement real or is it noise?"** Committees have seen too many deltas that evaporate under a proper test. The book's answer is that the reasoning delta was always designed as a paired comparison. Chapter 3.7 sets up the statistics of evals: accuracy is a mean of Bernoulli trials, so it has a binomial confidence interval, and when items are grouped (multiple samples per prompt, or prompts sharing a source) the naive SE understates uncertainty and you need a clustered or hierarchical estimate. Chapter 7.6 applies that to the pre/post design: same items before and after, a paired test on the per-item score differences, an effect size (standardized mean difference) with an interval, and a separate look at whether the gain is a shift in the mean or a shift in pass@k. The methodology chapter states the design (paired, shared items, seeds as the unit of replication), names the test, and points at 7.6 for the worked computation.
 
-**Contamination: "was the eval in the training data?"** For any model trained on a large web corpus, the null hypothesis a committee holds is that the benchmark leaked into pretraining. The book's answer is chapter 3.8, dataset hygiene: how I built the thesis task suite (chapter 3.9) to reduce contamination risk, the decontamination checks I ran, and the honest statement of residual risk for items I couldn't fully clear. The methodology chapter reports the hygiene procedure and cites the audit's treatment of contamination as a formal threat.
+**Contamination: "was the eval in the training data?"** For any model trained on a large web corpus, the null hypothesis a committee holds is that the benchmark leaked into pretraining. The book's answer is chapter 3.8, dataset hygiene: how I built the thesis task suite (chapter 3.11) to reduce contamination risk, the decontamination checks I ran, and the honest statement of residual risk for items I couldn't fully clear. The methodology chapter reports the hygiene procedure and cites the audit's treatment of contamination as a formal threat.
 
 ### The line between methodology and limitations
 
@@ -86,7 +86,7 @@ The artifact is a methodology skeleton with pointers into the book: a YAML claim
 # A claim with artifact: null is unfinished and the generator flags it.
 
 audit_version: "v1.0"          # chapter 4.6 causal audit; quoted verbatim
-task_suite_version: "v1.2.0"   # chapter 3.9 thesis task suite
+task_suite_version: "v1.2.0"   # chapter 3.11 thesis task suite
 
 claims:
   - id: repro-env
@@ -162,13 +162,13 @@ threats:
   - name: "Judge self-preference inflates in-family scores"
     mitigation: "3.6 (judge calibration)"
   - name: "Contamination: model may have seen frozen eval items"
-    mitigation: "3.8 (contamination), 3.9 (frozen suite v1.0)"
+    mitigation: "3.8 (contamination), 3.11 (frozen suite v1.0)"
   - name: "Effect specific to item set / seed / machine"
     mitigation: "4.5 (negative control), 7.7 (seeds from power analysis)"
   - name: "Delta indistinguishable from sampling noise"
     mitigation: "3.7 (eval statistics), 7.6 (paired analysis)"
   - name: "Selection on failed/incomplete runs (collider)"
-    mitigation: "4.3 (collider), 3.10 (eval ops)"
+    mitigation: "4.3 (collider), 3.12 (eval ops)"
 ```
 
 ### The skeleton generator

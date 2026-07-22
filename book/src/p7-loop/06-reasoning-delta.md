@@ -8,7 +8,7 @@ The output is a delta-report template: an analysis artifact that consumes the pe
 
 ### The pre/post design and why matching is everything
 
-The design is a within-subjects pre/post comparison. The "subjects" are the items of the frozen thesis task suite v1.0 (chapter 3.9), and each item is measured twice: once under $M_0$, once under $M_1$. This is the cleanest design available on one GPU, and its power comes entirely from a discipline that is easy to state and easy to violate: everything except the model must be held identical between the pre and post measurements.
+The design is a within-subjects pre/post comparison. The "subjects" are the items of the frozen thesis task suite v1.0 (chapter 3.11), and each item is measured twice: once under $M_0$, once under $M_1$. This is the cleanest design available on one GPU, and its power comes entirely from a discipline that is easy to state and easy to violate: everything except the model must be held identical between the pre and post measurements.
 
 Identical means the same item set (the frozen suite, same revision, no items added or dropped), the same sampling budget (same number of samples $n$ per item), the same decoding parameters (temperature, top-p, max tokens), and the same seeds wherever the serving stack makes seeds reproducible. The reason matching matters so much is not fussiness. It is that the metrics I care about are functions of the sampling budget, and if the budget differs between pre and post then a "delta" partly measures the budget change, not the model. Pass@k in particular is monotonic in k, so measuring $M_0$ at $n=4$ and $M_1$ at $n=8$ would manufacture a delta out of thin air. The matched budget is what makes the subtraction meaningful.
 

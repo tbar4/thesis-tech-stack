@@ -34,7 +34,7 @@ A package is complete when someone can go from an empty machine to my figures wi
 
 **The configs**, one per experiment, version-controlled and referenced by the runs. Every run in MLflow was launched from a config; the package ships those configs so the run can be relaunched. A config that isn't in the package is a result that can't be reproduced, full stop.
 
-**The task suite**, at a pinned version. The thesis task suite (chapter 3.9) is the measuring instrument, and the whole result is relative to it. The package ships the suite at a tagged version with its decontamination report, so the instrument is fixed and inspectable.
+**The task suite**, at a pinned version. The thesis task suite (chapter 3.11) is the measuring instrument, and the whole result is relative to it. The package ships the suite at a tagged version with its decontamination report, so the instrument is fixed and inspectable.
 
 **The seeds**, recorded per run, not regenerated. Seeds are data. The package records the exact seed each run used, because "seeds 0, 1, 2" is a claim about which three runs I'm reporting, and reproducing the result means reproducing those three, not three fresh ones.
 

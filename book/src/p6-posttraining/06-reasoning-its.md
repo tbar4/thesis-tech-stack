@@ -83,7 +83,7 @@ import numpy as np
 from vllm import LLM, SamplingParams
 
 import evalstats as es
-# chapter-3.9 frozen suite: load_suite() -> Suite with .items (each Item has
+# chapter-3.11 frozen suite: load_suite() -> Suite with .items (each Item has
 # .prompt, .answer, .verifier) and verify(item, response) -> bool.
 from thesis_suite import load_suite, verify
 

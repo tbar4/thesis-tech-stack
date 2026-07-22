@@ -268,13 +268,13 @@ Every reported result cites the version and content hash it used.
 
 ### The `thesis_suite` convenience package
 
-The `suite/` package above is the builder: it calibrates, freezes, and datasheets. But the chapters downstream (the judge calibration in 3.6, the reward core in Part VII) do not want to reach into `suite/frozen/` and re-implement item loading and verifier dispatch every time. So I add one thin package, `thesis_suite`, that wraps the frozen split and the audited verifiers behind a single stable surface. It builds nothing new: `load_suite` reads the frozen JSONL, and every correctness call routes back into `suite.verifiers` (Chapter 3.9) or the extract-and-compare reward core (Chapter 3.4), so the semantics are exactly what was validated here. Downstream code imports `thesis_suite` and never has to know where the JSONL lives or which checker an item uses.
+The `suite/` package above is the builder: it calibrates, freezes, and datasheets. But the chapters downstream (the judge calibration in 3.6, the reward core in Part VII) do not want to reach into `suite/frozen/` and re-implement item loading and verifier dispatch every time. So I add one thin package, `thesis_suite`, that wraps the frozen split and the audited verifiers behind a single stable surface. It builds nothing new: `load_suite` reads the frozen JSONL, and every correctness call routes back into `suite.verifiers` (Chapter 3.11) or the extract-and-compare reward core (Chapter 3.4), so the semantics are exactly what was validated here. Downstream code imports `thesis_suite` and never has to know where the JSONL lives or which checker an item uses.
 
 ```python title="thesis_suite/__init__.py"
 """Stable import surface over the frozen thesis task suite (v1.0) and its
 verifiers. Chapters 6.x (judges) and 7.x (rewards) import from HERE, not from
 suite internals. Thin by design: all real logic lives in suite/verifiers.py
-(Ch 3.9) and the frozen JSONL under suite/frozen/ (this chapter)."""
+(Ch 3.11) and the frozen JSONL under suite/frozen/ (this chapter)."""
 from __future__ import annotations
 import json
 from dataclasses import dataclass
@@ -319,7 +319,7 @@ def load_suite(rev: str | None = None) -> Suite:
 
 def verify(item: Item, response: str) -> bool:
     """Primary correctness signal for an item: dispatch to its own verifier
-    (Ch 3.9). This is the number every reported score is built from."""
+    (Ch 3.11). This is the number every reported score is built from."""
     return VERIFIERS[item.verifier](response, item.answer)
 
 

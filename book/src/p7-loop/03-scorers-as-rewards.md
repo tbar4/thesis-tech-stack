@@ -255,7 +255,7 @@ uv run python train.py
 ```
 
 ```admonish gotcha title="Train split only, and log the two rewards separately"
-The dataset here is the SDA *train* split. The frozen v1.0 *test* split from chapter 3.9 is sacred: it never appears in training, because chapter 7.6 uses it to measure the pre-versus-post delta with the identical verifier, and training on it would contaminate exactly the number the thesis rests on. Second, keep `correctness_reward` and `format_reward` as separate entries in `reward_funcs` even though TRL sums them, so MLflow logs `rewards/correctness_reward/mean` and `rewards/format_reward/mean` as distinct curves. Watching those two diverge is the primary diagnostic for the whole next chapter; collapse them into one function and you go blind to hacking.
+The dataset here is the SDA *train* split. The frozen v1.0 *test* split from chapter 3.11 is sacred: it never appears in training, because chapter 7.6 uses it to measure the pre-versus-post delta with the identical verifier, and training on it would contaminate exactly the number the thesis rests on. Second, keep `correctness_reward` and `format_reward` as separate entries in `reward_funcs` even though TRL sums them, so MLflow logs `rewards/correctness_reward/mean` and `rewards/format_reward/mean` as distinct curves. Watching those two diverge is the primary diagnostic for the whole next chapter; collapse them into one function and you go blind to hacking.
 ```
 
 ### What you should see

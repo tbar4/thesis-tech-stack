@@ -143,7 +143,7 @@ THREATS = [
     Threat("T6", "external",
            "Contamination: model may have seen frozen eval items",
            "Dataset hygiene, decontamination checks, held-out split.",
-           "3.8 (contamination), 3.9 (frozen suite v1.0)",
+           "3.8 (contamination), 3.11 (frozen suite v1.0)",
            "Cannot prove absence of contamination for closed pretraining."),
     Threat("T7", "external",
            "Effect specific to this item set / seed / machine, not general",
@@ -158,7 +158,7 @@ THREATS = [
     Threat("T9", "internal",
            "Selection: dropping failed/incomplete runs conditions on a collider",
            "Score failures as failures; report completion rate separately.",
-           "4.3 (collider), 3.10 (eval ops)",
+           "4.3 (collider), 3.12 (eval ops)",
            "Some crashes are non-ignorable; documented per run."),
 ]
 

@@ -78,7 +78,7 @@ TEACHER = "Qwen/Qwen3-14B"
 K = 4                                  # traces per problem; keep the correct ones
 OUT = Path("artifacts"); OUT.mkdir(exist_ok=True)
 
-from thesis_suite import verify_sda_answer   # chapter-3.9 verifier
+from thesis_suite import verify_sda_answer   # chapter-3.11 verifier
 
 
 def main() -> None:
@@ -131,13 +131,13 @@ from trl import SFTConfig, SFTTrainer
 from unsloth import FastLanguageModel
 
 import evalstats as es
-# chapter-3.9 frozen suite: load the frozen v1.0 items, and grade an in-process
-# model over them (no served endpoint) with the same verifiers 3.9 froze.
+# chapter-3.11 frozen suite: load the frozen v1.0 items, and grade an in-process
+# model over them (no served endpoint) with the same verifiers 3.11 froze.
 from thesis_suite import load_suite, score_model_local
 
 BASE = "unsloth/Qwen3-4B-Base"
 OUT = Path("artifacts"); OUT.mkdir(exist_ok=True)
-SUITE = load_suite()                # frozen thesis suite v1.0 (chapter 3.9)
+SUITE = load_suite()                # frozen thesis suite v1.0 (chapter 3.11)
 
 
 def suite_scores(model, tok) -> list[int]:
