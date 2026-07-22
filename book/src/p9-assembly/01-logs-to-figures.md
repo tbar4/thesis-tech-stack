@@ -30,7 +30,7 @@ The arrow that matters is the dashed one. The frozen export is what goes into th
 
 MLflow's data model is runs and, under each run, three kinds of logged things: params (set once, strings), metrics (time series, floats with a step and a timestamp), and tags (mutable strings). When I flatten that for analysis I get two tables that cover almost everything I plot.
 
-The first is a **runs table**: one row per run, wide, with columns for `run_id`, `experiment`, the params I set (model, seed, learning rate, task suite version), and the *final* value of each metric. This is the table I use for anything comparative: bar charts across seeds, before/after deltas, ablation grids. One row per run keeps the pandas easy and the joins obvious.
+The first is a **runs table**: one row per run, wide, with columns for `run_id`, `experiment`, the params I set (model, learning rate, task suite version), the `seed` (which the 0.6 logging schema records as a *tag*, not a param, so the export has to lift it out of the tags explicitly), and the *final* value of each metric. This is the table I use for anything comparative: bar charts across seeds, before/after deltas, ablation grids. One row per run keeps the pandas easy and the joins obvious.
 
 The second is a **metrics table**: long, one row per `(run_id, metric, step, value, timestamp)`. This is what I use for anything that moves over training: reward curves, KL over steps, eval accuracy across checkpoints. Long format is non-negotiable here because it is what seaborn and matplotlib group over cleanly, and because it survives adding a new metric without a schema change.
 
@@ -119,9 +119,28 @@ def export(experiment: str, tracking_uri: str, out_dir: Path) -> None:
     runs = mlflow.search_runs(experiment_ids=[exp.experiment_id])
 
     # --- runs table: one wide row per run (params + final metric values) ---
+    # Flatten params.* and metrics.* to bare names. Drop tags.* EXCEPT the ones
+    # the figures and provenance need: per the 0.6 logging schema `seed` is a
+    # TAG (not a param), and the git SHA + driver are tags too. If we dropped
+    # every tag, make_delta_plot.py's sort_values("seed") would KeyError.
     runs = runs.rename(columns=lambda c: c.replace("params.", "").replace("metrics.", ""))
+    keep_tags = {
+        "tags.seed": "seed",
+        "tags.git_sha": "git_sha",
+        "tags.driver_version": "driver_version",
+    }
+    runs = runs.rename(columns={k: v for k, v in keep_tags.items() if k in runs.columns})
+    if "seed" in runs.columns:
+        runs["seed"] = runs["seed"].astype(int)  # tags are strings; figures want int
     runs_cols = [c for c in runs.columns if not c.startswith("tags.")]
     runs_table = runs[runs_cols].copy()
+
+    # NOTE: search_runs() yields `experiment_id`, not `experiment` (map it back
+    # from exp.name if you want the human name). And a pre/post design often
+    # logs baseline and post as nested CHILD runs under one parent, so
+    # eval_acc_baseline / eval_acc_final may land on separate rows and need a
+    # reshape (pivot on the parent run id) into the one-row-per-run wide form
+    # the delta figure expects.
 
     # --- metrics table: long history, one row per (run, metric, step) ---
     long_rows = []
@@ -178,8 +197,10 @@ If you don't have runs yet, generate a stand-in export with the same schema. Thi
 ```python title="figures/make_synthetic_export.py"
 """Write a synthetic export with the real schema, for GPU-free testing.
 
-Delete this once you have a real export from export_runs.py. The shapes and
-column names match exactly, so figure scripts don't know the difference.
+Delete this once you have a real export from export_runs.py. This mirrors the
+POST-export schema: `seed` is a plain int column here because export_runs.py
+lifts it out of the MLflow tags (where the 0.6 schema logs it) into a column,
+so from the figure scripts' point of view the two exports look the same.
 """
 from __future__ import annotations
 
@@ -341,6 +362,10 @@ np.random.seed(0)  # any jitter/sampling in a figure must be seeded
 def load(export_dir: Path) -> tuple[pd.DataFrame, dict]:
     metrics = pd.read_parquet(export_dir / "metrics.parquet")
     manifest = json.loads((export_dir / "export_manifest.json").read_text())
+    # Keep ONLY reward/* metrics: a real export also carries loss, kl,
+    # eval_acc, etc., and without this filter each of those becomes a bogus
+    # "task" line on the reward plot.
+    metrics = metrics[metrics["metric"].str.startswith("reward/")].copy()
     metrics["task"] = metrics["metric"].str.replace("reward/", "", regex=False)
     metrics["task"] = metrics["task"].astype("category")
     return metrics, manifest
