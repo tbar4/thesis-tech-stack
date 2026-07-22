@@ -87,8 +87,10 @@ from pathlib import Path
 import numpy as np
 import torch
 from datasets import load_dataset
-from peft import LoraConfig
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from peft import LoraConfig, prepare_model_for_kbit_training
+from transformers import (
+    AutoModelForSequenceClassification, AutoTokenizer, BitsAndBytesConfig,
+)
 from trl import RewardConfig, RewardTrainer
 
 import evalstats as es
@@ -103,12 +105,21 @@ def main() -> None:
     if tok.pad_token is None:
         tok.pad_token = tok.eos_token
 
-    # num_labels=1 IS the scalar reward head r_phi(x, y).
+    # num_labels=1 IS the scalar reward head r_phi(x, y). Quantize the base
+    # explicitly: bare load_in_4bit=True on from_pretrained is deprecated and
+    # defaults to fp4, so pass a BitsAndBytesConfig pinning NF4 (chapter 6.3).
+    bnb = BitsAndBytesConfig(
+        load_in_4bit=True, bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.bfloat16,
+    )
     model = AutoModelForSequenceClassification.from_pretrained(
         MODEL, num_labels=1, torch_dtype=torch.bfloat16,
-        load_in_4bit=True, device_map="auto",
+        quantization_config=bnb, device_map="auto",
     )
     model.config.pad_token_id = tok.pad_token_id
+    # Prepare the quantized base for k-bit LoRA training (casts norms, enables
+    # gradient checkpointing input grads); RewardTrainer adds the adapter below.
+    model = prepare_model_for_kbit_training(model)
 
     lora = LoraConfig(
         r=16, lora_alpha=32, lora_dropout=0.0, task_type="SEQ_CLS",
@@ -133,22 +144,29 @@ def main() -> None:
     trainer.save_model(str(OUT / "rm"))
 
     # ---- Audit the RM on the held-out split ----
-    model.eval()
+    # With peft_config, the trained scalar head lives on the PEFT-wrapped model,
+    # not the bare `model` handle above; audit trainer.model (or merge first).
+    rm = trainer.model
+    rm.eval()
 
     @torch.no_grad()
     def reward(text: str) -> float:
         ids = tok(text, return_tensors="pt", truncation=True,
-                  max_length=1024).to(model.device)
-        return float(model(**ids).logits.squeeze())
+                  max_length=1024).to(rm.device)
+        return float(rm(**ids).logits.squeeze())
 
     correct, deltas, lengths_pref = [], [], []
     for ex in eval_ds:
-        rw = reward(ex["chosen"])
-        rl = reward(ex["rejected"])
+        # ultrafeedback_binarized stores chosen/rejected as message lists;
+        # render them through the chat template before scoring or measuring length.
+        chosen = tok.apply_chat_template(ex["chosen"], tokenize=False)
+        rejected = tok.apply_chat_template(ex["rejected"], tokenize=False)
+        rw = reward(chosen)
+        rl = reward(rejected)
         correct.append(1 if rw > rl else 0)
         deltas.append(rw - rl)
         # length-hack probe: reward vs char length of the chosen response
-        lengths_pref.append((len(ex["chosen"]), rw))
+        lengths_pref.append((len(chosen), rw))
 
     acc = es.bootstrap_mean(correct, level=0.95)
     print(f"pref accuracy = {acc.point:.3f}  "

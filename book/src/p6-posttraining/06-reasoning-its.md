@@ -77,13 +77,15 @@ Writes artifacts/its_scaling.csv and artifacts/its_scaling.png.
 from collections import Counter
 from pathlib import Path
 import csv
+import re
 
 import numpy as np
 from vllm import LLM, SamplingParams
 
 import evalstats as es
-# chapter-3.9 frozen suite: items with .prompt, .answer, and a verifier.
-from thesis_suite import load_suite, extract_answer, verify
+# chapter-3.9 frozen suite: load_suite() -> Suite with .items (each Item has
+# .prompt, .answer, .verifier) and verify(item, response) -> bool.
+from thesis_suite import load_suite, verify
 
 MODEL = "Qwen/Qwen3-4B"
 KS = [1, 2, 4, 8, 16, 32]
@@ -92,8 +94,19 @@ OUT = Path("artifacts")
 OUT.mkdir(exist_ok=True)
 
 
+def extract_answer(text: str) -> str | None:
+    """Canonical final answer for the majority vote. thesis_suite exposes a
+    verifier (used below for correctness) but not an extractor, so pull the
+    last boxed span or trailing number here to tally self-consistency votes."""
+    boxed = re.findall(r"\\boxed\{([^}]*)\}", text)
+    if boxed:
+        return boxed[-1].strip()
+    nums = re.findall(r"-?\d[\d,]*\.?\d*", text)
+    return nums[-1].replace(",", "") if nums else None
+
+
 def main() -> None:
-    items = load_suite("v1.0")
+    items = load_suite("v1.0").items
     llm = LLM(model=MODEL, dtype="bfloat16", gpu_memory_utilization=0.85,
               max_model_len=4096)
     sp = SamplingParams(n=MAX_K, temperature=0.8, top_p=0.95, max_tokens=2048)
@@ -108,7 +121,7 @@ def main() -> None:
         rec = []
         for comp in out.outputs:
             ans = extract_answer(comp.text)
-            rec.append((ans, verify(ans, it.answer), len(comp.token_ids)))
+            rec.append((ans, verify(it, comp.text), len(comp.token_ids)))
         per_item.append(rec)
 
     rows = []
