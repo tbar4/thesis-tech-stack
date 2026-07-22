@@ -81,6 +81,8 @@ The tool is the audit document itself, generated from a structured specification
 
 The audit is versioned. This is v1.0, frozen at the point where the thesis eval design is settled, and chapter 9.2 cites it verbatim as the methodology chapter's causal-validity exhibit. If the design changes later, the audit gets a new version and 9.2's citation updates, so there is always exactly one audit of record for any given eval design. Versioning the audit is what lets "the causal audit" be a specific, datable object rather than a vague gesture at rigor.
 
+Keeping the threats as structured records rather than prose also lets the audit answer a question a committee reliably asks: "show me every place internal validity could fail, and where each is handled." Because the validity type is a field, that query is a filter over the JSON, and I can regenerate a one-page view of just the internal-validity threats, or just the bounded (not closed) ones, on demand. An audit that can be sliced by validity type and by closure status is far more useful under questioning than a wall of text, and building it from data is what makes those slices free. The markdown exhibit is the default rendering; the JSON is what makes the exhibit queryable, and both fall out of the same source of truth so they can never disagree.
+
 ## Lab
 
 The lab assembles causal audit v1.0 from the structured threat list, renders it to markdown and JSON, and writes both to disk. This is the capstone artifact of Part IV.
