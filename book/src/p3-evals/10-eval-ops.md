@@ -212,6 +212,41 @@ if __name__ == "__main__":
     promote(d)
 ```
 
+### Comparing two runs the right way
+
+The payoff of the schema is that an A-versus-B comparison (BF16 versus INT4, before-training versus after) becomes a paired analysis over two scorings that share a suite, wrapped in a parent campaign run. Because both models were scored on the same frozen suite items, the correct test is McNemar or a paired-difference bootstrap from Chapter 3.7, never two marginal CIs eyeballed for overlap. The helper below reads two runs' score files, aligns them by item id, and logs the paired result under a parent run.
+
+```python title="evalops/compare.py"
+"""Paired A/B comparison over two runs that scored the same frozen suite."""
+import json
+from pathlib import Path
+import mlflow
+import evalstats as es
+
+def load_scores(run_dir, scorer_version):
+    d = Path(run_dir)
+    rows = [json.loads(l) for l in
+            (d / f"scores.{scorer_version}.jsonl").read_text().splitlines()]
+    return {r["id"]: r["score"] for r in rows}
+
+def compare(run_a, run_b, scorer_version, label_a, label_b):
+    sa, sb = load_scores(run_a, scorer_version), load_scores(run_b, scorer_version)
+    ids = sorted(set(sa) & set(sb))          # shared items only -> paired
+    a = [sa[i] for i in ids]; b = [sb[i] for i in ids]
+    delta = es.bootstrap_paired_diff(a, b, name="delta")   # Ch 3.7 paired CI
+    mc = es.mcnemar(a, b)                                   # exact paired test
+    mlflow.set_experiment("evals")
+    with mlflow.start_run(run_name=f"compare-{label_a}-vs-{label_b}"):
+        mlflow.log_params({"model_a": label_a, "model_b": label_b,
+                           "scorer_version": scorer_version, "n_shared": len(ids)})
+        mlflow.log_metrics({**delta.as_mlflow(), "mcnemar_p": mc.pvalue})
+    print(f"delta(a-b)={delta.point:+.3f} [{delta.ci_low:+.3f},{delta.ci_high:+.3f}]"
+          f"  McNemar p={mc.pvalue:.4f}  (n_shared={len(ids)})")
+    return delta, mc
+```
+
+The parent-run/child-run shape falls out naturally: the two `gen`/`score` runs are the children (one per model), and the `compare` run is the parent that records the verdict. A reviewer opening MLflow six months later sees the two models, the exact suite version and hash they were scored on, the shared-item count, and a paired difference with its confidence interval and p-value, which is a defensible claim rather than two floating numbers.
+
 ### The runbook
 
 ```markdown title="RUNBOOK.md"

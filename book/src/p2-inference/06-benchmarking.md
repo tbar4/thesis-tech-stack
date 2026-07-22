@@ -2,6 +2,8 @@
 
 The runbook stands up a server; this chapter measures it honestly. That qualifier matters, because inference benchmarking is unusually easy to get wrong in ways that flatter your own stack. You warm nothing up and blame the model for a cold-start artifact. You report a single run and call the noise a result. You quote peak throughput at batch 64 and per-request latency in the same breath as if a user experiences both. The whole discipline of this chapter is measurement hygiene: defining metrics that mean something, controlling the conditions, quantifying variance, and producing a baseline report I would be willing to publish and, more to the point, willing to reuse as the fixed serving substrate for every training experiment later in the thesis. If the baseline is dishonest, every reward signal built on top of it inherits the lie.
 
+The stakes are higher here than in a one-off benchmark blog post precisely because this number gets reused. Later parts of the thesis will hold the serving substrate fixed and vary something upstream (a quantization choice, a training checkpoint, a sampling setting) and ask whether throughput or latency moved. That comparison is only meaningful if the baseline was measured with enough rigor that I know its noise floor and its exact conditions. A baseline recorded sloppily is not just wrong once, it silently corrupts every downstream comparison that leans on it, and I will not know, because the corruption looks like a plausible number. So the discipline in this chapter is not perfectionism for its own sake; it is the minimum required for the baseline to be a foundation rather than a liability.
+
 ## Theory
 
 ### Latency and throughput are different axes, and they trade off
@@ -35,6 +37,8 @@ Latency distributions are right-skewed with heavy tails: most requests are fast,
 ### Warmup, and why the first runs are garbage
 
 The first requests to a fresh server are systematically slow for reasons that have nothing to do with steady-state performance: CUDA kernels are being JIT-compiled or autotuned, CUDA graphs are being captured, the KV allocator is cold, caches are empty, and clock speeds may not have ramped. Including these in your statistics contaminates them. The fix is a **warmup phase**: send a batch of representative requests, discard their timings, and only then start measuring. Skipping warmup is the single most common way people accidentally slander their own stack.
+
+Warmup has to be representative, not token. If my real workload sends 2K-token prompts and generates 256 tokens, my warmup should do the same, because the kernels autotuned and the graphs captured are shape-dependent; warming up with a ten-token prompt leaves the very code paths my benchmark exercises still cold. The rule I follow is to warm up with the same request distribution I am about to measure, run enough of it that the throughput number stabilizes across successive batches, and only then start recording. A cheap way to confirm warmup is sufficient is to plot the per-request latency against request index and check that it has flattened before the measurement window begins; if it is still descending, the card has not reached steady state and my first "measurements" are really extended warmup wearing a disguise.
 
 ### Load generation: open vs closed
 

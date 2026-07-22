@@ -140,6 +140,12 @@ $$
 The only difference from the expectation equations (4) and (5) is the $\max$ where the policy average used to be. That $\max$ is what makes the optimality equations *nonlinear*: you cannot solve them by matrix inversion, you iterate (value iteration) or improve a policy repeatedly (policy iteration). But the payoff is enormous: once you have $q_*$, the optimal policy is trivial, just act greedily, $\pi_*(s) = \arg\max_a q_*(s,a)$, with no further planning required. Knowing $q_*$ turns control into a lookup.
 ```
 
+### From values to a policy: greedy extraction and improvement
+
+The reason value functions are worth all this trouble is that they hand you a *better policy* almost for free. Given any policy $\pi$ and its action values $q_\pi$, define a new policy that acts greedily with respect to them, $\pi'(s) = \arg\max_a q_\pi(s,a)$. The *policy improvement theorem* ([S&B] Section 4.2) guarantees $v_{\pi'}(s) \ge v_\pi(s)$ for every state, with strict improvement somewhere unless $\pi$ was already optimal. The one-line intuition: by construction $q_\pi(s,\pi'(s)) = \max_a q_\pi(s,a) \ge \sum_a\pi(a\mid s)q_\pi(s,a) = v_\pi(s)$, so taking the greedy action for one step and then reverting to $\pi$ already does at least as well; unrolling that inequality forever shows $\pi'$ dominates outright.
+
+Alternating "evaluate the current policy" with "act greedily on its values" is *policy iteration*, and it converges to $\pi_*$ in finitely many steps for a finite MDP. This is the classical control loop, and it is worth seeing clearly precisely so you can appreciate what LLM policy gradients give up: they never form $q_\pi$ explicitly and never take an $\arg\max$ over the vocabulary, both because $|\mathcal{V}|$ is huge and because a hard $\arg\max$ would destroy the exploration that Chapter 5.3 argued is essential. Instead they nudge $\pi_\theta$ softly in the direction of higher-value actions, which is the policy gradient of Chapter 5.4.
+
 ### Why LLM-RL mostly avoids learned value functions
 
 Everything above assumes you can represent and learn a value function over the state space. For a tabular gridworld with 50 states, easy. For a language model, the state is an entire token prefix, so the state space is $|\mathcal{V}|^{L}$, astronomically large and never revisited. You cannot tabulate it; you must approximate $v_\pi$ or $q_\pi$ with a neural network, a *critic*. That is exactly what PPO does, and it works, but on my hardware it carries three costs I want to name.
