@@ -209,6 +209,16 @@ done
 
 The reading is diagnostic, not decorative. KV cache usage creeping toward 100% with a rising waiting count means the pool is saturated and I am about to start preempting; that is the signal to lower `--max-num-seqs` or shorten `--max-model-len` for this workload, both of which trace straight back to the chapter-2 hyperbola. A nonzero and climbing preemption counter means I am already thrashing and paying to swap or recompute cache, which is strictly worse than admitting fewer sequences in the first place. Watching these while the benchmark of the next chapter runs is how I learn the real operating envelope of each model on this specific card, as opposed to the envelope the arithmetic predicted, and the two should agree to within the overhead fudge factor.
 
+### The three failure modes at boot, and their fixes
+
+Almost every serving failure on this card is one of three things, and recognizing them by their symptom saves hours.
+
+- **OOM during graph capture.** The server loads weights fine, then dies while capturing CUDA graphs or allocating the KV pool. Cause: `--gpu-memory-utilization` is too high for the real activation and graph overhead on the day, most often on Qwen3-8B BF16 at 0.95. Fix: lower utilization a notch, or shorten `--max-model-len`, or add `--kv-cache-dtype fp8` to shrink the pool's per-token cost.
+- **OOM right after a swap.** The new server dies immediately even though its config fit before. Cause: the previous process had not released its CUDA context, so the card was still full. Fix: this is exactly what the swap script's VRAM-drain loop prevents; if it still happens, raise the drain threshold or the retry count.
+- **Quantization backend mismatch.** The server refuses to load an AWQ or MXFP4 checkpoint. Cause: a `--quantization` value that this vLLM version spells differently, or a checkpoint whose format the installed kernels do not support. Fix: check `vllm serve --help` for the accepted values (the read-along), and confirm the Blackwell FP4/Marlin paths are present in this build.
+
+None of these are mysterious once you have seen them, and the runbook's acceptance table exists precisely to catch them on the machine before they surprise me mid-experiment.
+
 ## Lab: stand up each model and script the swap
 
 The artifact is `serve/RUNBOOK.md`, a markdown runbook committed to the repo that ties the scripts together and records the acceptance evidence.

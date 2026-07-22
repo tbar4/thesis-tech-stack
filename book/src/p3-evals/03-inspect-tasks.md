@@ -37,6 +37,22 @@ Second, **the record-to-sample mapping**, the `record_to_sample` function, is wh
 
 Third, **how many items and in what order**. Inspect's `--limit` samples a prefix (useful for a fast smoke test, dangerous as a reported number because a prefix is not a random sample), and `--epochs` runs each item multiple times, which is how I get the multiple samples per problem that `pass@k` and majority vote (chapter 2) need. Epochs are the bridge from single-sample propensity to multi-sample capability: `--epochs 8` with a sampling temperature gives me eight rollouts per item, and the scorer aggregates them. The order and seed matter too, because a paired comparison across models (chapter 5) is only valid if both models saw the identical items in the identical order, so I fix the seed and never rely on `--limit` for a number that goes in a table.
 
+```admonish derivation title="Budgeting a multi-sample run: epochs, calls, and tokens"
+Before I launch an epochs-based run I want to know what it costs in GPU time, and the arithmetic is simple enough to do in my head. With $N$ items, $E$ epochs (samples per item), and a solver that issues $t$ model turns per sample (1 for single-turn, 2 for the self-revision solver below), the number of `generate` calls is
+
+$$
+C = N \cdot E \cdot t. \tag{1}
+$$
+
+If each call produces on average $L$ output tokens and the endpoint sustains $R$ tokens/second in decode (measured in Part II on the baseline machine), the decode wall-clock floor is
+
+$$
+T_{\text{decode}} \approx \frac{C \cdot L}{R}. \tag{2}
+$$
+
+For a `pass@8` capability probe over the full 1319-item GSM8K set with a single-turn solver ($N=1319$, $E=8$, $t=1$), that is $C = 10{,}552$ generations; at say $L = 300$ output tokens each, $C \cdot L \approx 3.2\times10^6$ tokens, and at a decode rate $R$ (record on the baseline machine) the floor is $3.2\times10^6 / R$ seconds. The point of the estimate is not precision but planning: multi-sample capability probes cost $E$ times a single run, multi-turn solvers cost another factor of $t$, and on one GPU those factors decide whether a run is a coffee break or an overnight job. I compute equations (1) and (2) before every large run and record the actual against the estimate.
+```
+
 ## Tooling
 
 ### Install and point Inspect at the local endpoint

@@ -42,6 +42,8 @@ vLLM's engine runs a loop. Each iteration ("engine step") the scheduler decides 
 The effect is that a completed short request leaves the batch the instant it finishes and a waiting request takes its slot the same step, so the GPU stays saturated instead of idling on the longest laggard. This is the mechanism that turns decode's low per-sequence intensity into high aggregate throughput: batching many sequences amortizes each weight read across many tokens, exactly the intensity boost the roofline chapter promised.
 ```
 
+The scheduler also decides *policy*, not just mechanism. By default vLLM schedules first-come-first-served, but it can prioritize by other criteria, and the admission order interacts with prefix caching (batching requests that share a prefix together maximizes cache reuse) and with chunked prefill (deciding how much of the per-step token budget goes to new prefill versus ongoing decode). These are the knobs the operations chapter exposes; the point here is that a single tunable loop, run once per forward pass, is what implements continuous batching, preemption, prefix reuse, and chunked prefill all at once. It is not four separate features bolted together but four consequences of the same iteration-level scheduling decision, which is why understanding the loop is worth more than memorizing the flags.
+
 ```admonish gotcha
 Preemption is not free and it is a signal. When you see preemption in the logs, the engine is thrashing: it admitted more work than the KV pool can hold and is now paying to swap or recompute. A little is fine under bursty load; a lot means `--max-num-seqs` or `--max-model-len` is set too high for the pool, and you are better off admitting fewer sequences than churning them. The KV arithmetic from chapter 2 is how you size those flags so preemption stays rare.
 ```
@@ -55,6 +57,10 @@ With `--enable-prefix-caching`, vLLM hashes the token contents of each completed
 ```
 
 For the thesis eval loop, where thousands of prompts share the same instruction scaffold, prefix caching is a substantial free win and it is on by default in recent vLLM.
+
+```admonish gotcha
+Prefix caching keys on exact token-block content, so it only hits when the shared prefix is byte-identical after tokenization. A system prompt that varies by a timestamp, a per-request user id, or even trailing whitespace breaks the match and silently reverts to full prefill. When I want the win, I keep the shared scaffold fixed and push the variable parts to the end of the prompt, where they become a cheap suffix instead of poisoning the cacheable prefix. This is a place where a tiny prompt-engineering choice has a large systems consequence.
+```
 
 ### Chunked prefill
 

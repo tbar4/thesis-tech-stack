@@ -237,6 +237,51 @@ if __name__ == "__main__":
     run(test_spec, pool_spec)
 ```
 
+### The behavioral memorization probe
+
+The two mechanical passes catch overlap you can see in the text; they cannot catch the item whose prompt is genuinely novel but whose *answer* the model memorized from a solution posted elsewhere. For that you probe behavior. The cheap, honest version masks a salient span of the item (here, the final numeric answer embedded in a worked target) and asks the model, greedily, to complete it. A model that reconstructs the exact masked answer far more often on suspected items than its own accuracy would predict is showing memorization, not reasoning. This does not prove contamination; it raises a flag that a human then adjudicates.
+
+```python title="contamscan/probe.py"
+"""Masked-answer completion probe: does the model *reconstruct* the held-out span?"""
+import re
+from openai import OpenAI
+
+def mask_answer(target: str) -> tuple[str, str]:
+    """Replace the last number in the target with a blank; return (masked, gold)."""
+    nums = list(re.finditer(r"-?\d+(?:\.\d+)?", target))
+    if not nums:
+        return target, ""
+    last = nums[-1]
+    masked = target[:last.start()] + "____" + target[last.end():]
+    return masked, last.group(0)
+
+def probe(items, base_url="http://localhost:8000/v1",
+          model="Qwen/Qwen3-14B-AWQ", flag_rate=0.5):
+    """Fraction of items whose masked answer the model fills in exactly.
+    Greedy decoding so the result is a property of memory, not sampling."""
+    client = OpenAI(base_url=base_url, api_key="EMPTY")
+    hits = []
+    for it in items:
+        masked, gold = mask_answer(it["target"])
+        if not gold:
+            continue
+        r = client.chat.completions.create(
+            model=model, temperature=0.0, max_tokens=16,
+            messages=[{"role": "user", "content":
+                       f"Fill in the blank exactly.\n{it['question']}\n"
+                       f"Answer: {masked}"}])
+        if gold in (r.choices[0].message.content or ""):
+            hits.append({"id": it["id"], "reconstructed": gold,
+                         "channel": "behavioral_probe"})
+    rate = len(hits) / max(len(items), 1)
+    return {"reconstruction_rate": round(rate, 4),
+            "suspected": hits, "flagged": rate >= flag_rate,
+            "note": "high reconstruction vs task accuracy => review for leakage; "
+                    "measured on the baseline machine -- record date, driver"}
+```
+
+Wire the probe's `suspected` list into the same human-review queue the n-gram and embedding passes feed. The interpretation is comparative, not absolute: a reconstruction rate meaningfully above the model's own answer accuracy on the same items is the signal, because a model that can *reason out* the answer will also fill the blank, so only the excess over its earned accuracy is evidence of memorized leakage.
+
 ```admonish gotcha
 The `revision` shas above are placeholders. Before you run this, open the dataset's Hugging Face page, copy the actual commit sha of the revision you intend to freeze, and paste it in. A bare `revision="main"` (or omitting it) means the dataset can change between your scan and your eval, which defeats the entire point: you would have certified a version you did not actually evaluate. Pin the sha, then record it in the report, then never change it without bumping the suite version in Chapter 3.9.
 ```
