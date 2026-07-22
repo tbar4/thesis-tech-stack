@@ -52,22 +52,22 @@ Take a concrete 4-billion-parameter model ($P = 4 \times 10^9$) with a Qwen3-4B-
 **Inference (equation 6.1).**
 - Weights: $P \cdot b = 4\times 10^9 \times 2 = 8.0$ GB.
 - KV cache at batch $B=1$, context $L = 8192$: $2 \cdot 1 \cdot 8192 \cdot 36 \cdot 8 \cdot 128 \cdot 2 = 1.21 \times 10^9 \approx 1.2$ GB.
-- CUDA context + kernels: $\approx 0.6$ GB (measured on the baseline machine — record value, date, driver).
+- CUDA context + kernels: $\approx 0.6$ GB (measured on the baseline machine, record value, date, driver).
 - **Total: $8.0 + 1.2 + 0.6 \approx 9.8$ GB.** Fits in 16 GB with headroom; you could push context to $\sim 32$k tokens (KV grows to $\sim 4.8$ GB) before it tightens. This is why 4B-class inference is comfortable on this card.
 
 **Full fine-tune with mixed-precision AdamW (equations 6.4–6.5).**
 - Weights + grads + Adam $m,v$: $16 P = 16 \times 4\times 10^9 = 64$ GB.
 - **That single line is already 64 GB, roughly four times the card's entire 16 GB capacity**, before a single activation. Full fine-tuning a 4B model on this GPU is simply impossible; the optimizer state alone (Adam $m$ and $v$, $8P = 32$ GB) is twice the card.
-- Ratio to inference weights: $16P / 2P = 8\times$ on the parameter side, and once activations enter, real full-training footprints run $8$–$16\times$ inference — the chapter's headline number, now derived.
+- Ratio to inference weights: $16P / 2P = 8\times$ on the parameter side, and once activations enter, real full-training footprints run $8$–$16\times$ inference, the chapter's headline number, now derived.
 
 **LoRA / QLoRA fine-tune (the version that actually fits).**
 - Frozen base in 4-bit (NF4): $P \cdot 0.5 = 4\times 10^9 \times 0.5 = 2.0$ GB.
 - LoRA adapters (say rank 16 on the attention and MLP projections, well under 1% of params) with their own Adam state at $16$ bytes each: a few hundred MB, call it $\approx 0.4$ GB.
-- Activations with gradient checkpointing at $B=1$, $L=2048$: $\approx 1.5$ GB (measured on the baseline machine — record value, date, driver).
+- Activations with gradient checkpointing at $B=1$, $L=2048$: $\approx 1.5$ GB (measured on the baseline machine, record value, date, driver).
 - CUDA context: $\approx 0.6$ GB.
 - **Total: $2.0 + 0.4 + 1.5 + 0.6 \approx 4.5$ GB.** Fits comfortably, with room for a larger batch or longer sequences.
 
-The three totals — $\approx 9.8$ GB to serve, $64$ GB to full-fine-tune, $\approx 4.5$ GB to QLoRA — are the entire strategic map of this book on one card: you can serve and QLoRA a 4B model here, you cannot full-fine-tune it, and every technique in the training chapters exists to move a workload from the middle column into the third.
+The three totals, $\approx 9.8$ GB to serve, $64$ GB to full-fine-tune, $\approx 4.5$ GB to QLoRA, are the entire strategic map of this book on one card: you can serve and QLoRA a 4B model here, you cannot full-fine-tune it, and every technique in the training chapters exists to move a workload from the middle column into the third.
 ```
 
 ## Tooling
@@ -159,12 +159,12 @@ uv run python measure_memory.py
 The measured training-step peak on a 0.6B model will read a bit *below* the naive $16P$ prediction, for two honest reasons: AdamW's $m$ and $v$ are not allocated until the *first* `opt.step()`, so if you read the peak across exactly one step you catch them, but the FP32 master-copy is only maintained when you use an explicit mixed-precision wrapper (plain `AdamW` on a BF16 model here keeps BF16 moments unless you configure otherwise), so this minimal script measures closer to the "grads + Adam" subset than the full 16-byte recipe. That is a feature: the gap between what this script measures and the $16P$ line in the budget is exactly the FP32-master-copy and activation overhead that a real mixed-precision trainer adds, and naming that gap is the point. For the full $16P$ picture, wrap the step in `torch.autocast` and a `GradScaler` and re-measure.
 ```
 
-**What you should see.** The script writes `artifacts/memory_report.json` with the parameter count, the predicted BF16 weight footprint ($2P$) and full-train footprint ($16P$), and the measured peaks. On the GPU, the inference peak lands near the predicted weight bytes plus a little context and KV, while the training-step peak is a clear multiple of it (the `train_to_infer_ratio` field), because backward brought gradients and stored activations (equation 6.3) online and `opt.step()` materialized Adam's moments (equation 6.4). Watching that ratio jump from roughly 1 to several in a single script is the entire chapter made empirical: nothing about the model changed, only whether you asked autograd to remember the forward pass and whether an optimizer allocated its state. Record the exact peaks with date and driver (measured on the baseline machine — record value, date, driver); the `memory_summary()` table printed alongside shows the allocated-versus-reserved split so you can see the caching allocator's headroom directly.
+**What you should see.** The script writes `artifacts/memory_report.json` with the parameter count, the predicted BF16 weight footprint ($2P$) and full-train footprint ($16P$), and the measured peaks. On the GPU, the inference peak lands near the predicted weight bytes plus a little context and KV, while the training-step peak is a clear multiple of it (the `train_to_infer_ratio` field), because backward brought gradients and stored activations (equation 6.3) online and `opt.step()` materialized Adam's moments (equation 6.4). Watching that ratio jump from roughly 1 to several in a single script is the entire chapter made empirical: nothing about the model changed, only whether you asked autograd to remember the forward pass and whether an optimizer allocated its state. Record the exact peaks with date and driver (measured on the baseline machine, record value, date, driver); the `memory_summary()` table printed alongside shows the allocated-versus-reserved split so you can see the caching allocator's headroom directly.
 
 ```admonish read-along
 Read **[MADL]** ch. 8–9 for the backpropagation and optimization backing: ch. 8 derives backprop through the layers (equation 6.3's linear-layer rule is their canonical example, extended to whole networks), and ch. 9 covers the optimizers whose state equation (6.4) is accounting for. Their treatment of why the backward pass needs the forward activations is the long-form version of the boxed result here, and it is the cleanest bridge from chapter 1's abstract reverse-mode claim to this chapter's byte-level consequences.
 ```
 
 ```admonish substack-seed
-"Why does training an LLM need eight times the memory of running it? Two matrix transposes and a greedy optimizer." A post built on one boxed equation — the weight gradient of a linear layer is X-transpose times the upstream gradient — which means the backward pass literally cannot run without the input X that the forward pass saw, so every layer has to hoard its activations. Add AdamW keeping two full-size extra copies of every weight (its m and v moments), and you've derived the 16-bytes-per-parameter rule that says a 4B model costs 64 GB to fine-tune and 8 GB to serve. The reader walks away able to look at any model size and any GPU and know, in their head, whether it fits — which is the most practically useful party trick in applied ML.
+"Why does training an LLM need eight times the memory of running it? Two matrix transposes and a greedy optimizer." A post built on one boxed equation, the weight gradient of a linear layer is X-transpose times the upstream gradient, which means the backward pass literally cannot run without the input X that the forward pass saw, so every layer has to hoard its activations. Add AdamW keeping two full-size extra copies of every weight (its m and v moments), and you've derived the 16-bytes-per-parameter rule that says a 4B model costs 64 GB to fine-tune and 8 GB to serve. The reader walks away able to look at any model size and any GPU and know, in their head, whether it fits, which is the most practically useful party trick in applied ML.
 ```
