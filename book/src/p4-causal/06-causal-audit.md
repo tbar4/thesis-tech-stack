@@ -87,7 +87,7 @@ Keeping the threats as structured records rather than prose also lets the audit 
 
 The lab assembles causal audit v1.0 from the structured threat list, renders it to markdown and JSON, and writes both to disk. This is the capstone artifact of Part IV.
 
-```python
+````python
 # file: labs/p4-06-audit/build_audit.py
 # /// script
 # requires-python = ">=3.11"
@@ -217,7 +217,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-```
+````
 
 Run it:
 

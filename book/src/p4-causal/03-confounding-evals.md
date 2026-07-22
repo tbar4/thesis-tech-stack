@@ -74,7 +74,7 @@ To make this concrete I reuse the judge-calibration data produced in chapter 3.6
 
 The lab builds the eval-scoring DAG, plants known confounding and collider structure into a synthetic version of the 3.6 calibration data, and then shows three things numerically: the naive judge-versus-gold agreement, how it shifts when I (correctly) freeze the judge as a confounder, and how the "completed successfully" filter manufactures a spurious correlation via the collider. It writes an annotated DAG gallery to disk as the artifact.
 
-```python
+````python
 # file: labs/p4-03-confounding/reanalyze_judge_data.py
 # /// script
 # requires-python = ">=3.11"
@@ -222,7 +222,7 @@ Mitigation: pre-register the run matrix; report every seed, not the winners.
 
 if __name__ == "__main__":
     main()
-```
+````
 
 Run it:
 
