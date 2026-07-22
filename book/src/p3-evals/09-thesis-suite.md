@@ -343,7 +343,9 @@ def score_model(client, suite: Suite, *, model: str = "Qwen/Qwen3-14B-AWQ",
                 seed: int = 0) -> list[dict]:
     """Score `model` (served behind an OpenAI-compatible `client`) over the
     suite; return one row per item with response, correctness, and difficulty.
-    Greedy by default so the score is a fixed measurement, not a coin flip."""
+    Greedy by default so the score is a fixed measurement, not a coin flip.
+    For an in-process HF model already resident in VRAM, use
+    `score_model_local`, which returns the identical rows."""
     rows = []
     for it in suite.items:
         r = client.chat.completions.create(
@@ -356,11 +358,59 @@ def score_model(client, suite: Suite, *, model: str = "Qwen/Qwen3-14B-AWQ",
     return rows
 
 
+def score_model_local(model, tokenizer, suite: Suite, *,
+                      max_new_tokens: int = 512, temperature: float = 0.0,
+                      batch_size: int = 8) -> list[dict]:
+    """In-process sibling of `score_model` for a Hugging Face `model` plus its
+    `tokenizer` already resident in VRAM (the rank sweep in 6.3, the
+    distillation eval in 6.7). Returns the SAME rows as `score_model` -- one
+    dict per item with response, correctness, and difficulty, in suite order --
+    so the two paths grade identically; the only difference is that generation
+    happens here rather than over an OpenAI-compatible endpoint, which is what
+    lets a caller score every checkpoint of a sweep without standing up a vLLM
+    server per adapter. Greedy by default so the score is a fixed measurement,
+    not a coin flip; batched with left padding for decoder-only generation."""
+    import torch
+    prev_side = tokenizer.padding_side
+    tokenizer.padding_side = "left"          # left-pad for decoder-only batching
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    greedy = temperature == 0.0
+    rows: list[dict] = []
+    try:
+        for start in range(0, len(suite.items), batch_size):
+            batch = suite.items[start:start + batch_size]
+            prompts = [
+                tokenizer.apply_chat_template(
+                    [{"role": "user", "content": it.prompt}],
+                    tokenize=False, add_generation_prompt=True)
+                for it in batch]
+            enc = tokenizer(prompts, return_tensors="pt",
+                            padding=True).to(model.device)
+            with torch.no_grad():
+                out = model.generate(
+                    **enc, max_new_tokens=max_new_tokens,
+                    do_sample=not greedy,
+                    temperature=None if greedy else temperature,
+                    pad_token_id=tokenizer.pad_token_id)
+            gen = out[:, enc["input_ids"].shape[1]:]        # strip the prompt
+            texts = tokenizer.batch_decode(gen, skip_special_tokens=True)
+            for it, resp in zip(batch, texts):
+                rows.append({"id": it.id, "response": resp,
+                             "correct": verify(it, resp),
+                             "difficulty": it.difficulty})
+    finally:
+        tokenizer.padding_side = prev_side
+    return rows
+
+
 __all__ = ["Item", "Suite", "load_suite", "verify", "verify_sda_answer",
-           "verify_correct", "score_model"]
+           "verify_correct", "score_model", "score_model_local"]
 ```
 
 The split of responsibility is deliberate: `verify` is the item-aware primary signal (it honors each item's declared checker, so a `set` item is graded set-wise and a `numeric` item numerically), while `verify_sda_answer` is the item-agnostic reward core that Part VII optimizes against. They agree on the SDA-flavored items the reward is trained on; keeping both means a downstream caller can grade against the frozen suite *or* score a free-form generation with the same package.
+
+The two scorers mirror the same split at the model level. `score_model` drives a *served* model behind an OpenAI-compatible client, which is what the capstone (Chapter 7.8) uses because it re-serves the merged checkpoint on the exact vLLM substrate every reported number is measured on. But the post-training labs sweep many checkpoints that are already loaded in VRAM: the rank sweep in 6.3 fine-tunes five adapters back to back, and the distillation eval in 6.7 grades a distilled student against a baseline student, all in-process. Standing up a vLLM server per adapter there would be wasteful and slow, so `score_model_local` grades the resident Hugging Face model and tokenizer directly. Both return the identical `{"id", "response", "correct", "difficulty"}` rows in suite order, so whichever path a caller takes, the per-item correctness that feeds the Chapter 3.7 paired statistics is computed by the same `verify` dispatch on the same frozen items.
 
 ```admonish thesis-thread
 The SDA thread has been a running illustration since the preface; here it becomes a real artifact. We now hold **thesis task suite v1.0**: 300 frozen, content-hashed, difficulty-stratified, contamination-scanned verifiable-reasoning items plus a 60-item dev slice, sized by the power analysis to resolve an eight-point paired gain, tagged `suite-v1.0` in git with a datasheet. From this point on, every claim the thesis makes ("INT4 matches BF16 on reasoning," "GRPO training moved the reasoning delta") is a paired comparison taken on *this exact instrument*, cited by version and hash. Part IV interrogates whether the deltas measured on it are causal; Parts V through VII generate and score against it and try to move its number. The instrument is built; the rest of the book is readings from it.
