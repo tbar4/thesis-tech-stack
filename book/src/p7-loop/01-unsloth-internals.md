@@ -10,7 +10,7 @@ Unsloth is not a training framework in the way TRL is. TRL owns the training loo
 
 That is why the import-order rule exists and is not superstition. `import unsloth` (or `from unsloth import ...`) has to run *before* `transformers`, `trl`, and `peft` are meaningfully used, because the patches are applied at Unsloth import time and they wrap the target functions as they exist then. If you import and instantiate a transformers model first and Unsloth second, some of the objects you already built are holding references to the unpatched functions, and you get the slow, fat path for those while the patched path applies only to things built later. The failure is silent: nothing errors, your run is just mysteriously using more memory and running slower than the tutorials promised.
 
-```admonish under-the-hood title="What a monkey-patch looks like from the inside"
+````admonish under-the-hood title="What a monkey-patch looks like from the inside"
 Concretely, Unsloth does the equivalent of reaching into a module and reassigning attributes:
 
 ```python
@@ -22,7 +22,7 @@ qwen3.Qwen3RMSNorm.forward   = _unsloth_fast_rmsnorm_forward
 ```
 
 Because Python looks methods up by name on the class at call time, replacing `Qwen3Attention.forward` means *every* attention module of that class, including ones already constructed, now dispatches to Unsloth's kernel. That is the leverage: a handful of attribute assignments re-routes the entire forward and backward pass of an architecture. It is also the fragility. The patch targets `transformers.models.qwen3.modeling_qwen3` by its exact internal structure. When a transformers release renames that module, changes the attention signature, or splits the RMSNorm out, the assignment either fails loudly (`AttributeError`) or, worse, silently stops matching and you fall back to the slow path. This is the mechanism behind every "works on transformers 4.x.y, breaks on 4.x.z" report, and it is why Unsloth pins the versions it patches against.
-```
+````
 
 ### The kernels: where the speed and the memory savings come from
 

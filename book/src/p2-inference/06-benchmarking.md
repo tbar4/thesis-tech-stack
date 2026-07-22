@@ -60,7 +60,7 @@ Determinism traps to control before you trust a number: pin the driver and vLLM 
 
 ## Tooling
 
-Two layers of tooling. vLLM ships a benchmark script (`vllm bench serve`, formerly `benchmarks/benchmark_serving.py`) that does closed and open-loop load with proper TTFT/TPOT accounting, and it is the right tool for the headline numbers. But I also want a small harness I fully control and understand, because the baseline report needs to record exactly my conditions and feed my own plots. The harness below wraps the OpenAI-compatible streaming API, does explicit warmup, sweeps concurrency, records per-request TTFT and TPOT, repeats runs for variance, and reads the server's `/metrics` for cross-checking. It stays deliberately small so nothing is hidden.
+Two layers of tooling. vLLM ships a benchmark script (`vllm bench serve`, formerly `benchmarks/benchmark_serving.py`) that does closed and open-loop load with proper TTFT/TPOT accounting, and it is the right tool for the headline numbers; it also has the advantage of being the reference implementation the vLLM community quotes, so numbers from it are comparable to numbers others publish. But I also want a small harness I fully control and understand, because the baseline report needs to record exactly my conditions and feed my own plots. The harness below wraps the OpenAI-compatible streaming API, does explicit warmup, sweeps concurrency, records per-request TTFT and TPOT, repeats runs for variance, and reads the server's `/metrics` for cross-checking. It stays deliberately small so nothing is hidden.
 
 ## Lab: a benchmark harness and a baseline report
 
