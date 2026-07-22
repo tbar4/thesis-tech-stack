@@ -48,7 +48,7 @@ One knob quietly decides how much a distillation run is worth: the teacher's sam
 
 ## Tooling
 
-Distillation reuses the entire stack already built, which is the point. Generation of teacher traces is a vLLM job in the inference environment: batched sampling of $k$ traces per problem, the same machinery as chapter 6.6's best-of-n. Verification and filtering (equation 6.7.3) is the Inspect scorer from Part III, the same verifier that is the eval and the reward. Training on the filtered traces is TRL's `SFTTrainer` with a LoRA adapter in the training environment, byte-for-byte the chapter 6.2 lab with a different dataset. Evaluation of the distilled student against the RLVR student and the SFT baseline is chapter 3.7's `evalstats.bootstrap_paired_diff` and `evalstats.mcnemar` at a matched budget. There is no new library here, distillation is a *composition* of the tools, which is itself the lesson: once the loop's components exist, distillation is a data-curation pattern over them, not a new system.
+Distillation reuses the entire stack already built, which is the point. Generation of teacher traces is a vLLM job in the inference environment: batched sampling of $k$ traces per problem, the same machinery as chapter 6.6's best-of-n. Verification and filtering (equation 6.7.3) is the Inspect scorer from Part III, the same verifier that is the eval and the reward. Training on the filtered traces is TRL's `SFTTrainer` with a LoRA adapter in the training environment, byte-for-byte the chapter 6.2 lab with a different dataset. Evaluation of the distilled student against the RLVR student and the SFT baseline scores each in-process model on the frozen suite with `thesis_suite.score_model_local` (no served endpoint, so I grade the resident checkpoint directly) and feeds the paired per-item scores to chapter 3.7's `evalstats.bootstrap_paired_diff` and `evalstats.mcnemar` at a matched budget. There is no new library here, distillation is a *composition* of the tools, which is itself the lesson: once the loop's components exist, distillation is a data-curation pattern over them, not a new system.
 
 ## Lab
 
@@ -131,10 +131,21 @@ from trl import SFTConfig, SFTTrainer
 from unsloth import FastLanguageModel
 
 import evalstats as es
-from thesis_suite import score_model
+# chapter-3.9 frozen suite: load the frozen v1.0 items, and grade an in-process
+# model over them (no served endpoint) with the same verifiers 3.9 froze.
+from thesis_suite import load_suite, score_model_local
 
 BASE = "unsloth/Qwen3-4B-Base"
 OUT = Path("artifacts"); OUT.mkdir(exist_ok=True)
+SUITE = load_suite()                # frozen thesis suite v1.0 (chapter 3.9)
+
+
+def suite_scores(model, tok) -> list[int]:
+    """Per-item 0/1 correctness over the frozen suite, in fixed suite order so
+    the distilled and baseline students yield matched pairs for evalstats.
+    Reduces the `{id, response, correct, difficulty}` rows of
+    `score_model_local` to the binary vector McNemar and the bootstrap consume."""
+    return [int(r["correct"]) for r in score_model_local(model, tok, SUITE)]
 
 
 def student():
@@ -172,7 +183,7 @@ def main() -> None:
     distill_ds = load_dataset(
         "json", data_files=str(OUT / "distill_set.jsonl"), split="train")
     dm, dtok = train_on(distill_ds, "distill")
-    distill_scores = score_model(dm, dtok)
+    distill_scores = suite_scores(dm, dtok)
     del dm; torch.cuda.empty_cache()
 
     # Baseline student: plain human-demo SFT on the same Alpaca slice as
@@ -180,7 +191,7 @@ def main() -> None:
     # not dump a jsonl, so read it here rather than from a nonexistent file).
     base_ds = load_dataset("yahma/alpaca-cleaned", split="train[:3000]")
     bm, btok = train_on(base_ds, "baseline")
-    base_scores = score_model(bm, btok)
+    base_scores = suite_scores(bm, btok)
     del bm; torch.cuda.empty_cache()
 
     est = es.bootstrap_paired_diff(distill_scores, base_scores, level=0.95)

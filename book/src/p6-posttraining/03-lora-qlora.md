@@ -77,7 +77,7 @@ If $W_0$ is stored in BF16, equation (6.3.6) is a lossless (to BF16 rounding) fo
 
 ## Tooling
 
-PEFT implements equations (6.3.1)–(6.3.3) as a `LoraConfig` (rank `r`, `lora_alpha`, `target_modules`, dropout) wrapped around a base model; `bitsandbytes` implements the NF4 code of equations (6.3.4)–(6.3.5) with double quantization behind `load_in_4bit=True` and the `bnb_4bit_*` flags; and Unsloth fuses the two so the NF4 dequant and the LoRA matmul happen in one custom kernel rather than two eager ops, which is where its speed and its extra memory headroom come from. `merge_and_unload()` on a PEFT model performs equation (6.3.6). The reused evaluation piece is chapter 3.7's `evalstats`: after each rank's fine-tune I run the frozen thesis task suite and pass paired per-item scores to `evalstats.bootstrap_paired_diff` (and `evalstats.mcnemar` for the paired p-value) to get a delta-versus-base with a 95% bootstrap CI, so the sweep produces intervals, not point estimates.
+PEFT implements equations (6.3.1)–(6.3.3) as a `LoraConfig` (rank `r`, `lora_alpha`, `target_modules`, dropout) wrapped around a base model; `bitsandbytes` implements the NF4 code of equations (6.3.4)–(6.3.5) with double quantization behind `load_in_4bit=True` and the `bnb_4bit_*` flags; and Unsloth fuses the two so the NF4 dequant and the LoRA matmul happen in one custom kernel rather than two eager ops, which is where its speed and its extra memory headroom come from. `merge_and_unload()` on a PEFT model performs equation (6.3.6). The reused evaluation piece is chapter 3.7's `evalstats`: after each rank's fine-tune I run the frozen thesis task suite (via `thesis_suite.score_model_local`, which grades the in-process model without a served endpoint so I never stand up a vLLM server per adapter) and pass paired per-item scores to `evalstats.bootstrap_paired_diff` (and `evalstats.mcnemar` for the paired p-value) to get a delta-versus-base with a 95% bootstrap CI, so the sweep produces intervals, not point estimates.
 
 ## Lab
 
@@ -110,14 +110,24 @@ from unsloth import FastLanguageModel
 
 # chapter-3.7 machinery: paired bootstrap CI + McNemar over per-item scores.
 import evalstats as es
-# chapter-3.9 frozen suite: returns per-item 0/1 scores for a model.
-from thesis_suite import score_model
+# chapter-3.9 frozen suite: load the frozen v1.0 items, and grade an in-process
+# model over them (no served endpoint) with the same verifiers 3.9 froze.
+from thesis_suite import load_suite, score_model_local
 
 MODEL = "unsloth/Qwen3-4B-Base"
 RANKS = [4, 8, 16, 32, 64]
 MAX_SEQ = 2048
+SUITE = load_suite()                # frozen thesis suite v1.0 (chapter 3.9)
 OUT = Path("artifacts")
 OUT.mkdir(exist_ok=True)
+
+
+def suite_scores(model, tok) -> list[int]:
+    """Per-item 0/1 correctness over the frozen suite, in fixed suite order so
+    the base and every tuned model yield matched pairs for evalstats. Reduces
+    the `{id, response, correct, difficulty}` rows of `score_model_local` to the
+    binary vector McNemar and the paired bootstrap consume."""
+    return [int(r["correct"]) for r in score_model_local(model, tok, SUITE)]
 
 
 def train_one(rank: int):
@@ -155,14 +165,14 @@ def main() -> None:
     base, tok = FastLanguageModel.from_pretrained(
         model_name=MODEL, max_seq_length=MAX_SEQ, load_in_4bit=True, dtype=None)
     FastLanguageModel.for_inference(base)
-    base_scores = score_model(base, tok)          # list[int], per item
+    base_scores = suite_scores(base, tok)         # list[int], per item
     del base
     torch.cuda.empty_cache()
 
     rows = []
     for rank in RANKS:
         model, tok = train_one(rank)
-        tuned_scores = score_model(model, tok)     # paired, same item order
+        tuned_scores = suite_scores(model, tok)    # paired, same item order
         # Estimate(point, ci_low, ci_high): paired bootstrap of the delta.
         est = es.bootstrap_paired_diff(tuned_scores, base_scores, level=0.95)
         # McNemar for the paired p-value on binary correctness.
@@ -211,7 +221,7 @@ uv run python sweep.py
 ```
 
 ```admonish gotcha
-`score_model` must return per-item scores in the *same item order* for the base and every tuned model, because `bootstrap_paired_diff` and `mcnemar` compare matched pairs, that pairing is the entire reason the CI is tight enough to see a small delta (chapter 3.7 derives why paired resampling beats comparing two independent accuracy numbers). If you shuffle the eval set between runs, or the suite's sampling is nondeterministic, the pairing breaks and the CIs blow up. Freeze the suite (chapter 3.9 froze v1.0 for exactly this) and fix the eval seed so the only thing changing between runs is the rank.
+`suite_scores` must return per-item scores in the *same item order* for the base and every tuned model, because `bootstrap_paired_diff` and `mcnemar` compare matched pairs, that pairing is the entire reason the CI is tight enough to see a small delta (chapter 3.7 derives why paired resampling beats comparing two independent accuracy numbers). Iterating `SUITE.items` (a fixed, frozen, ordered list) guarantees that order, and greedy decoding in `score_model_local` keeps each grade deterministic; if you shuffle the eval set between runs, or let the sampling go nondeterministic, the pairing breaks and the CIs blow up. Freeze the suite (chapter 3.9 froze v1.0 for exactly this) so the only thing changing between runs is the rank.
 ```
 
 **What you should see.** The CSV and plot show the eval delta versus the untuned base rising with rank and then flattening, the empirical signature of the low-rank hypothesis: once $r$ exceeds the task's intrinsic update rank, more capacity buys nothing and the confidence intervals of adjacent ranks overlap. Typically the delta from $r=4$ to $r=16$ is real (CI excludes zero) and the delta from $r=16$ to $r=64$ is within noise (CIs overlap), which tells you $r=16$ is the honest choice for this task, more is just memory. All five fine-tunes fit in 16GB by the `vram-budget` above, with peak VRAM creeping up only slightly with rank because the adapter and its optimizer state grow linearly in $r$ but are tiny next to the frozen base. Record peak VRAM per rank and total sweep wall-clock (measured on the baseline machine, record value, date, driver). The headline artifact is a plot that turns "what rank should I use" from a Reddit argument into a measured curve with error bars.

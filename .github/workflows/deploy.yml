@@ -3,6 +3,7 @@ name: book
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -11,7 +12,9 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  # Isolate per ref so PR validation builds never queue behind (or cancel) the
+  # live main deploy.
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 env:
@@ -23,12 +26,15 @@ env:
   MDBOOK_LINKCHECK_VERSION: "0.7.7"
 
 jobs:
+  # Runs on every push and pull_request: compiles the toolchain and builds the
+  # book with linkcheck enabled. This is the pre-merge gate.
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Configure Pages
+        if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v5
 
       - name: Install mdbook and preprocessors
@@ -53,6 +59,7 @@ jobs:
         run: mdbook build
 
       - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           # mdbook renders HTML here (the html + linkcheck renderers put the
@@ -60,8 +67,10 @@ jobs:
           # index.html, NOT the whole book/ source tree.
           path: book/book/html
 
+  # Deploys only on pushes to main (and manual dispatch); never on pull_request.
   deploy:
     needs: build
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
