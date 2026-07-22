@@ -87,7 +87,7 @@ So once the new policy has made this good action more than $(1+\epsilon)$ times 
 **Case 2: $\hat{A} < 0$ (this action was bad, I want to decrease its probability, i.e. push $r$ down).**
 Now $r\hat{A}$ becomes *more positive* as $r$ decreases (a negative advantage times a shrinking ratio), so the objective wants $r$ small. The clipped term is $\max(r, 1-\epsilon)\hat{A}$ (the clip's lower arm binds now), floored at $(1-\epsilon)\hat{A}$. Because $\hat{A}<0$, the min of the two picks the *more negative*, i.e. the smaller, value:
 - For $r \ge 1-\epsilon$: clip inactive, $\ell(r) = r\hat{A}$, gradient pushing $r$ down.
-- For $r < 1-\epsilon$: clipped term $(1-\epsilon)\hat{A}$ is now the *larger* term, and since we take the min, $\ell(r) = (1-\epsilon)\hat{A}$, again a **constant** with zero gradient.
+- For $r < 1-\epsilon$: clipped term $(1-\epsilon)\hat{A}$ is now the *smaller (more negative)* term, and since we take the min, $\ell(r) = (1-\epsilon)\hat{A}$, again a **constant** with zero gradient.
 
 So once the new policy has driven this bad action below $(1-\epsilon)$ times its old probability, the objective flatlines and stops rewarding further suppression. Symmetric to case 1.
 
