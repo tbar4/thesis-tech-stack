@@ -22,6 +22,9 @@ renderer = ["html"]
 
 [output.html]
 mathjax-support = false
+# Served from GitHub project Pages at https://tbar4.github.io/thesis-tech-stack/,
+# so assets and the generated 404 page must resolve under that subpath.
+site-url = "/thesis-tech-stack/"
 # mdbook-admonish and mdbook-mermaid assets are installed with:
 #   mdbook-admonish install book
 #   mdbook-mermaid install book
