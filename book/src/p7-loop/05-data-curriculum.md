@@ -4,6 +4,10 @@ By now the machinery is built. Chapter 7.2 got a GRPO job running inside the 16G
 
 The output is a concrete artifact on disk: a training prompt set with a provenance manifest that a committee member could audit line by line. But first I need to explain why the obvious approach (grab a big math dataset and point the trainer at it) wastes most of a single GPU's very limited time.
 
+```admonish read-along
+**[AIE] Huyen, *AI Engineering*, chapter 8** treats dataset engineering as a first-class discipline: quality over quantity, dedup, lineage, and synthetic data. This chapter is the RLVR-specific instance of that discipline, with difficulty banding layered on top.
+```
+
 ## Theory
 
 ### Why difficulty is the load-bearing variable in RLVR

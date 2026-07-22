@@ -1,15 +1,15 @@
 # Appendix E: Reading map
 
-**Goal.** Pair the seven reference books to the chapters they serve, and suggest
+**Goal.** Pair the eight reference books to the chapters they serve, and suggest
 an order to read them in relative to the book's five authoring waves.
 
-I lean on seven reference books. None is quoted at length anywhere in the text;
+I lean on eight reference books. None is quoted at length anywhere in the text;
 instead each chapter carries a `read-along` pointer by short key, and this
 appendix is the master index behind those pointers. Local copies live in
 `references/` at the repo root (see that directory's `README.md`); they are not
 distributed with the book.
 
-## The seven books
+## The eight books
 
 | Key | Book | Primary parts served |
 |---|---|---|
@@ -20,13 +20,18 @@ distributed with the book.
 | **[MADL]** | Chaudhuri, *Math and Architectures of Deep Learning* | Part I math spine (ch. 2–9) |
 | **[GAIA]** | Hurbans, *Grokking AI Algorithms* (2e) | Pre-reading only; RL intuition (ch. 10) |
 | **[CAI]** | Ness, *Causal AI* | Part IV |
+| **[AIE]** | Huyen, *AI Engineering* | Breadth complement: Parts II–III, VI, and 7.5 (ch. 3–4, 7–9) |
 
-Two of these earn special notes. **[GAIA]** is deliberately light-duty: it
+Three of these earn special notes. **[GAIA]** is deliberately light-duty: it
 overlaps the other texts at lower depth, so it serves as optional pre-reading
 for RL intuition, never as a chapter dependency. **[CAI]** earns a full part of
 its own (Part IV) because judge-model and benchmark-comparison pitfalls are
 confounding problems, and framing evaluation claims causally is a committee-grade
-differentiator.
+differentiator. **[AIE]** is the production-engineering complement: it covers the
+same territory as Parts II, III, and VI at survey depth but from the builder's
+seat (evaluation methodology, AI-as-judge, finetuning, dataset engineering,
+inference optimization), so I cite it where a chapter benefits from the
+systems-level framing rather than for derivations.
 
 ## Suggested order
 
@@ -46,13 +51,17 @@ parts they serve, in roughly the authoring-wave order (spec §8).
    arriving as the material turns to LLM-specific policy optimization.
 6. **With Part VI (post-training):** **[RLHF]** ch. 1–8 is the throughline;
    **[BRM]** ch. 4–5 and ch. 8 cover reasoning-time scaling and distillation.
+7. **Anytime, in parallel (optional):** **[AIE]** reads well cover to cover as
+   the production-context companion; its evaluation chapters (ch. 3–4) pair
+   with Part III, finetuning (ch. 7) with Part VI, dataset engineering (ch. 8)
+   with 3.8/7.5, and inference optimization (ch. 9) with Part II.
 
 ## Per-chapter pairings
 
 Every entry below mirrors the `read-along` admonition in the named chapter.
 Chapters with no reference pairing are hands-on or self-contained (Part 0, most
 of Part II, and Part IX lean on tooling and the book's own artifacts rather than
-outside reading). Part VII does carry read-along pointers, because the loop
+outside reading; 2.6 picks up an [AIE] pairing). Part VII does carry read-along pointers, because the loop
 chapters lean on [RLHF], [S&B], and [MADL] for the algorithm and kernel math
 even as the labs are hands-on; its per-chapter rows are below.
 
@@ -69,13 +78,21 @@ even as the labs are hands-on; its per-chapter rows are below.
 | 1.7 Sampling and decoding | [BRM] ch. 2 |
 | 1.8 Anatomy of the open-model zoo | [BRM] ch. 1, App. C |
 
+### Part II — Inference Engineering
+
+| Chapter | Read-along |
+|---|---|
+| 2.6 Benchmarking without lying to yourself | [AIE] ch. 9 |
+
 ### Part III — Evaluation Engineering
 
 | Chapter | Read-along |
 |---|---|
-| 3.1 What an eval is | [BRM] ch. 3; [RLHF] Part 3 |
+| 3.1 What an eval is | [BRM] ch. 3; [RLHF] Part 3; [AIE] ch. 3–4 |
 | 3.2 Metrics and their math | [BRM] ch. 3; [RLHF] Part 3 |
+| 3.6 Judge models | [RLHF]; [AIE] ch. 3 (AI-as-judge) |
 | 3.7 The statistics of evals | [CAI] |
+| 3.8 Contamination and dataset hygiene | [BRM]; [AIE] ch. 8 |
 
 ### Part IV — Causal Inference for Evaluation
 
@@ -108,7 +125,7 @@ Part-wide spine: **[CAI] Parts 1–3.**
 | Chapter | Read-along |
 |---|---|
 | 6.1 The post-training landscape | [RLHF] ch. 1–3 |
-| 6.2 SFT and instruction tuning | [RLHF] ch. 4; [BLLM] ch. 7 |
+| 6.2 SFT and instruction tuning | [RLHF] ch. 4; [BLLM] ch. 7; [AIE] ch. 7 |
 | 6.3 LoRA and QLoRA, mathematically | [RLHF] ch. 4; Part II ch. 3 |
 | 6.4 Reward models and preference data | [RLHF] ch. 5 |
 | 6.5 Direct alignment: DPO and family | [RLHF] ch. 8 |
@@ -123,6 +140,7 @@ Part-wide spine: **[CAI] Parts 1–3.**
 | 7.2 GRPO on 16GB | [RLHF]; [S&B] ch. 13 |
 | 7.3 Scorers as rewards | [RLHF] |
 | 7.4 Reward hacking and Goodhart | [RLHF] |
+| 7.5 Data and curriculum for RLVR | [AIE] ch. 8 |
 
 ### Part VIII — Burst and Scale
 

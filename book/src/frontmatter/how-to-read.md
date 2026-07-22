@@ -32,7 +32,7 @@ If you read nothing but the prose and the `gotcha` boxes you will still be able 
 
 ## Reference short keys
 
-I lean on seven books repeatedly, and rather than spell out full citations every time, I use short keys in the text and in `read-along` boxes. Here is the key.
+I lean on eight books repeatedly, and rather than spell out full citations every time, I use short keys in the text and in `read-along` boxes. Here is the key.
 
 | Key | Reference |
 |---|---|
@@ -40,11 +40,12 @@ I lean on seven books repeatedly, and rather than spell out full citations every
 | [RLHF] | Lambert, *RLHF Book* |
 | [BRM] | Raschka, *Build a Reasoning Model (From Scratch)* |
 | [BLLM] | Raschka, *Build a Large Language Model (From Scratch)* |
-| [MADL] | Chaudhury, *Math and Architectures of Deep Learning* |
+| [MADL] | Chaudhuri, *Math and Architectures of Deep Learning* |
 | [GAIA] | Hurbans, *Grokking Artificial Intelligence Algorithms* |
 | [CAI] | Ness, *Causal AI* |
+| [AIE] | Huyen, *AI Engineering* |
 
-When I write "see [S&B] on the policy gradient theorem" or drop a `read-along` box pointing at [BRM], those keys are what I mean. The intent is not to make you buy seven books. It is to be honest about where an idea came from and to give you a well-worn path to more depth than a single chapter can hold. Where two references cover the same ground differently (and [S&B] versus [RLHF] on reward often will), I will say which one I am following and why.
+When I write "see [S&B] on the policy gradient theorem" or drop a `read-along` box pointing at [BRM], those keys are what I mean. The intent is not to make you buy eight books. It is to be honest about where an idea came from and to give you a well-worn path to more depth than a single chapter can hold. Where two references cover the same ground differently (and [S&B] versus [RLHF] on reward often will), I will say which one I am following and why.
 
 ## uv everywhere
 
