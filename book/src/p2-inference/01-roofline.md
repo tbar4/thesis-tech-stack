@@ -48,7 +48,7 @@ In prefill, each weight matrix $W$ is read from memory once and multiplied again
 
 $$I_{\text{prefill}} \approx \frac{2 S d^2}{2 d^2} = S \quad \left[\frac{\text{FLOP}}{\text{byte}}\right]$$
 
-The intensity scales with the prompt length $S$. Feed a prompt of even a few hundred tokens and $I_{\text{prefill}}$ sails past the ridge point of ~470, landing you firmly on the compute-bound roof. This is why prefill throughput is quoted in the thousands of tokens per second and why a long prompt costs time roughly in proportion to its length: you are billing the compute account.
+The intensity scales with the prompt length $S$. Because $I_{\text{prefill}} \approx S$, you need a prompt longer than the ridge point ($S \gtrsim 470$) to cross onto the compute roof; feed a prompt of more than ~500 tokens and $I_{\text{prefill}}$ sails past the ridge, landing you firmly on the compute-bound roof. This is why prefill throughput is quoted in the thousands of tokens per second and why a long prompt costs time roughly in proportion to its length: you are billing the compute account.
 
 ### Why decode is bandwidth-bound
 
@@ -71,6 +71,7 @@ Using $BW = 9.6\times10^{11}\ \text{byte/s}$ and taking $B_{\text{read}} \approx
 
 **Qwen3-8B, BF16.** Weights $\approx 8.2\times10^{9}\ \text{params} \times 2\ \text{byte} = 1.64\times10^{10}\ \text{byte}$.
 $$\text{tok/s}_{\max} = \frac{9.6\times10^{11}}{1.64\times10^{10}} \approx 59\ \text{tok/s}$$
+These BF16 weights do not actually fit on 16GB (chapter 2), so the 8B is served with FP8 weights in practice; that halves the read to ~8.2 GB and lifts its ceiling to ~117 tok/s.
 
 **Qwen3-14B, AWQ 4-bit.** Weights $\approx 14.8\times10^{9} \times 0.56\ \text{byte} \approx 8.3\times10^{9}\ \text{byte}$ (4-bit packed plus group scales, ~4.5 effective bits/param).
 $$\text{tok/s}_{\max} = \frac{9.6\times10^{11}}{8.3\times10^{9}} \approx 116\ \text{tok/s}$$
@@ -145,10 +146,12 @@ class ModelSpec:
     params: float          # total parameter count
     bytes_per_param: float # 2.0 BF16, ~0.56 AWQ-4bit, ~0.53 MXFP4
     active_params: float | None = None  # for MoE; None => dense
+    attn_bytes: float = 0.0  # MoE only: attention + router read per token,
+                             # kept in higher precision than the MXFP4 experts
 
     def read_bytes_per_token(self) -> float:
         p = self.active_params if self.active_params is not None else self.params
-        return p * self.bytes_per_param
+        return p * self.bytes_per_param + self.attn_bytes
 
     def decode_ceiling_tok_s(self) -> float:
         return MEM_BANDWIDTH_BYTES_PER_S / self.read_bytes_per_token()
@@ -157,8 +160,10 @@ class ModelSpec:
 REPERTOIRE = [
     ModelSpec("Qwen3-8B BF16", params=8.2e9, bytes_per_param=2.0),
     ModelSpec("Qwen3-14B AWQ", params=14.8e9, bytes_per_param=0.56),
+    # experts: 3.6e9 * 0.53 = 1.91e9 B; + ~0.59e9 B attention/router in higher
+    # precision -> ~2.5e9 B/token, matching the ~384 tok/s derivation in the prose.
     ModelSpec("gpt-oss-20b MXFP4", params=21e9, bytes_per_param=0.53,
-              active_params=3.6e9),
+              active_params=3.6e9, attn_bytes=0.59e9),
 ]
 
 
@@ -176,10 +181,10 @@ uv run python ceiling.py
 
 ### The two-phase measurement
 
-This script sends one request to a running vLLM OpenAI-compatible server with streaming enabled, records the timestamp of every chunk, and splits prefill from decode. Start the server in another terminal first (the ops chapter justifies every flag):
+This script sends one request to a running vLLM OpenAI-compatible server with streaming enabled, records the timestamp of every chunk, and splits prefill from decode. Start the server in another terminal first (the ops chapter justifies every flag). Qwen3-8B does not fit in full BF16 on this 16GB card (chapter 2 works the budget), so the lab serves it with FP8 weights, which halves the weight read and leaves a small but usable KV pool:
 
 ```bash title="shell"
-uv run vllm serve Qwen/Qwen3-8B --dtype bfloat16 \
+uv run vllm serve Qwen/Qwen3-8B --quantization fp8 \
     --max-model-len 8192 --gpu-memory-utilization 0.92
 ```
 
@@ -192,7 +197,7 @@ from openai import OpenAI
 PROMPT = (
     "Explain, step by step, why decode is memory-bandwidth-bound while "
     "prefill is compute-bound on a modern GPU. Be thorough.\n"
-) * 8  # a few hundred tokens so prefill is safely compute-bound
+) * 20  # ~500+ tokens so prefill sits above the ~470 ridge and is compute-bound
 
 
 def measure(model: str, base_url: str, max_tokens: int = 256):
@@ -262,6 +267,7 @@ def main(model_name, params, bytes_per_param, prefill_tok_s, decode_tok_s,
     ax.set_ylabel("tokens / second")
     ax.set_title(f"{model_name}: measured throughput vs roofline ceiling")
     ax.set_yscale("log")
+    ax.set_ylim(bottom=1)  # log scale has no zero; set a positive floor for the bars
     for i, v in enumerate([prefill_tok_s, decode_tok_s]):
         ax.text(i, v, f"{v:.0f}", ha="center", va="bottom")
     ax.legend(loc="upper right", fontsize=8)
@@ -285,13 +291,13 @@ Wire it together: measure, then plug the two numbers into the plot.
 
 ```bash title="shell"
 uv run python measure.py --model Qwen/Qwen3-8B
-# read off prefill/decode tok/s, then:
-uv run python plot.py --prefill 2100 --decode 48   # example placeholders
+# read off prefill/decode tok/s, then (FP8 weights => 1 byte/param):
+uv run python plot.py --bpp 1.0 --prefill 2100 --decode 95   # example placeholders
 ```
 
 ### What you should see
 
-`roofline.png` lands on disk with a red dashed line at the derived ceiling (about 59 tok/s for Qwen3-8B BF16, from the arithmetic above) and two bars. The prefill bar should tower far above the ceiling line, on the order of thousands of tok/s, because prefill lives on the compute roof and the ceiling shown is the *decode* ceiling, not the compute one. The decode bar should sit **just under** the red line: close enough to confirm the model is memory-bound as predicted, with a visible gap that represents kernel overhead, sampling cost, and the KV read that my short-context approximation ignored. If the decode bar were to *exceed* the ceiling, I would have a bug in my byte accounting or my bandwidth constant, because you cannot read weights faster than the bus allows. On the baseline machine, record the exact prefill and decode tok/s, the date, and the driver version alongside the figure; those become the first row of the inference baseline that Part II carries forward.
+`roofline.png` lands on disk with a red dashed line at the derived ceiling (about 117 tok/s for Qwen3-8B served with FP8 weights, half the read of the BF16 arithmetic above) and two bars. The prefill bar should tower far above the ceiling line, on the order of thousands of tok/s, because prefill lives on the compute roof and the ceiling shown is the *decode* ceiling, not the compute one. The decode bar should sit **just under** the red line: close enough to confirm the model is memory-bound as predicted, with a visible gap that represents kernel overhead, sampling cost, and the KV read that my short-context approximation ignored. If the decode bar were to *exceed* the ceiling, I would have a bug in my byte accounting or my bandwidth constant, because you cannot read weights faster than the bus allows. On the baseline machine, record the exact prefill and decode tok/s, the date, and the driver version alongside the figure; those become the first row of the inference baseline that Part II carries forward.
 
 ```mermaid
 flowchart LR

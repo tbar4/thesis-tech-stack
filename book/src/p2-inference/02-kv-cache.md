@@ -74,7 +74,7 @@ The card has 16 GiB. vLLM reserves a fraction via `--gpu-memory-utilization` (de
 
 $$M_{kv} \approx 16\ \text{GiB} \times \texttt{gpu\_mem\_util} - W_{\text{weights}} - 1\ \text{GiB}$$
 
-**Qwen3-8B at BF16** ($W \approx 15.3\ \text{GiB}$, $B_{\text{tok}} = 144\ \text{KiB}$). At `util=0.95` the pool is $16 \times 0.95 - 15.3 - 1 \approx -1.1\ \text{GiB}$: it does not fit with headroom. This model at full BF16 is right at the edge of the card; you must run short `--max-model-len` and accept batch size near 1, or move to FP8 KV to claw back room. This tension is the honest reason the repertoire also carries a 4-bit 14B.
+**Qwen3-8B at BF16** ($W \approx 15.3\ \text{GiB}$, $B_{\text{tok}} = 144\ \text{KiB}$). At `util=0.95` the budget is $16 \times 0.95 - 15.3 - 1 \approx -1.1\ \text{GiB}$: the weights plus overhead already exceed what vLLM may claim, so there is no KV pool left at all. Shortening `--max-model-len` or switching to FP8 *KV* cannot rescue this, because those only shrink a KV pool that is already negative; the weights themselves are the problem, and lowering `--gpu-memory-utilization` gives *less* memory, not more. The honest conclusion is that Qwen3-8B does not fit in BF16 on 16GB: serve it with FP8 *weights* (halving the weight footprint to ~7.7 GiB and opening a real KV pool) or drop it from the repertoire. This is the honest reason the repertoire leans on the 4-bit 14B.
 
 | max ctx $S$ | KV per seq (BF16) | KV per seq (FP8) |
 |---|---|---|
@@ -107,7 +107,7 @@ One more connection back to chapter 1 closes the loop. The decode ceiling was $B
 
 ## Tooling
 
-vLLM does this accounting internally and prints the result at startup. The line to watch is the reported number of **GPU KV cache blocks** (vLLM allocates the cache in fixed-size blocks, typically 16 tokens each; the next chapter dissects why). Multiply blocks by block size to get total cached tokens, which is $N_{\text{seq}} \times S_{\text{ctx}}$ from the formula. The relevant flags:
+vLLM does this accounting internally and prints the result at startup. Recent vLLM (the V1 engine) reports it directly as a line like `GPU KV cache size: N tokens`; older V0 builds instead print the number of **GPU KV cache blocks** (vLLM allocates the cache in fixed-size blocks, typically 16 tokens each; the next chapter dissects why), which you multiply by the block size to get total cached tokens. Either way the total is $N_{\text{seq}} \times S_{\text{ctx}}$ from the formula. The relevant flags:
 
 - `--max-model-len`: the per-sequence context ceiling $S_{\text{ctx}}$. Lowering it shrinks the worst-case reservation and lets vLLM admit more sequences.
 - `--max-num-seqs`: a hard cap on concurrent sequences $N_{\text{seq}}$, independent of memory. vLLM takes the min of this and what the KV pool allows.
@@ -181,7 +181,7 @@ uv run vllm serve Qwen/Qwen3-14B-AWQ --quantization awq_marlin \
     --gpu-memory-utilization 0.92 2>&1 | tee serve.log
 ```
 
-At startup vLLM logs a line like `# GPU blocks: 2960, # CPU blocks: ...`. This script parses it and computes vLLM's implied max sequences, then writes the comparison report:
+At startup vLLM logs its KV capacity. Recent vLLM (V1) prints a line like `GPU KV cache size: 47,360 tokens`; older V0 builds print `# GPU blocks: 2960, # CPU blocks: ...`. This script parses either format (tokens directly on V1, or blocks times the block size on V0) and computes vLLM's implied max sequences, then writes the comparison report:
 
 ```python title="kv-lab/verify.py"
 """Parse vLLM's reported KV blocks and compare to the hand prediction."""
@@ -190,14 +190,24 @@ from predict import predict
 
 BLOCK_SIZE = 16  # vLLM default tokens/block; confirm in your serve.log
 
-def parse_gpu_blocks(logpath):
-    pat = re.compile(r"GPU (?:KV cache size|blocks)[:=]?\s*([\d,]+)", re.I)
+def parse_cached_tokens(logpath):
+    """Return total cached tokens, handling both vLLM log formats.
+
+    V1 logs 'GPU KV cache size: N tokens' -> N is already tokens, use directly.
+    V0 logs '# GPU blocks: N'            -> N is blocks, multiply by block size.
+    Do NOT multiply the V1 'tokens' number by the block size (a 16x overcount).
+    """
+    tokens_pat = re.compile(r"GPU KV cache size[:=]?\s*([\d,]+)\s*tokens", re.I)
+    blocks_pat = re.compile(r"GPU blocks[:=]?\s*([\d,]+)", re.I)
     with open(logpath) as f:
         for line in f:
-            m = pat.search(line)
+            m = tokens_pat.search(line)
             if m:
-                return int(m.group(1).replace(",", ""))
-    raise SystemExit("Could not find GPU blocks line; check serve.log format.")
+                return int(m.group(1).replace(",", ""))            # already tokens
+            m = blocks_pat.search(line)
+            if m:
+                return int(m.group(1).replace(",", "")) * BLOCK_SIZE  # blocks -> tokens
+    raise SystemExit("Could not find a GPU KV cache line; check serve.log format.")
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
@@ -210,15 +220,13 @@ if __name__ == "__main__":
     ap.add_argument("--kv-pool-gib", type=float, default=5.9)
     args = ap.parse_args()
 
-    blocks = parse_gpu_blocks(args.log)
-    total_cached_tokens = blocks * BLOCK_SIZE
+    total_cached_tokens = parse_cached_tokens(args.log)
     vllm_max_seqs = total_cached_tokens // args.ctx
 
     pred = predict(args.layers, args.kv_heads, args.head_dim,
                    args.dtype_bytes, args.kv_pool_gib, args.ctx)
     report = {
         "prediction": pred,
-        "vllm_gpu_blocks": blocks,
         "vllm_total_cached_tokens": total_cached_tokens,
         "vllm_implied_max_seqs_at_ctx": int(vllm_max_seqs),
         "agreement": f"{pred['predicted_max_seqs']} predicted vs "
@@ -235,7 +243,7 @@ uv run python verify.py --log serve.log --ctx 8192
 
 ### What you should see
 
-`kv_report.json` on disk with two numbers that should land within one or two sequences of each other. My hand calculation for Qwen3-14B AWQ at 8K context predicts 4 concurrent sequences; vLLM's reported GPU-block count, converted through the 16-token block size, should imply roughly the same total cached tokens and therefore about the same sequence count. A small discrepancy is expected and instructive: vLLM's real overhead is not exactly my 1 GiB estimate, and it rounds context up to whole blocks, so its usable pool differs slightly from my back-of-envelope $M_{kv}$. If the numbers are wildly apart (say I predicted 4 and it reports capacity for 20), the likely culprit is a wrong `--gpu-memory-utilization` assumption or an $H_{kv}$ I read from the wrong config revision; go back and re-pull the four fields. When they agree, I have earned the right to size context and concurrency from arithmetic alone, before ever launching a server, which is exactly the muscle the rest of Part II leans on. Record the measured block count, the derived pool size, date, and driver next to the file.
+`kv_report.json` on disk with two numbers that should land within one or two sequences of each other. My hand calculation for Qwen3-14B AWQ at 8K context predicts 4 concurrent sequences; vLLM's reported KV capacity (tokens directly on V1, or GPU blocks times the 16-token block size on V0) should imply roughly the same total cached tokens and therefore about the same sequence count. A small discrepancy is expected and instructive: vLLM's real overhead is not exactly my 1 GiB estimate, and it rounds context up to whole blocks, so its usable pool differs slightly from my back-of-envelope $M_{kv}$. If the numbers are wildly apart (say I predicted 4 and it reports capacity for 20), the likely culprit is a wrong `--gpu-memory-utilization` assumption or an $H_{kv}$ I read from the wrong config revision; go back and re-pull the four fields. When they agree, I have earned the right to size context and concurrency from arithmetic alone, before ever launching a server, which is exactly the muscle the rest of Part II leans on. Record the measured block count, the derived pool size, date, and driver next to the file.
 
 ```admonish substack-seed
 "The 4 GiB sentence that decides your context length." Everyone quotes context windows like they are free. On a 16GB GPU they are anything but: one 32K-token conversation on an 8B model reserves 4.5 GiB of pure cache, computed from four integers in a config file (layers times KV-heads times head-dim times two, times two for keys and values). This post turns that one formula into a planning tool. It shows why grouped-query attention is the unsung hero that makes long context fit at all, why 4-bit weights buy you concurrency rather than just speed, and how an FP8 KV cache doubles your seats for a fraction of a percentage point of accuracy. The reader leaves able to answer, on a napkin, "how many users can this box hold at once?" before spending a cent on a server.

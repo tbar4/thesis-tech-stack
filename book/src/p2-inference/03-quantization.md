@@ -34,7 +34,7 @@ A per-tensor scale forces one $s$ across millions of weights whose magnitudes va
 
 $$\hat{w}_i = s_g \cdot \text{round}\!\left(\frac{w_i}{s_g}\right), \qquad s_g = \frac{\max_{j \in g}|w_j|}{2^{n-1}-1}$$
 
-Now $R$ is the dynamic range within a 128-weight neighborhood, not the whole tensor, so the effective step is far smaller and the error much lower for the same bit width. The cost is storage: each group carries a scale (usually FP16). For a group size of 128, that adds $16/128 = 0.125$ bits per weight, which is why "4-bit" AWQ or GPTQ actually costs about 4.25 to 4.5 effective bits per parameter, the number I used for the 14B footprint in the KV chapter.
+Now $R$ is the dynamic range within a 128-weight neighborhood, not the whole tensor, so the effective step is far smaller and the error much lower for the same bit width. The cost is storage: each group carries a scale (usually FP16). For a group size of 128 that adds $16/128 = 0.125$ bits per weight, and an asymmetric zero-point adds a similar increment, so "4-bit" AWQ or GPTQ actually costs about 4.13 to 4.25 effective bits per parameter (the symmetric, scale-only floor is $4 + 0.125 = 4.125$). Footprint budgeting in the KV chapter rounds this up to a conservative ~4.25 to 4.5 bits (0.56 byte/param) to leave margin for packing and alignment overhead.
 
 ```admonish gotcha
 Group size is a real knob. Smaller groups (64) mean lower error but more scale overhead and slower kernels; larger groups (128, 256) are leaner and faster but let outliers back in. 128 is the near-universal default because it sits at the knee of that tradeoff. If a quantized model is unexpectedly degraded, checking the group size is a cheap first move.
@@ -72,7 +72,7 @@ $$\Delta w_{-q} = -\frac{\delta_q}{[H^{-1}]_{qq}}\, H^{-1}_{:,q}$$
 i.e. push a correction into the surviving weights proportional to the inverse-Hessian column, so the output stays as close as possible. GPTQ applies this greedily column by column, using a Cholesky factorization of $H^{-1}$ to make the sweep efficient. The calibration data enters through $H = XX^\top$: GPTQ needs it to estimate the input covariance, more heavily than AWQ uses its activation means.
 ```
 
-Conceptually: **AWQ reshapes the weights before rounding so the fixed grid fits the important ones; GPTQ rounds greedily and repairs the damage using curvature.** AWQ is cheaper, more robust to calibration-set choice, and tends to hold up better at low bit widths for the models in this repertoire; GPTQ can be marginally more accurate when its Hessian estimate is good but is fussier. Both land near 4.25 to 4.5 effective bits and both are served by vLLM through Marlin kernels.
+Conceptually: **AWQ reshapes the weights before rounding so the fixed grid fits the important ones; GPTQ rounds greedily and repairs the damage using curvature.** AWQ is cheaper, more robust to calibration-set choice, and tends to hold up better at low bit widths for the models in this repertoire; GPTQ can be marginally more accurate when its Hessian estimate is good but is fussier. Both land near 4.13 to 4.25 effective bits and both are served by vLLM through Marlin kernels.
 
 ### FP8: floating point, not integer
 
@@ -97,7 +97,7 @@ It helps to hold the repertoire's formats in one frame. Each is a different answ
 | Format | Element | Bits/param (eff.) | Scale granularity | Best for | In the repertoire |
 |---|---|---|---|---|---|
 | BF16 | float | 16 | none | reference fidelity | Qwen3-8B weights |
-| INT4 group (AWQ/GPTQ) | integer | ~4.25-4.5 | per 128-weight group | weight compression | Qwen3-14B weights |
+| INT4 group (AWQ/GPTQ) | integer | ~4.13-4.25 | per 128-weight group | weight compression | Qwen3-14B weights |
 | FP8 e4m3 | float | 8 | per-tensor/channel | activations, KV cache | KV cache option |
 | MXFP4 | float e2m1 | ~4.25 | per 32-element block | outlier-tolerant 4-bit | gpt-oss-20b weights |
 
@@ -129,22 +129,18 @@ from llmcompressor.transformers import oneshot
 from llmcompressor.modifiers.quantization import GPTQModifier
 from llmcompressor.modifiers.awq import AWQModifier
 
-def calib(tokenizer, n=256, seqlen=512):
-    ds = load_dataset("wikitext", "wikitext-2-raw-v1", split="train")
-    texts = [t for t in ds["text"] if len(t) > 200][:n]
-    return [tokenizer(t, truncation=True, max_length=seqlen,
-                      return_tensors="pt") for t in texts]
-
 def run(model_id, scheme, out_dir):
     tok = AutoTokenizer.from_pretrained(model_id)
     ds = load_dataset("wikitext", "wikitext-2-raw-v1", split="train")
     ds = ds.filter(lambda r: len(r["text"]) > 200).select(range(256))
+    # NOTE: modifier kwargs drift across llmcompressor releases; scheme="W4A16"
+    # already implies 4-bit weights at group size 128, so bits/group_size are not
+    # passed separately. Confirm the signature against your installed version, e.g.
+    #   uv run python -c "from llmcompressor.modifiers.awq import AWQModifier; help(AWQModifier)"
     if scheme == "awq":
-        recipe = AWQModifier(bits=4, group_size=128, targets="Linear",
-                             scheme="W4A16")
+        recipe = AWQModifier(targets="Linear", scheme="W4A16", ignore=["lm_head"])
     else:
-        recipe = GPTQModifier(bits=4, group_size=128, targets="Linear",
-                              scheme="W4A16")
+        recipe = GPTQModifier(targets="Linear", scheme="W4A16", ignore=["lm_head"])
     oneshot(model=model_id, dataset=ds, recipe=recipe,
             output_dir=out_dir, max_seq_length=512, num_calibration_samples=256)
     print(f"wrote {out_dir}")
