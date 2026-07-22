@@ -39,7 +39,7 @@ $$\text{params}(E) = V \cdot d. \tag{2.2}$$
 
 The output softmax over $V$ classes also costs $O(L \cdot V \cdot d)$ per forward pass, and the loss's normalization sums over all $V$ logits. So a huge vocabulary bloats both the parameter budget (equation 2.2) and the final projection.
 
-The two forces meet at a $V$ where the marginal token-length savings stop being worth the marginal embedding/softmax cost. Modern models land this at roughly $32{,}000$ to $256{,}000$: Qwen3 uses about $151{,}936$, and gpt-oss about $201{,}088$. The move to six-figure vocabularies is largely about multilingual and code fertility (equation 2.1's frequency rule underserves anything rare, so you buy those tokens back with a bigger $V$) traded against the fact that on a 16GB card an embedding matrix of $V \times d$ at, say, $151{,}936 \times 1024$ in BF16 is already $151{,}936 \times 1024 \times 2 \approx 0.31$ GiB of the budget just to hold the lookup table.
+The two forces meet at a $V$ where the marginal token-length savings stop being worth the marginal embedding/softmax cost. Modern models land this at roughly $32{,}000$ to $256{,}000$: Qwen3 uses about $151{,}936$, and gpt-oss about $201{,}088$. The move to six-figure vocabularies is largely about multilingual and code fertility (equation 2.1's frequency rule underserves anything rare, so you buy those tokens back with a bigger $V$) traded against the fact that on a 16GB card an embedding matrix of $V \times d$ at, say, $151{,}936 \times 1024$ in BF16 is already $151{,}936 \times 1024 \times 2 \approx 0.31$ GB of the budget just to hold the lookup table.
 ```
 
 ### Chat templates are tokenization, not decoration

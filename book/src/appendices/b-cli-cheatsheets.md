@@ -215,7 +215,8 @@ nvidia-smi --gpu-reset                      # last resort after a wedged process
 ```
 
 ```bash title="nvtop"
-uv run --with nvtop nvtop      # or: sudo apt install nvtop; then just `nvtop`
+uv run --with nvitop nvitop    # nvitop is the pip-installable one (note the i)
+sudo apt install nvtop; nvtop  # nvtop itself is an apt package, not on PyPI
 ```
 
 ```admonish gotcha

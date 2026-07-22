@@ -89,13 +89,19 @@ export ARCHIVE_ROOT="${NAS_ROOT}/thesis-loop"   # where kept things go
 
 ```bash title="bash - wire the dotfile into the shell and create the working dir"
 echo 'source ~/.config/thesis-loop/storage.env' >> ~/.bashrc
-mkdir -p /data/hf                # on the NVMe working tier
+
+# /data is the NVMe working root. On a fresh machine it is owned by root, so I
+# create it with sudo and then hand ownership to my user; otherwise the very
+# first HF download fails writing into an unwritable /data.
+sudo mkdir -p /data/hf                     # NVMe working tier
+sudo chown -R "$USER:$USER" /data          # own the whole working root
 source ~/.config/thesis-loop/storage.env
 ```
 
 ### Step 2 - mount the NAS archive tier
 
 ```bash title="bash - mount the NAS and make it persistent"
+sudo apt install -y nfs-common    # NFS client; without it the fstab NFS mount fails
 sudo mkdir -p /mnt/nas
 
 # Example NFS entry; adjust host/export/protocol to your NAS.

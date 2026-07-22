@@ -134,7 +134,7 @@ def pass_at_k(n_samples: int, n_correct: int, k: int) -> float:
     """P(at least one of k drawn (without replacement) from n is correct)."""
     if n_samples - n_correct < k:
         return 1.0
-    # 1 - C(n-c, k)/C(n, k), computed stably in log space
+    # 1 - C(n-c, k)/C(n, k), exact big-int division of the binomials
     from math import comb
     return 1.0 - comb(n_samples - n_correct, k) / comb(n_samples, k)
 
@@ -142,7 +142,7 @@ def main():
     # --- verifier smoke test ---
     comps = ["The answer is #### 42", "so we get 41", "twenty (=20)"]
     refs = [42, 42, 20]
-    print("reward_func:", reward_func(None, comps, refs))  # [1.0, 0.0, 0.0]
+    print("reward_func:", reward_func(None, comps, refs))  # [1.0, 0.0, 1.0]
 
     # --- pass@k curves for a 'base' vs an 'RL' policy over 50 problems ---
     # Hypothesis A: RL raises pass@1 by concentrating mass, but only on problems
@@ -196,7 +196,7 @@ uv run python verifier_and_passk.py
 The `pass_at_k` here uses the unbiased combinatorial estimator (draw $k$ without replacement from $N$ samples), not the naive $1-(1-\hat p)^k$ with an empirical $\hat p$, because plugging a noisy point estimate of $p$ into equation (9.3) is biased for small sample counts. Use the combinatorial form whenever you report pass@k from a finite number of generations, which you always are. And note the deliberate 20% of problems with `p_base = 0`: those are the ones RL provably cannot fix on this budget (zero probability means zero gradient), and they are why the base and RL curves *both* plateau below 1.0 at large $k$. If your real run shows the RL model solving problems the base model never touches at large $k$, that is the signature of Hypothesis B (genuinely new capability) and it is a claim worth double-checking, not assuming.
 ```
 
-**What you should see.** The verifier smoke test prints `[1.0, 0.0, 0.0]`: the first completion's extracted answer matches, the second is wrong, the third parses `20` correctly (the reward function is doing exactly what the eval harness's scorer does). The pass@k table shows the RL policy winning decisively at $k=1$ (much higher pass@1, the reshaping payoff) while the gap *shrinks* as $k$ grows and the two curves converge at $k=128$, the numerical signature of Hypothesis A: RL concentrated mass onto solutions the base model could already sometimes reach, but did not expand the reachable set (both plateau below 1.0 because of the 20% unreachable problems). This is the exact figure the thesis loop's step 5 produces on real data, and reading it correctly, "did pass@1 rise because we reshaped, or because we added capability," is the difference between a defensible thesis claim and an overclaim. The CSV is the artifact you carry into Part VII to compare against a real base-versus-RL pass@k measurement.
+**What you should see.** The verifier smoke test prints `[1.0, 0.0, 1.0]`: the first completion's extracted answer matches, the second is wrong, the third parses `20` correctly (the reward function is doing exactly what the eval harness's scorer does). The pass@k table shows the RL policy winning decisively at $k=1$ (much higher pass@1, the reshaping payoff) while the gap *shrinks* as $k$ grows and the two curves converge at $k=128$, the numerical signature of Hypothesis A: RL concentrated mass onto solutions the base model could already sometimes reach, but did not expand the reachable set (both plateau below 1.0 because of the 20% unreachable problems). This is the exact figure the thesis loop's step 5 produces on real data, and reading it correctly, "did pass@1 rise because we reshaped, or because we added capability," is the difference between a defensible thesis claim and an overclaim. The CSV is the artifact you carry into Part VII to compare against a real base-versus-RL pass@k measurement.
 
 ```admonish read-along
 Read this against **[RLHF]** ch. 7, which covers reinforcement learning with verifiable rewards, the reward-function-versus-reward-model distinction, and the reasoning-model recipes directly, and **[BRM]** ch. 6 for the reasoning-from-verifiable-reward construction in the DeepSeek-R1 lineage. For the pass@k debate, Yue et al. (2025) "Does RL Really Incentivize Reasoning Capacity in LLMs Beyond the Base Model?" is the key skeptical result behind Hypothesis A, and Chen et al. (2021) "Evaluating Large Language Models Trained on Code" is the source of the unbiased pass@k estimator in the lab. The Lambert overview and the Tulu/OLMo RLVR work are the applied references for building verifiers at scale.

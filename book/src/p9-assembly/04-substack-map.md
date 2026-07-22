@@ -78,6 +78,8 @@ The artifact is an editorial calendar that feeds the substack-pipeline workflow:
 
 ### The seed records
 
+The file below is a **demo subset**: eleven representative seeds, enough to exercise the sequencer and every rule it enforces. The real book carries the forty-odd seeds referenced at the top of the chapter; the full `seeds.yaml` is the same schema with more rows, and nothing in the tool changes when it grows.
+
 ```yaml title="substack/seeds.yaml"
 # One record per substack-seed in the book. Scores are 1-5 judgment calls.
 # standalone: can a cold reader get it with no prior post? (5 = fully)

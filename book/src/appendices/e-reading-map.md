@@ -17,7 +17,7 @@ distributed with the book.
 | **[RLHF]** | Lambert, *RLHF: LLM Alignment and Post-Training* | Parts IV–VI (esp. ch. 5–8) |
 | **[BRM]** | Raschka, *Build a Reasoning Model (From Scratch)* | Parts III, V, VI (ch. 3–8; App. C Qwen3 source) |
 | **[BLLM]** | Raschka, *Build a Large Language Model (From Scratch)* | Part I |
-| **[MADL]** | Chaudhury, *Math and Architectures of Deep Learning* | Part I math spine (ch. 2–9) |
+| **[MADL]** | Chaudhuri, *Math and Architectures of Deep Learning* | Part I math spine (ch. 2–9) |
 | **[GAIA]** | Hurbans, *Grokking AI Algorithms* (2e) | Pre-reading only; RL intuition (ch. 10) |
 | **[CAI]** | Ness, *Causal AI* | Part IV |
 
@@ -51,8 +51,10 @@ parts they serve, in roughly the authoring-wave order (spec §8).
 
 Every entry below mirrors the `read-along` admonition in the named chapter.
 Chapters with no reference pairing are hands-on or self-contained (Part 0, most
-of Part II, Part VII, and Part IX lean on tooling and the book's own artifacts
-rather than outside reading).
+of Part II, and Part IX lean on tooling and the book's own artifacts rather than
+outside reading). Part VII does carry read-along pointers, because the loop
+chapters lean on [RLHF], [S&B], and [MADL] for the algorithm and kernel math
+even as the labs are hands-on; its per-chapter rows are below.
 
 ### Part I — How LLMs Actually Work
 
@@ -72,6 +74,8 @@ rather than outside reading).
 | Chapter | Read-along |
 |---|---|
 | 3.1 What an eval is | [BRM] ch. 3; [RLHF] Part 3 |
+| 3.2 Metrics and their math | [BRM] ch. 3; [RLHF] Part 3 |
+| 3.7 The statistics of evals | [CAI] |
 
 ### Part IV — Causal Inference for Evaluation
 
@@ -105,10 +109,20 @@ Part-wide spine: **[CAI] Parts 1–3.**
 |---|---|
 | 6.1 The post-training landscape | [RLHF] ch. 1–3 |
 | 6.2 SFT and instruction tuning | [RLHF] ch. 4; [BLLM] ch. 7 |
+| 6.3 LoRA and QLoRA, mathematically | [RLHF] ch. 4; Part II ch. 3 |
 | 6.4 Reward models and preference data | [RLHF] ch. 5 |
 | 6.5 Direct alignment: DPO and family | [RLHF] ch. 8 |
 | 6.6 Reasoning models and inference-time scaling | [BRM] ch. 4–5; [RLHF] ch. 7 |
 | 6.7 Distillation | [BRM] ch. 8 |
+
+### Part VII — The Loop
+
+| Chapter | Read-along |
+|---|---|
+| 7.1 Unsloth internals | [MADL] ch. 3–4 |
+| 7.2 GRPO on 16GB | [RLHF]; [S&B] ch. 13 |
+| 7.3 Scorers as rewards | [RLHF] |
+| 7.4 Reward hacking and Goodhart | [RLHF] |
 
 ### Part VIII — Burst and Scale
 

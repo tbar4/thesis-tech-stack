@@ -17,7 +17,7 @@ The adapted layer computes, for input $x$,
 
 $$h = (W_0 + \Delta W)\,x = W_0 x + \frac{\alpha}{r}\,B(Ax). \tag{6.3.2}$$
 
-Only $A$ and $B$ are trainable; $W_0$ never receives a gradient. Count the parameters: the full update has $d k$ entries, the factored update has $r(d + k)$. For a Qwen3-4B attention projection with $d = k = 2560$ and $r = 16$, that is $2560^2 = 6.55\text{M}$ versus $16 \cdot (2560 + 2560) = 81.9\text{k}$, an 80-times reduction *per matrix*, and it compounds over every targeted layer. Across the whole model, LoRA typically makes well under 1% of parameters trainable.
+Only $A$ and $B$ are trainable; $W_0$ never receives a gradient. Count the parameters: the full update has $d k$ entries, the factored update has $r(d + k)$. For an illustrative $2560 \times 2560$ attention projection ($d = k = 2560$) with $r = 16$, that is $2560^2 = 6.55\text{M}$ versus $16 \cdot (2560 + 2560) = 81.9\text{k}$, an 80-times reduction *per matrix*, and it compounds over every targeted layer. Across the whole model, LoRA typically makes well under 1% of parameters trainable.
 
 Two design choices make equation (6.3.2) behave. **Initialization:** $A$ is initialized from a small random Gaussian and $B$ is initialized to zero, so at step 0, $\Delta W = B A = 0$ and the adapted model is *exactly* the pretrained model. Training starts from the base behavior and moves away, rather than starting from a random perturbation, which is why LoRA fine-tunes are stable from the first step. **The $\alpha/r$ scaling:** the factor $\alpha/r$ decouples the learning-rate-like magnitude of the update from the rank. Without it, doubling $r$ would roughly double the norm of $\Delta W$ for the same $A, B$ scale, so you would have to re-tune the learning rate every time you changed rank. With it, $\alpha$ sets the effective update strength and $r$ sets the capacity, and the two knobs are (approximately) independent. The gradient only flows into $A$ and $B$:
 
@@ -132,13 +132,14 @@ def train_one(rank: int):
         use_gradient_checkpointing="unsloth", random_state=3407,
     )
     ds = load_dataset("yahma/alpaca-cleaned", split="train[:3000]")
-    ds = ds.map(lambda ex: {"text": tok.apply_chat_template(
-        [{"role": "user", "content": ex["instruction"]},
-         {"role": "assistant", "content": ex["output"]}], tokenize=False)},
+    # Prompt/completion message lists: SFTTrainer renders + masks the prompt.
+    ds = ds.map(lambda ex: {
+        "prompt": [{"role": "user", "content": ex["instruction"]}],
+        "completion": [{"role": "assistant", "content": ex["output"]}]},
         remove_columns=ds.column_names)
     cfg = SFTConfig(
         output_dir=str(OUT / f"run_r{rank}"), max_seq_length=MAX_SEQ,
-        packing=True, completion_only_loss=True,
+        completion_only_loss=True,
         per_device_train_batch_size=2, gradient_accumulation_steps=8,
         num_train_epochs=1, learning_rate=2e-4, warmup_ratio=0.03,
         lr_scheduler_type="cosine", bf16=True, logging_steps=25,
@@ -171,10 +172,10 @@ def main() -> None:
             "base_acc": sum(base_scores) / len(base_scores),
             "tuned_acc": sum(tuned_scores) / len(tuned_scores),
             "delta": est.point, "ci_lo": est.ci_low, "ci_hi": est.ci_high,
-            "p_value": mc.p,
+            "p_value": mc.pvalue,
         })
         print(f"r={rank:3d}  delta={est.point:+.3f}  "
-              f"95% CI [{est.ci_low:+.3f}, {est.ci_high:+.3f}]  p={mc.p:.3f}")
+              f"95% CI [{est.ci_low:+.3f}, {est.ci_high:+.3f}]  p={mc.pvalue:.3f}")
         del model
         torch.cuda.empty_cache()
 

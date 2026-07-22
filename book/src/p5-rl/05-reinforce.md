@@ -123,10 +123,10 @@ It helps to name the two sources of noise in the REINFORCE estimator separately,
 Consider the single-step estimator $g = \ell\,(G - b)$ with $\ell = \nabla_\theta\log\pi_\theta(a\mid s)$, and decompose its variance by conditioning on the action $a$. The law of total variance states, for any random variables,
 
 $$
-\mathrm{Var}[g] = \underbrace{\mathbb{E}_a\big[\mathrm{Var}(g \mid a)\big]}_{\text{return noise}} + \underbrace{\mathrm{Var}_a\big[\mathbb{E}(g \mid a)\big]}_{\text{action noise}}. \tag{7}
+\mathrm{Var}[g] = \underbrace{\mathbb{E}_a\big[\mathrm{Var}(g \mid a)\big]}_{\text{return noise}} + \underbrace{\mathrm{Var}_a\big[\mathbb{E}(g \mid a)\big]}_{\text{action noise}}. \tag{6}
 $$
 
-The first term is the variance *within* a fixed action: for a fixed $a$, $\ell$ is fixed, so this is $\ell^2\,\mathrm{Var}(G\mid a)$, the spread of the return caused by the stochastic environment and future actions. Reward-to-go attacks this term by stripping out the irrelevant past rewards that inflate $\mathrm{Var}(G\mid a)$. The second term is the variance *across* actions: how much the mean estimate $\ell\,(\,q_\pi(s,a) - b)$ swings as the sampled action changes. This is the term the baseline attacks. By centering the return on $b \approx v_\pi(s)$, the factor $(q_\pi(s,a) - b)$ becomes the advantage $A_\pi(s,a)$, which is small in magnitude and averages to zero, so its spread across actions shrinks. The two variance-reduction tricks are not redundant, they target the two orthogonal terms of (7), which is why real systems use both.
+The first term is the variance *within* a fixed action: for a fixed $a$, $\ell$ is fixed, so this is $\ell^2\,\mathrm{Var}(G\mid a)$, the spread of the return caused by the stochastic environment and future actions. Reward-to-go attacks this term by stripping out the irrelevant past rewards that inflate $\mathrm{Var}(G\mid a)$. The second term is the variance *across* actions: how much the mean estimate $\ell\,(\,q_\pi(s,a) - b)$ swings as the sampled action changes. This is the term the baseline attacks. By centering the return on $b \approx v_\pi(s)$, the factor $(q_\pi(s,a) - b)$ becomes the advantage $A_\pi(s,a)$, which is small in magnitude and averages to zero, so its spread across actions shrinks. The two variance-reduction tricks are not redundant, they target the two orthogonal terms of (6), which is why real systems use both.
 ```
 
 ### Advantage as the general form
@@ -134,13 +134,13 @@ The first term is the variance *within* a fixed action: for a fixed $a$, $\ell$ 
 Put reward-to-go and a value baseline together. With $b(s_t) = v_\pi(s_t)$ and recalling that $\mathbb{E}[G_t\mid s_t, a_t] = q_\pi(s_t,a_t)$, the weight on the log-prob gradient becomes, in expectation,
 
 $$
-G_t - v_\pi(s_t) \;\longrightarrow\; q_\pi(s_t,a_t) - v_\pi(s_t) \;=\; A_\pi(s_t,a_t), \tag{6}
+G_t - v_\pi(s_t) \;\longrightarrow\; q_\pi(s_t,a_t) - v_\pi(s_t) \;=\; A_\pi(s_t,a_t), \tag{7}
 $$
 
 the *advantage* from Chapter 5.2. The advantage is the general form of the policy gradient weight, and every method in the rest of Part V is a different way of estimating $A_\pi$:
 
 $$
-\nabla_\theta J(\theta) = \mathbb{E}\left[\sum_t \nabla_\theta\log\pi_\theta(a_t\mid s_t)\, A_\pi(s_t,a_t)\right]. \tag{7}
+\nabla_\theta J(\theta) = \mathbb{E}\left[\sum_t \nabla_\theta\log\pi_\theta(a_t\mid s_t)\, A_\pi(s_t,a_t)\right]. \tag{8}
 $$
 
 - **REINFORCE with baseline** estimates $A$ by $G_t - b$ with $b$ a running average or the value function.
@@ -151,7 +151,7 @@ $$
 Seen this way, the whole progression from REINFORCE to GRPO is one question asked repeatedly: *what is the cheapest low-variance unbiased estimate of the advantage that fits in 16 GB?*
 
 ```admonish read-along title="Read-along: Sutton & Barto Chapter 13; Raschka BRM Chapter 6"
-[S&B] Section 13.3 is REINFORCE, my (1) and (2); Section 13.4 adds the baseline and states the unbiasedness result, my (4) and the proof box; Section 13.5 is REINFORCE-with-baseline as a stepping stone to actor-critic, my (6). Their Figure 13.2 shows the variance reduction empirically, which is exactly what the lab below reproduces from scratch. For the LLM translation, [BRM] Chapter 6 sidebars connect the advantage form (7) to how reasoning-model training frames the reward-minus-baseline signal per completion; read those sidebars after the lab, when the group-mean-baseline idea from the GRPO seed box is fresh, and the connection to $(R_k-\bar R)$ will click.
+[S&B] Section 13.3 is REINFORCE, my (1) and (2); Section 13.4 adds the baseline and states the unbiasedness result, my (4) and the proof box; Section 13.5 is REINFORCE-with-baseline as a stepping stone to actor-critic, my (7). Their Figure 13.2 shows the variance reduction empirically, which is exactly what the lab below reproduces from scratch. For the LLM translation, [BRM] Chapter 6 sidebars connect the advantage form (8) to how reasoning-model training frames the reward-minus-baseline signal per completion; read those sidebars after the lab, when the group-mean-baseline idea from the GRPO seed box is fresh, and the connection to $(R_k-\bar R)$ will click.
 ```
 
 ## Tooling

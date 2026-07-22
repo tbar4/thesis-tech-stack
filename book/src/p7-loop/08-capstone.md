@@ -13,7 +13,7 @@ The loop is a directed sequence with one return edge, and each node is a chapter
 - **Serve $M_0$.** Bring up the baseline policy on the chapter 2.6 inference substrate, the same vLLM configuration every measurement in the book has used. This is the fixed serving substrate; nothing about how the model is served changes between the pre and post halves, so the model is the only thing that varies.
 - **Evaluate $M_0$.** Run the frozen thesis task suite v1.0 (chapter 3.9) against the served baseline, logging per-item, per-sample scores in the chapter 3.7 format. This is the "pre" measurement of chapter 7.6.
 - **Train.** Tear down the server to reclaim VRAM, then run GRPO on 16GB (chapter 7.2) with the Part III verifier scorers wired in as rewards (chapter 7.3), on the difficulty-banded, provenance-stamped, eval-deduped prompt set (chapter 7.5). Output is a LoRA adapter.
-- **Merge.** Merge the adapter into the base weights to produce $M_1$, a standalone checkpoint the serving substrate can load exactly as it loads $M_0$. Merging matters because it makes the post model served identically to the pre model, closing off "you served them differently" as an alternative explanation for the delta.
+- **Merge.** Merge the adapter into the base weights to produce $M_1$, a standalone checkpoint the serving substrate can load exactly as it loads $M_0$. Merging matters because it makes the post model served identically to the pre model, same substrate and same decoding, closing off "you served them differently" as an alternative explanation for the delta. One caveat I state rather than hide: the adapter was trained over an NF4 4-bit base, so the merged $M_1$ is that 4-bit base dequantized and merged, not bit-identical to the full-precision weights $M_0$ is served from, and that quantization step is a named confound, not a silent one. The clean control is to evaluate $M_0$ under the same merged-and-dequantized regime (the base with a zero adapter), which is exactly the kind of control run chapter 4.5 carries, so the only difference left to explain the delta is the training itself.
 - **Re-serve and re-evaluate $M_1$.** Bring the substrate back up on the merged $M_1$ and run the identical suite at the identical sampling budget, logging in the identical format. This is the "post" measurement.
 - **Figures.** Run the chapter 7.6 delta report on the two logs to produce the paired delta, its bootstrap CI, the permutation $p$-value, the effect size, and the pass@k curves.
 - **Archive.** Promote every artifact from working NVMe to the 5TB NAS with a manifest, so the whole run is reproducible from the archive alone.
@@ -45,7 +45,7 @@ machine: "MSI Aegis R2 (Core Ultra 9 285, RTX 5080 16GB, Ubuntu 24.04)"
 driver: "record: e.g. 570-open"          # measured on the baseline machine
 run_date: "record: ISO date of this run"
 
-base_model: "Qwen/Qwen2.5-3B-Instruct"   # M0
+base_model: "unsloth/Qwen3-4B"           # M0
 serve:
   substrate: "vllm (chapter 2.6 config)"
   port: 8000

@@ -35,7 +35,7 @@ The parameter accounting has a wrinkle worth deriving, because it is the reason 
 
 $$d_{\text{ff}}^{\text{SwiGLU}} \approx \frac{2}{3}\, d_{\text{ff}}^{\text{plain}}, \qquad \text{so that} \quad 3\, d_{\text{model}} \cdot \tfrac{2}{3} d_{\text{ff}}^{\text{plain}} = 2\, d_{\text{model}}\, d_{\text{ff}}^{\text{plain}}. \tag{4.4}$$
 
-That is why you see intermediate sizes like $3072$ paired with a hidden size of $1024$ (a ratio near $3$, i.e. the $2/3$-adjusted version of a naive $\times 4$ = $4096$) rather than a clean power of two: it is equation (4.4) balancing the three-matrix cost back down to two-matrix territory. When I match the Qwen3 config in the lab, this ratio is one of the numbers I check.
+That is why you see intermediate sizes near three times the hidden size rather than a clean power of two: it is equation (4.4) balancing the three-matrix cost back down to two-matrix territory. The $2/3$ factor is a guideline, not an exact formula, though: the strict $2/3$-of-$4d$ version would give $\tfrac{2}{3}\times 4096 \approx 2731$ for a hidden size of $1024$, whereas Qwen3-0.6B actually ships $d_{\text{ff}} = 3072$, exactly $3\times$ hidden, a nearby round width the implementers picked over the raw $2/3$ number. When I match the Qwen3 config in the lab, this ratio ($\approx 3\times$ hidden) is one of the numbers I check.
 ```
 
 ### RoPE: position as rotation
@@ -197,7 +197,7 @@ def main() -> None:
     print(f"GQA group size g = {report['config']['gqa_group_size']} "
           f"(KV cache is 1/{report['config']['gqa_group_size']} of MHA)")
     print(f"FFN ratio d_ff/d_model = {report['config']['ffn_ratio']} "
-          f"(SwiGLU 2/3-adjusted, eq 4.4)")
+          f"(SwiGLU, ~3x hidden per eq 4.4)")
     print(f"My block params:  {mine_params:,}")
     print(f"Ref layer params: {ref_params:,}")
     print(f"Artifact: {(OUT / 'block_shapes.json').resolve()}")
