@@ -129,15 +129,19 @@ def manual_attention(x, layer, cfg):
 
     x: (batch, seq, d_model). Uses the layer's own projection weights.
     Note: we skip RoPE here and disable it on the reference too, so this
-    isolates the scaled-dot-product-attention math of this chapter.
+    isolates the scaled-dot-product-attention math of this chapter. We do
+    apply Qwen3's per-head q_norm/k_norm, because the reference layer applies
+    them to Q and K before attention and the outputs will not match without it.
     """
     b, s, _ = x.shape
     n_q = cfg.num_attention_heads
     n_kv = cfg.num_key_value_heads
     d_head = cfg.head_dim if hasattr(cfg, "head_dim") else cfg.hidden_size // n_q
 
-    q = layer.q_proj(x).view(b, s, n_q, d_head).transpose(1, 2)   # (b, n_q, s, d)
-    k = layer.k_proj(x).view(b, s, n_kv, d_head).transpose(1, 2)  # (b, n_kv, s, d)
+    # Qwen3 applies a per-head RMSNorm (q_norm/k_norm) over head_dim to Q and K
+    # before attention; replicate it so the manual output matches the reference.
+    q = layer.q_norm(layer.q_proj(x).view(b, s, n_q, d_head)).transpose(1, 2)   # (b, n_q, s, d)
+    k = layer.k_norm(layer.k_proj(x).view(b, s, n_kv, d_head)).transpose(1, 2)  # (b, n_kv, s, d)
     v = layer.v_proj(x).view(b, s, n_kv, d_head).transpose(1, 2)
 
     # Expand KV heads to match query heads (GQA; trivial when n_kv == n_q).
@@ -169,11 +173,15 @@ def main() -> None:
         mine = manual_attention(x, layer, cfg)
 
         # Reference: call the same layer but neutralize RoPE by passing
-        # position_embeddings of (ones cos, zeros sin) so no rotation happens.
+        # position_embeddings of (ones cos, zeros sin) so no rotation happens,
+        # and pass the same causal mask the manual path applies so both are
+        # autoregressive (q_norm/k_norm live inside the layer already).
         d_head = cfg.head_dim if hasattr(cfg, "head_dim") else cfg.hidden_size // cfg.num_attention_heads
         cos = torch.ones(b, s, d_head)
         sin = torch.zeros(b, s, d_head)
-        ref = layer(x, position_embeddings=(cos, sin), attention_mask=None)[0]
+        mask = torch.triu(torch.full((s, s), float("-inf")), diagonal=1)
+        ref = layer(x, position_embeddings=(cos, sin),
+                    attention_mask=mask.view(1, 1, s, s))[0]
 
     max_abs = (mine - ref).abs().max().item()
     mean_abs = (mine - ref).abs().mean().item()
@@ -197,7 +205,7 @@ uv run python verify_attention.py
 ```
 
 ```admonish gotcha
-The fiddly part of verifying against a real model is neutralizing everything the chapter has *not* covered yet so the comparison isolates scaled-dot-product attention. Two traps: rotary position embeddings (RoPE, next chapter) are applied to Q and K inside the reference layer, so I feed a no-op cos/sin (`cos=1, sin=0`) to disable the rotation and match my RoPE-free manual pass; and I force `attn_implementation="eager"` so the reference runs the explicit math path rather than a fused SDPA kernel whose internal ordering can add a few extra ULPs. If the HF layer's forward signature differs by version (position-embedding handling has changed across `transformers` releases), read the layer's `forward` source and adapt how cos/sin get passed, the arithmetic you are checking does not change, only the plumbing.
+The fiddly part of verifying against a real model is neutralizing everything the chapter has *not* covered yet so the comparison isolates scaled-dot-product attention. Three traps. First, rotary position embeddings (RoPE, next chapter) are applied to Q and K inside the reference layer, so I feed a no-op cos/sin (`cos=1, sin=0`) to disable the rotation and match my RoPE-free manual pass. Second, Qwen3 applies a per-head RMSNorm (`q_norm`/`k_norm`) to Q and K before attention, so my manual pass has to run the layer's own `q_norm`/`k_norm` too, and both paths must apply the same causal mask (I hand the reference an additive lower-triangular mask so it is autoregressive exactly like my manual path, rather than leaving it unmasked). Third, I force `attn_implementation="eager"` so the reference runs the explicit math path rather than a fused SDPA kernel whose internal ordering can add a few extra ULPs. If the HF layer's forward signature differs by version (position-embedding handling has changed across `transformers` releases), read the layer's `forward` source and adapt how cos/sin get passed, the arithmetic you are checking does not change, only the plumbing.
 ```
 
 **What you should see.** The script writes `artifacts/attention_check.json` reporting a max absolute difference between my hand-rolled attention and the real Qwen3 layer that is down at the floating-point-noise floor, on the order of $10^{-5}$ to $10^{-6}$ in FP32, with `"match": true`. That tiny residual is not error in the derivation; it is the accumulated rounding of doing the same real-valued arithmetic in a slightly different operation order (equation 1.8 from the tensors chapter, made visible). The takeaway is concrete and load-bearing for the rest of the book: a production attention layer is *exactly* equations (3.1) through (3.12), same weights, same softmax, same $\sqrt{d_k}$, and once you have watched your own code reproduce it to five decimal places, attention stops being a black box and becomes a thing you can reason about the cost of. Record your exact max-diff (measured on the baseline machine, record value, date, driver), since it depends on dtype and the `transformers` version you pinned.
