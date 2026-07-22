@@ -44,8 +44,10 @@
 - [Judge models](p3-evals/06-judges.md)
 - [The statistics of evals](p3-evals/07-eval-statistics.md)
 - [Contamination and dataset hygiene](p3-evals/08-contamination.md)
-- [Building the thesis task suite](p3-evals/09-thesis-suite.md)
-- [Eval ops](p3-evals/10-eval-ops.md)
+- [The SDA data pipeline](p3-evals/09-sda-data-pipeline.md)
+- [From orbital data to verifiable tasks](p3-evals/10-verifiable-tasks.md)
+- [Building the thesis task suite](p3-evals/11-thesis-suite.md)
+- [Eval ops](p3-evals/12-eval-ops.md)
 
 # Part IV — Causal Inference for Evaluation
 
@@ -89,18 +91,24 @@
 - [Ablations, seeds, and experimental design](p7-loop/07-ablations.md)
 - [Capstone: the loop end-to-end](p7-loop/08-capstone.md)
 
-# Part VIII — Burst and Scale
+# Part VIII — Grounding: Retrieval and Tools
 
-- [Containerizing the stack](p8-burst/01-containers.md)
-- [The Lambda workflow](p8-burst/02-lambda-workflow.md)
-- [When to burst](p8-burst/03-when-to-burst.md)
+- [RAG over space text](p8-grounding/01-rag.md)
+- [MCP tools for live SDA data](p8-grounding/02-mcp-tools.md)
+- [The augmentation arms: what caused the gain](p8-grounding/03-augmentation-arms.md)
 
-# Part IX — Assembly
+# Part IX — Burst and Scale
 
-- [From logs to figures](p9-assembly/01-logs-to-figures.md)
-- [Writing the methodology chapter](p9-assembly/02-methodology.md)
-- [The reproducibility package](p9-assembly/03-repro-package.md)
-- [The Substack map](p9-assembly/04-substack-map.md)
+- [Containerizing the stack](p9-burst/01-containers.md)
+- [The Lambda workflow](p9-burst/02-lambda-workflow.md)
+- [When to burst](p9-burst/03-when-to-burst.md)
+
+# Part X — Assembly
+
+- [From logs to figures](p10-assembly/01-logs-to-figures.md)
+- [Writing the methodology chapter](p10-assembly/02-methodology.md)
+- [The reproducibility package](p10-assembly/03-repro-package.md)
+- [The Substack map](p10-assembly/04-substack-map.md)
 
 ---
 
