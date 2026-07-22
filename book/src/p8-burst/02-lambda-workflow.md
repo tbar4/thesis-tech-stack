@@ -149,22 +149,37 @@ IMAGE="thesis-train:local"   # built in the previous chapter
 SSH="ssh -i ${SSH_KEY} -o StrictHostKeyChecking=accept-new ${REMOTE}"
 RS="rsync -avz -e 'ssh -i ${SSH_KEY}'"
 
-BOOT_UTC="$(date -u +%FT%T)"; echo "BOOT_UTC=${BOOT_UTC}"
+# BOOT_UTC must be the INSTANCE LAUNCH time (when the meter starts), not now:
+# the box is already booted by the time this runbook runs, so recording `date`
+# here undercounts billed time by the boot + SSH-wait interval. Capture it at
+# launch (from the lambda launch response / console) and pass it in; the
+# fallback below is only for when you truly launched seconds ago.
+BOOT_UTC="${BOOT_UTC:-$(date -u +%FT%T)}"; echo "BOOT_UTC=${BOOT_UTC}"
 
 # ---- 1. verify plumbing + parity BEFORE moving anything large --------------
 $SSH 'nvidia-smi --query-gpu=name,driver_version --format=csv,noheader'
-# ship the image (or docker pull from a registry on the box), then:
+
+# Ship the built image to the box: save -> ssh -> load. (Or push to a registry
+# and `docker pull` on the box; save/load needs no registry.) The remote
+# docker run below cannot execute until the image actually exists on the box.
+docker save "${IMAGE}" | $SSH docker load
+
 eval $RS docker/parity_check.py "${REMOTE}:~/parity_check.py"
-$SSH "docker run --rm --gpus all -v ~/:/chk ${IMAGE} python /chk/parity_check.py" \
+# --entrypoint python OVERRIDES the image ENTRYPOINT (python -m train.run);
+# without it the parity args just append and the script never runs.
+$SSH "docker run --rm --gpus all --entrypoint python -v ~/:/chk ${IMAGE} /chk/parity_check.py" \
     | tee burst/parity_remote.json
 
 # Fail loud if the software fingerprint drifted from the local reference.
 python - <<'PY'
 import json, sys
-loc = json.load(open("docker/parity_local.json"))["software_fingerprint"] \
-    if False else None  # local ref may be plain text; adapt as needed
+loc = json.load(open("docker/parity_train.json"))["software_fingerprint"]
 rem = json.load(open("burst/parity_remote.json"))["software_fingerprint"]
-print("remote fingerprint:", rem)
+print(f"local  fingerprint: {loc}")
+print(f"remote fingerprint: {rem}")
+if loc != rem:
+    sys.exit(f"FINGERPRINT DRIFT: local {loc} != remote {rem}; run is void.")
+print("fingerprints match; proceeding.")
 PY
 
 # ---- 2. sync ONLY the allowlist payload (open data + config) ---------------
@@ -181,10 +196,22 @@ $SSH "docker run --rm --gpus all -v ~/payload:/data ${IMAGE} \
 eval $RS "${REMOTE}:~/payload/out/adapter/" "burst/pulled/adapter/"
 eval $RS "${REMOTE}:~/payload/out/mlruns/"  "burst/pulled/mlruns/"
 
-# ---- 5. teardown, then CONFIRM, then log cost ------------------------------
+# ---- 5. teardown (SCRIPTED), then CONFIRM, then log cost -------------------
 TEARDOWN_UTC="$(date -u +%FT%T)"; echo "TEARDOWN_UTC=${TEARDOWN_UTC}"
-# lambda-cloud terminate call goes here, e.g. an API DELETE using INSTANCE_ID:
-echo "TERMINATE instance ${INSTANCE_ID} now, then confirm in console."
+
+# Terminate is ONE scripted call against INSTANCE_ID, never a manual note:
+# a box you forgot to kill bills all weekend. Lambda Cloud terminate endpoint.
+: "${LAMBDA_API_KEY:?set LAMBDA_API_KEY for the terminate call}"
+curl -sf -u "${LAMBDA_API_KEY}:" \
+    https://cloud.lambdalabs.com/api/v1/instance-operations/terminate \
+    -H "Content-Type: application/json" \
+    -d "{\"instance_ids\": [\"${INSTANCE_ID}\"]}" \
+    && echo "terminate requested for ${INSTANCE_ID}"
+
+# Confirm it is actually gone: re-list and fail if the instance is still alive.
+curl -sf -u "${LAMBDA_API_KEY}:" https://cloud.lambdalabs.com/api/v1/instances \
+    | python -c "import json,sys; alive=[i for i in json.load(sys.stdin)['data'] if i['id']=='${INSTANCE_ID}' and i.get('status')!='terminated']; sys.exit('STILL ALIVE: ${INSTANCE_ID}, check the console' if alive else 0)" \
+    && echo "confirmed gone: ${INSTANCE_ID}"
 
 python - "$RATE" "$GPUS" "$BOOT_UTC" "$TEARDOWN_UTC" <<'PY'
 import sys, mlflow

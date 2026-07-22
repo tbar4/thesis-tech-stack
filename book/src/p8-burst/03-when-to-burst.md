@@ -51,7 +51,7 @@ dollars to move the finish line from $T_L$ (too late) to $T_R$ (in time). The qu
 
 $$C_R = 3.00 \times 1 \times 6 = \$18.00,$$
 
-versus a local electricity cost of, say, $p_L \approx \$0.10/\text{h} \times 30\,\text{h} = \$3.00$. So the deadline costs about $\Delta C \approx \$15$ to save 18 hours and actually hit $D$. Whether that is a good trade depends entirely on what the deadline is for. Plug in the *measured* $s_R$ from the rented H100 (record value, date, driver) before trusting any absolute number here.
+versus a local electricity cost of, say, $p_L \approx \$0.10/\text{h} \times 30\,\text{h} = \$3.00$. So the deadline costs about $\Delta C \approx \$15$ to move the finish line forward by $T_L - T_R = 30 - 6 = 24$ hours (of which only the last 18, the gap $T_L - D$, is the minimum saving actually needed to hit $D$). Whether that is a good trade depends entirely on what the deadline is for. Plug in the *measured* $s_R$ from the rented H100 (record value, date, driver) before trusting any absolute number here.
 ```
 
 The model's punchline is the ordering of the gates. Feasibility first: does it fit. Then deadline: does local miss it. Only if both point to renting do I look at the dollar delta, and even then the delta is a decision input, not a verdict. The most common correct answer, for the small experiments that make up most of a thesis, is "run it locally overnight for free."
