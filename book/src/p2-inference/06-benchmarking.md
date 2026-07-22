@@ -125,8 +125,8 @@ async def run_at_concurrency(client, model, conc, n_requests, max_tokens):
     return {
         "concurrency": conc,
         "throughput_tok_s": total_out / wall,
-        "ttft_p50": statistics.median(r["ttft"] for r in results),
-        "ttft_p95": _pct([r["ttft"] for r in results], 95),
+        "ttft_p50": statistics.median(r["ttft"] for r in results if r["ttft"] == r["ttft"]),
+        "ttft_p95": _pct([r["ttft"] for r in results if r["ttft"] == r["ttft"]], 95),
         "tpot_p50": statistics.median(r["tpot"] for r in results if r["tpot"] == r["tpot"]),
         "tpot_p95": _pct([r["tpot"] for r in results if r["tpot"] == r["tpot"]], 95),
         "n_requests": n_requests,
@@ -206,11 +206,13 @@ uv run python harness.py --model qwen3-14b \
     --concurrency 1 4 8 16 --requests 64 --repeats 3 --max-tokens 256
 ```
 
-Cross-check throughput against vLLM's own tool and its metrics:
+Cross-check throughput against vLLM's own tool and its metrics. Pass `--tokenizer` with the real checkpoint because `--model` here is only the *served* name (`qwen3-14b`), which vLLM cannot resolve to a tokenizer on its own, and give it a dataset (`--dataset-name random`) so it has prompts to send:
 
 ```bash title="shell"
 uv run vllm bench serve --model qwen3-14b \
-    --base-url http://localhost:8000 --num-prompts 128 --request-rate 8
+    --tokenizer Qwen/Qwen3-14B-AWQ \
+    --dataset-name random --num-prompts 128 --request-rate 8 \
+    --base-url http://localhost:8000
 curl -s http://localhost:8000/metrics | grep -E 'time_to_first_token|time_per_output_token'
 ```
 
@@ -234,7 +236,7 @@ fixed serving substrate; do not compare across differently-stamped runs.
 | qwen3-14b (AWQ) | 1  | RECORD | RECORD | RECORD | RECORD | RECORD |
 | qwen3-14b (AWQ) | 8  | RECORD | RECORD | RECORD | RECORD | RECORD |
 | qwen3-14b (AWQ) | 16 | RECORD | RECORD | RECORD | RECORD | RECORD |
-| qwen3-8b  (BF16)| 1  | RECORD | RECORD | RECORD | RECORD | RECORD |
+| qwen3-8b  (FP8) | 1  | RECORD | RECORD | RECORD | RECORD | RECORD |
 | gpt-oss-20b     | 1  | RECORD | RECORD | RECORD | RECORD | RECORD |
 
 ## Sanity vs theory (chapter 1 ceilings)
