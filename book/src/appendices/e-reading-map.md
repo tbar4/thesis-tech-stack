@@ -62,7 +62,7 @@ parts they serve, in roughly the authoring-wave order (spec §8).
 
 Every entry below mirrors the `read-along` admonition in the named chapter.
 Chapters with no reference pairing are hands-on or self-contained (Part 0, parts
-of Part II, and Part IX lean on tooling and the book's own artifacts rather than
+of Part II, and Part X lean on tooling and the book's own artifacts rather than
 outside reading; 2.1, 2.3, and 2.6 pick up [AIE] pairings). Part VII does carry read-along pointers, because the loop
 chapters lean on [RLHF], [S&B], and [MADL] for the algorithm and kernel math
 even as the labs are hands-on; its per-chapter rows are below.
@@ -147,11 +147,11 @@ Part-wide spine: **[CAI] Parts 1–3.**
 | 7.4 Reward hacking and Goodhart | [RLHF] |
 | 7.5 Data and curriculum for RLVR | [AIE] ch. 8 |
 
-### Part VIII — Burst and Scale
+### Part IX — Burst and Scale
 
 | Chapter | Read-along |
 |---|---|
-| 8.3 When to burst | [RLHF] ch. 6 (infra notes) |
+| 9.3 When to burst | [RLHF] ch. 6 (infra notes) |
 
 ```admonish read-along
 When a chapter's `read-along` pointer and this table disagree, the chapter is

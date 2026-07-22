@@ -18,7 +18,7 @@ The weakest is **repeatable**: I re-run my own code on my own machine and get th
 
 The middle is **reproducible**: someone else re-runs my code on their machine, ideally the same hardware, and gets statistically consistent results. This is what the package is built to deliver on a machine like mine. Exact bit-for-bit agreement across machines is usually impossible for GPU floating-point work, because kernel selection, cuDNN autotuning, and reduction order all vary with hardware and driver, so "reproducible" here means "the deltas and their intervals agree," not "every digit matches."
 
-The strongest is **replicable**: someone re-implements the idea from the description and finds the same effect. The package can't guarantee that, but a clean methodology chapter (9.2) and an honest task suite make it more likely.
+The strongest is **replicable**: someone re-implements the idea from the description and finds the same effect. The package can't guarantee that, but a clean methodology chapter (10.2) and an honest task suite make it more likely.
 
 I aim the package squarely at the middle level and I say so in the README, because overclaiming reproducibility is its own kind of dishonesty.
 
@@ -38,11 +38,11 @@ A package is complete when someone can go from an empty machine to my figures wi
 
 **The seeds**, recorded per run, not regenerated. Seeds are data. The package records the exact seed each run used, because "seeds 0, 1, 2" is a claim about which three runs I'm reporting, and reproducing the result means reproducing those three, not three fresh ones.
 
-**The figure scripts**, from chapter 9.1, so the package produces the actual figures in the book from the frozen export, not just raw numbers. A reproducibility package that stops at CSVs makes the reader re-derive my plots; one that ships the figure pipeline lets them regenerate the exact figures and diff them against the book.
+**The figure scripts**, from chapter 10.1, so the package produces the actual figures in the book from the frozen export, not just raw numbers. A reproducibility package that stops at CSVs makes the reader re-derive my plots; one that ships the figure pipeline lets them regenerate the exact figures and diff them against the book.
 
 ### The manifest is the package
 
-The physical files matter less than the manifest that ties them together. The manifest is a single file that lists every component with its version and a checksum, so the package can verify its own integrity and so a reader can tell at a glance what version of what they're holding. If the manifest and the files disagree, the package is corrupt and the verification step says so. This is the same idea as the export sidecar in chapter 9.1, scaled up to the whole package.
+The physical files matter less than the manifest that ties them together. The manifest is a single file that lists every component with its version and a checksum, so the package can verify its own integrity and so a reader can tell at a glance what version of what they're holding. If the manifest and the files disagree, the package is corrupt and the verification step says so. This is the same idea as the export sidecar in chapter 10.1, scaled up to the whole package.
 
 ### What deliberately does not ship
 
@@ -50,7 +50,7 @@ A reproducibility package is defined as much by what it leaves out as by what it
 
 ### Verifying a reproduction, not just the package
 
-The verifier in the lab checks that the package is internally consistent, but that is a weaker claim than "someone reproduced my result." The stronger claim needs a target to hit, so the package ships expected outputs for the parts that are safe to publish before the defense: the figure sidecar hashes from chapter 9.1, the task-suite decontamination report, and the shape and column schema of the frozen export. A reproducer runs the pipeline, regenerates the figures, and compares their sidecars against the shipped ones. The comparison is statistical, not exact (a figure regenerated on a different matplotlib patch version can differ by a pixel), so the check is on the underlying aggregated numbers the figure encodes, not on the PNG bytes. After the defense, the expected measured deltas join the shipped outputs, and the reproduction target becomes the full thing: land within the reported intervals or find the discrepancy worth reporting.
+The verifier in the lab checks that the package is internally consistent, but that is a weaker claim than "someone reproduced my result." The stronger claim needs a target to hit, so the package ships expected outputs for the parts that are safe to publish before the defense: the figure sidecar hashes from chapter 10.1, the task-suite decontamination report, and the shape and column schema of the frozen export. A reproducer runs the pipeline, regenerates the figures, and compares their sidecars against the shipped ones. The comparison is statistical, not exact (a figure regenerated on a different matplotlib patch version can differ by a pixel), so the check is on the underlying aggregated numbers the figure encodes, not on the PNG bytes. After the defense, the expected measured deltas join the shipped outputs, and the reproduction target becomes the full thing: land within the reported intervals or find the discrepancy worth reporting.
 
 ```mermaid
 flowchart TD
@@ -58,7 +58,7 @@ flowchart TD
   MAN --> CFG[configs/*.yaml]
   MAN --> TS[task_suite/ @ v1.2.0 + decontam report]
   MAN --> SEED[seeds.json]
-  MAN --> FIG[figures/ pipeline from ch 9.1]
+  MAN --> FIG[figures/ pipeline from ch 10.1]
   MAN --> EXP[export/ frozen MLflow snapshot]
   MAN -. results held private until defense .-> RES[(results/, NAS only)]
 ```
@@ -106,8 +106,8 @@ repro/
   configs/            # one YAML per experiment
   task_suite/         # pinned suite + decontamination_report.json
   seeds.json          # {run_id: seed}
-  figures/            # the chapter 9.1 pipeline
-  export/             # frozen MLflow snapshot (ch 9.1)
+  figures/            # the chapter 10.1 pipeline
+  export/             # frozen MLflow snapshot (ch 10.1)
   results/            # EMBARGOED, NAS only, never public
   LICENSE-CODE        # MIT
   LICENSE-PROSE       # CC BY-NC-SA 4.0

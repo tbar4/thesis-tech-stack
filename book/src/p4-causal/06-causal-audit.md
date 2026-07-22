@@ -2,7 +2,7 @@
 
 **Goal.** Put the whole part to work: draw the complete causal DAG of the serve, score, and train pipeline, enumerate every threat to the validity of the reasoning-delta claim, map each threat to a mitigation that lives in a specific chapter, and freeze the result as a citable audit document. This is the part capstone and a methodology-chapter exhibit.
 
-**Covers.** The full DAG of the serve-to-score-to-train pipeline; enumerated threats to validity with mitigations mapped to chapters; the audit as a standing exhibit that chapter 9.2 cites verbatim.
+**Covers.** The full DAG of the serve-to-score-to-train pipeline; enumerated threats to validity with mitigations mapped to chapters; the audit as a standing exhibit that chapter 10.2 cites verbatim.
 
 ## Theory
 
@@ -69,7 +69,7 @@ The most important distinction the audit draws is between a threat I have **clos
 
 ### The audit as a living exhibit, and its limits
 
-The audit is versioned because the eval design will change, and a claim about validity is only as current as the design it describes. Version 1.0 is frozen at the moment the thesis eval design settles, and chapter 9.2 lifts it verbatim into the methodology chapter, so that the thesis and the book point at one and the same object rather than at two paraphrases that can drift apart. If I later add a task, swap a judge, or change the item count, the audit gets a version bump, the affected threat rows change, and 9.2's citation follows; there is always exactly one audit of record. What the audit deliberately does not do is certify that the result is correct. It certifies that the design is capable of supporting the causal claim if the runs come out as the decision rule requires, which is a statement about the experiment's structure, not about its outcome. A clean audit plus a null result is a perfectly coherent state of the world: it means the design was sound and the effect was not there, which is a finding, not a failure. Keeping those two things separate, the soundness of the design and the sign of the result, is what lets the audit be written before the runs finish, and writing it before the runs finish is what keeps it from being a rationalization of whatever numbers happened to come out.
+The audit is versioned because the eval design will change, and a claim about validity is only as current as the design it describes. Version 1.0 is frozen at the moment the thesis eval design settles, and chapter 10.2 lifts it verbatim into the methodology chapter, so that the thesis and the book point at one and the same object rather than at two paraphrases that can drift apart. If I later add a task, swap a judge, or change the item count, the audit gets a version bump, the affected threat rows change, and 10.2's citation follows; there is always exactly one audit of record. What the audit deliberately does not do is certify that the result is correct. It certifies that the design is capable of supporting the causal claim if the runs come out as the decision rule requires, which is a statement about the experiment's structure, not about its outcome. A clean audit plus a null result is a perfectly coherent state of the world: it means the design was sound and the effect was not there, which is a finding, not a failure. Keeping those two things separate, the soundness of the design and the sign of the result, is what lets the audit be written before the runs finish, and writing it before the runs finish is what keeps it from being a rationalization of whatever numbers happened to come out.
 
 ```admonish read-along title="Go deeper: [CAI] as the spine of the audit"
 This chapter is where [CAI] stops being a reference and becomes a method. The audit is Ness's model-identify-estimate-refute loop applied to my own thesis: the DAG above is "model," chapter 4.4 is "identify," chapters 7.6 and 4.4's lab are "estimate," and chapter 4.5's controls plus the threats table below are "refute." If you read [CAI] end to end alongside Part IV, this chapter is the exam. The audit document the lab emits is the answer I would hand a committee, and its structure (estimand, graph, threats, mitigations-by-chapter, residual risks, sensitivity) is a template you can reuse for any causal claim in any empirical thesis, not just this one.
@@ -79,7 +79,7 @@ This chapter is where [CAI] stops being a reference and becomes a method. The au
 
 The tool is the audit document itself, generated from a structured specification so that it stays in sync with the rest of the book. I keep the threats as data (a list of records, each with a validity type, the graph path it corresponds to, the mitigation, the owning chapter, and a residual-risk note) and render both a human-readable markdown exhibit and a machine-readable JSON. Generating rather than hand-typing the audit matters for the same reason the bias ledger in chapter 4.3 was generated: when the design changes, the audit changes with it, and a stale audit is worse than none because it certifies a pipeline that no longer exists.
 
-The audit is versioned. This is v1.0, frozen at the point where the thesis eval design is settled, and chapter 9.2 cites it verbatim as the methodology chapter's causal-validity exhibit. If the design changes later, the audit gets a new version and 9.2's citation updates, so there is always exactly one audit of record for any given eval design. Versioning the audit is what lets "the causal audit" be a specific, datable object rather than a vague gesture at rigor.
+The audit is versioned. This is v1.0, frozen at the point where the thesis eval design is settled, and chapter 10.2 cites it verbatim as the methodology chapter's causal-validity exhibit. If the design changes later, the audit gets a new version and 10.2's citation updates, so there is always exactly one audit of record for any given eval design. Versioning the audit is what lets "the causal audit" be a specific, datable object rather than a vague gesture at rigor.
 
 Keeping the threats as structured records rather than prose also lets the audit answer a question a committee reliably asks: "show me every place internal validity could fail, and where each is handled." Because the validity type is a field, that query is a filter over the JSON, and I can regenerate a one-page view of just the internal-validity threats, or just the bounded (not closed) ones, on demand. An audit that can be sliced by validity type and by closure status is far more useful under questioning than a wall of text, and building it from data is what makes those slices free. The markdown exhibit is the default rendering; the JSON is what makes the exhibit queryable, and both fall out of the same source of truth so they can never disagree.
 
@@ -95,7 +95,7 @@ The lab assembles causal audit v1.0 from the structured threat list, renders it 
 # ///
 """Build the causal audit v1.0 of the thesis eval design.
 
-Emits a human-readable markdown exhibit (cited verbatim in chapter 9.2) and
+Emits a human-readable markdown exhibit (cited verbatim in chapter 10.2) and
 a machine-readable JSON. Threats are stored as data so the audit cannot drift
 out of sync with the design.
 """
@@ -178,7 +178,7 @@ flowchart LR
 def render_md(threats: list[Threat]) -> str:
     lines = [
         "# Causal audit of the thesis eval design (v1.0)",
-        f"\nFrozen {date.today().isoformat()}. Cited verbatim in chapter 9.2.",
+        f"\nFrozen {date.today().isoformat()}. Cited verbatim in chapter 10.2.",
         "\n**Estimand.** Causal effect of GRPO verifiable-reward training on "
         "Space Domain Awareness (SDA) pass@1: E[score | do(train)] - E[score | do(no train)].",
         "\n## Pipeline DAG (unrolled in time)\n", DAG_MERMAID,
@@ -225,7 +225,7 @@ Run it:
 uv run labs/p4-06-audit/build_audit.py
 ```
 
-The artifacts are `labs/p4-06-audit/causal_audit_v1.0.md` (the human exhibit, with the DAG and the full threats table) and `causal_audit_v1.0.json` (the same content as data). Together they are causal audit v1.0. The markdown is written to be dropped straight into the methodology chapter, which is why chapter 9.2 cites it verbatim rather than paraphrasing it.
+The artifacts are `labs/p4-06-audit/causal_audit_v1.0.md` (the human exhibit, with the DAG and the full threats table) and `causal_audit_v1.0.json` (the same content as data). Together they are causal audit v1.0. The markdown is written to be dropped straight into the methodology chapter, which is why chapter 10.2 cites it verbatim rather than paraphrasing it.
 
 **What you should see.** A count of threats by validity type on stdout (four internal, two construct, two external, one statistical, nine in total) and the audit files on disk. Open the markdown and read the threats table as a single argument: every row names a way the reasoning-delta claim could be wrong, the mitigation that closes it, the chapter that owns the mitigation, and, crucially, the residual risk that survives the mitigation. That last column is the honest part, and it is the part a committee will respect, because it shows I know which threats I have fully closed (pipeline invariants, collider filtering) and which I can only bound (silent judge updates, contamination for closed pretraining, seed count under a 16GB budget). The verdict at the bottom states the identification condition as a conjunction: the delta is a causal effect only if every listed mitigation held. If any one of them failed on a given run, the audit tells me exactly which validity type is compromised and sends me to the chapter that has to fix it before I can make the claim. That traceability, from a claim to a threat to a mitigation to a chapter, is the whole point of Part IV, and this document is the proof that the loop of the book is not just a pipeline but an argument I can defend.
 

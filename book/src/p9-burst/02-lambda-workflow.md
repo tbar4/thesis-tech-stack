@@ -171,7 +171,7 @@ $SSH "docker run --rm --gpus all --entrypoint python -v ~/:/chk ${IMAGE} /chk/pa
     | tee burst/parity_remote.json
 
 # Fail loud if the software fingerprint drifted from the local reference.
-# The software fingerprint (from 8.1, stored in docker/parity_train.json) is the
+# The software fingerprint (from 9.1, stored in docker/parity_train.json) is the
 # SHA256 over the pinned python / torch / torch-CUDA / arch-list, deliberately
 # blind to the GPU model: a match means identical software, so any behavioral
 # delta between local and remote is attributable to the hardware, not the stack.

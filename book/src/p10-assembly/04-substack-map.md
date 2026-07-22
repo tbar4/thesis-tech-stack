@@ -5,7 +5,7 @@ The book is the reservoir. Substack is the tap. I wrote every chapter to stand a
 The trick is that a chapter and a post are different animals. A chapter earns its place by fitting the argument; a post earns its place by standing alone and making someone want the next one. So the map isn't a one-to-one dump of chapters into posts. It's a curation: which seeds are strong enough to lead, which need a sibling chapter's material to be complete, which are too thesis-specific to publish before the defense, and what order builds an audience instead of exhausting one.
 
 ```admonish read-along
-This chapter produces an editorial calendar that feeds my existing substack-pipeline workflow (the drafting-and-scheduling system I already run). Nothing here needs a GPU; it's all text and dates. The one constraint that shows up everywhere is the embargo from chapter 9.3: posts that would reveal the thesis-specific measured deltas are marked `post-defense` and scheduled after the defense date, because the results stay private until then. Any post that quotes a measured number carries the same "(measured on the baseline machine, record value, date, driver)" placeholder discipline as the rest of the book until the real number is cleared for release.
+This chapter produces an editorial calendar that feeds my existing substack-pipeline workflow (the drafting-and-scheduling system I already run). Nothing here needs a GPU; it's all text and dates. The one constraint that shows up everywhere is the embargo from chapter 10.3: posts that would reveal the thesis-specific measured deltas are marked `post-defense` and scheduled after the defense date, because the results stay private until then. Any post that quotes a measured number carries the same "(measured on the baseline machine, record value, date, driver)" placeholder discipline as the rest of the book until the real number is cleared for release.
 ```
 
 ## Theory
@@ -20,13 +20,13 @@ Concretely, a good post has a single load-bearing idea, a concrete artifact or d
 
 For each `substack-seed` I score three things, and those three decide whether it leads, supports, or waits.
 
-**Standalone-ness.** Can a reader who has never seen the book get the whole point of this post without prerequisites? A post on "every figure must be regenerable by script" (chapter 9.1) is fully standalone: the idea, the demo, and the payoff need no prior post. A post on "GRPO on 16GB" (chapter 7.2) is not, because it assumes the reader knows what GRPO is and why 16GB is the constraint. Standalone seeds are candidates to lead the series or to be evergreen entry points; dependent seeds sit deeper in a sequence where their prerequisites already ran.
+**Standalone-ness.** Can a reader who has never seen the book get the whole point of this post without prerequisites? A post on "every figure must be regenerable by script" (chapter 10.1) is fully standalone: the idea, the demo, and the payoff need no prior post. A post on "GRPO on 16GB" (chapter 7.2) is not, because it assumes the reader knows what GRPO is and why 16GB is the constraint. Standalone seeds are candidates to lead the series or to be evergreen entry points; dependent seeds sit deeper in a sequence where their prerequisites already ran.
 
 **Pull.** Does the hook create demand for the next post? Some ideas are naturally serialized (a loop that serves, evaluates, scores, and trains begs "then what happened when you closed the loop?"), and those are the spine of the series. Others are satisfying-and-done (a single sharp tool), and those are good standalone breathers between arcs.
 
-**Embargo status.** Does the post reveal thesis-specific results that are held until after the defense? A methods post ("here's the pattern for pre-answering a committee," chapter 9.2) is publishable now because it's about structure, not results. A post that shows the actual measured reasoning delta is `post-defense`. This is a hard gate: no scheduling clever enough to justify leaking the embargoed numbers early.
+**Embargo status.** Does the post reveal thesis-specific results that are held until after the defense? A methods post ("here's the pattern for pre-answering a committee," chapter 10.2) is publishable now because it's about structure, not results. A post that shows the actual measured reasoning delta is `post-defense`. This is a hard gate: no scheduling clever enough to justify leaking the embargoed numbers early.
 
-Some seeds never become posts, and that's a feature. A book chapter can exist to complete an argument even when its idea is too incremental, too dependent, or too niche to hook a cold reader, and forcing every chapter into a post would dilute the series with weak entries. The map is allowed to say no. A seed that scores low on both standalone-ness and pull, and that isn't load-bearing for a later post's setup, gets marked as "book-only" and drops out of the calendar entirely. This is the editorial equivalent of the coverage check in chapter 9.2: the tool makes the decision visible rather than letting a weak post sneak in because it happened to have a seed. A shorter series of strong posts beats a complete-but-flat one, and the readers I keep are the ones who never got a dud.
+Some seeds never become posts, and that's a feature. A book chapter can exist to complete an argument even when its idea is too incremental, too dependent, or too niche to hook a cold reader, and forcing every chapter into a post would dilute the series with weak entries. The map is allowed to say no. A seed that scores low on both standalone-ness and pull, and that isn't load-bearing for a later post's setup, gets marked as "book-only" and drops out of the calendar entirely. This is the editorial equivalent of the coverage check in chapter 10.2: the tool makes the decision visible rather than letting a weak post sneak in because it happened to have a seed. A shorter series of strong posts beats a complete-but-flat one, and the readers I keep are the ones who never got a dud.
 
 ```admonish gotcha
 The tempting failure is to publish the book in chapter order. Chapter order is optimized for the argument, which front-loads foundations (tensors, attention, the RL problem) that make dry standalone posts and bury the hooks that would actually grow an audience. Publishing in chapter order means your first eight posts are a graduate course nobody signed up for, and you lose the readers before you reach the loop that makes the whole thing exciting. Sequence for pull and standalone-ness, not for the table of contents. Lead with the most self-contained, most surprising seed you're allowed to publish, and let the foundations arrive as needed underneath the story.
@@ -39,7 +39,7 @@ Once each seed is scored, sequencing is a small optimization with a few rules. L
 ```mermaid
 flowchart LR
   subgraph A1[Arc 1: One GPU, real work]
-    P1[9.1 regenerable figures] --> P2[2.6 benchmark honestly] --> P3[7.2 GRPO on 16GB]
+    P1[10.1 regenerable figures] --> P2[2.6 benchmark honestly] --> P3[7.2 GRPO on 16GB]
   end
   subgraph A2[Arc 2: Evals as measurement]
     P4[3.1 what an eval is] --> P5[3.8 contamination] --> P6[7.4 reward hacking]
@@ -70,7 +70,7 @@ Each `substack-seed` becomes a record: source chapter, a title, the three scores
 
 ### A sequencer that emits the calendar
 
-The lab's tool reads the seed records, drops or defers the embargoed ones past the defense date, orders the rest by arc and by a lead-worthiness score, assigns dates on a cadence, and emits both a human-readable extraction table (chapter-to-post) and the machine-readable calendar the pipeline consumes. It refuses to schedule an embargoed post before the defense date, which is the same hard gate as everywhere else in Part IX.
+The lab's tool reads the seed records, drops or defers the embargoed ones past the defense date, orders the rest by arc and by a lead-worthiness score, assigns dates on a cadence, and emits both a human-readable extraction table (chapter-to-post) and the machine-readable calendar the pipeline consumes. It refuses to schedule an embargoed post before the defense date, which is the same hard gate as everywhere else in Part X.
 
 ## Lab
 
@@ -91,7 +91,7 @@ start_date: "2026-08-04"     # series launch
 cadence_days: 7              # weekly
 
 seeds:
-  - chapter: "9.1"
+  - chapter: "10.1"
     title: "Your charts are lying and you can't tell"
     arc: "one-gpu-real-work"
     standalone: 5
@@ -155,7 +155,7 @@ seeds:
     embargo: false
     hook: "Serve, evaluate, score, train, re-evaluate, on one machine, on repeat."
 
-  - chapter: "9.2"
+  - chapter: "10.2"
     title: "How to pre-answer your thesis committee"
     arc: "closing-the-loop"
     standalone: 5
@@ -301,7 +301,7 @@ uv run python build_calendar.py
 
 ### What you should see
 
-Two files. `extraction_table.md` is a Markdown table, one row per post, chronological, showing the date, source chapter, arc, title, standalone hook, and embargo status. `editorial_calendar.json` is the same schedule as structured data with a `posts` array, ready for the substack-pipeline workflow to consume. The series leads with the highest lead-worthiness non-embargoed seed (with the scores above, "Your charts are lying and you can't tell" from chapter 9.1, or "What an eval actually is" from 3.1, depending on the exact tie-break), arcs run in blocks, and the one embargoed post, chapter 7.6's measured reasoning delta, is scheduled after the 2026-11-15 defense date rather than in its natural arc position. Now flip `embargo: true` to `false` on that 7.6 seed and re-run: the sequencer places it in the middle of the "closing the loop" arc, before the defense, and the assertion at the bottom fires with `EMBARGO LEAK in schedule`. That failing assertion is the same hard gate that runs through all of Part IX. The book decides what's true; the reproducibility package decides what ships; and this calendar decides what gets said in public, and when, without ever letting the unpublished result out the door before its time.
+Two files. `extraction_table.md` is a Markdown table, one row per post, chronological, showing the date, source chapter, arc, title, standalone hook, and embargo status. `editorial_calendar.json` is the same schedule as structured data with a `posts` array, ready for the substack-pipeline workflow to consume. The series leads with the highest lead-worthiness non-embargoed seed (with the scores above, "Your charts are lying and you can't tell" from chapter 10.1, or "What an eval actually is" from 3.1, depending on the exact tie-break), arcs run in blocks, and the one embargoed post, chapter 7.6's measured reasoning delta, is scheduled after the 2026-11-15 defense date rather than in its natural arc position. Now flip `embargo: true` to `false` on that 7.6 seed and re-run: the sequencer places it in the middle of the "closing the loop" arc, before the defense, and the assertion at the bottom fires with `EMBARGO LEAK in schedule`. That failing assertion is the same hard gate that runs through all of Part X. The book decides what's true; the reproducibility package decides what ships; and this calendar decides what gets said in public, and when, without ever letting the unpublished result out the door before its time.
 
 ```admonish substack-seed
 "I wrote a book, then reverse-engineered the newsletter." A meta post about turning a finished long-form work into a serialized newsletter that actually grows an audience, the opposite of publishing chapter by chapter. The method: score every idea on standalone-ness, pull, and whether it's under embargo, then sequence for hooks instead of for the table of contents, leading with your most self-contained surprise and saving the big result for when the audience is largest. The punchline is that the whole calendar is generated code with a hard gate that physically cannot schedule an embargoed result before the date it's allowed out.
