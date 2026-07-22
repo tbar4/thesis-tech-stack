@@ -125,8 +125,8 @@ def bandwidth_check(bytes_gb: float = 2.0, iters: int = 50) -> dict:
         y.copy_(x)                        # reads n*4 bytes, writes n*4 bytes
     torch.cuda.synchronize()
     dt = (time.perf_counter() - t0) / iters
-    moved_gb = (2 * n * 4) / (1024**3)    # read + write
-    gbps = moved_gb / dt * (1024**3) / 1e9
+    moved_bytes = 2 * n * 4               # read + write
+    gbps = moved_bytes / dt / 1e9         # decimal GB/s, same units as the rated figure
     return {"gb_per_s_est": round(gbps, 1), "sec_per_iter": dt}   # compare to ~960 GB/s rated
 
 
@@ -135,7 +135,7 @@ def first_tokens(model_id: str, revision: str, n_new: int = 20) -> dict:
     from transformers import AutoModelForCausalLM, AutoTokenizer
     tok = AutoTokenizer.from_pretrained(model_id, revision=revision)
     model = AutoModelForCausalLM.from_pretrained(
-        model_id, revision=revision, torch_dtype=torch.bfloat16, device_map="cuda"
+        model_id, revision=revision, dtype=torch.bfloat16, device_map="cuda"
     )
     prompt = "The capital of France is"
     ids = tok(prompt, return_tensors="pt").to("cuda")
@@ -147,17 +147,26 @@ def first_tokens(model_id: str, revision: str, n_new: int = 20) -> dict:
 if __name__ == "__main__":
     which = sys.argv[1] if len(sys.argv) > 1 else "all"
     result = {}
+
+    # Guard each check so one failure (e.g. first_tokens with a placeholder
+    # revision) records an error instead of aborting the whole report.
+    def guard(name, fn):
+        try:
+            result[name] = fn()
+        except Exception as e:
+            result[name] = {"error": repr(e)}
+
     if which in ("idle", "all"):
-        result["idle"] = idle_summary()
+        guard("idle", idle_summary)
     if which in ("gemm", "all"):
-        result["gemm"] = gemm_check()
+        guard("gemm", gemm_check)
     if which in ("bandwidth", "all"):
-        result["bandwidth"] = bandwidth_check()
+        guard("bandwidth", bandwidth_check)
     if which in ("first_tokens", "all"):
         # Use a small model pinned by revision; replace the hash on the machine.
-        result["first_tokens"] = first_tokens(
+        guard("first_tokens", lambda: first_tokens(
             "Qwen/Qwen2.5-0.5B-Instruct", revision="REPLACE_WITH_40_HEX_COMMIT"
-        )
+        ))
     print(json.dumps(result, indent=2))
 ```
 
@@ -259,7 +268,8 @@ echo "Archived $REPORT to ${ARCHIVE_ROOT}/reports/"
 ```python title="acceptance/log_acceptance.py"
 """Wrap the suite as an MLflow run so acceptance carries the five provenance fields.
 
-Run: uv run python log_acceptance.py acceptance-report-v1-YYYYMMDD.md
+Run from the train/ project (which has torch); pull in mlflow for the logging:
+  uv run --with mlflow python log_acceptance.py acceptance-report-v1-YYYYMMDD.md
 """
 import sys
 import mlflow
@@ -267,7 +277,9 @@ sys.path.insert(0, "../tracking")
 from provenance import start_run   # noqa: E402
 
 report_path = sys.argv[1]
-with start_run(experiment="acceptance", lock_path="uv.lock", seed=0, run_name="v1"):
+# The suite runs from acceptance/, which has no lockfile of its own; point at the
+# train/ env's lockfile (that is the env the checks actually run under).
+with start_run(experiment="acceptance", lock_path="../train/uv.lock", seed=0, run_name="v1"):
     mlflow.log_artifact(report_path)     # the report becomes an MLflow artifact too
     mlflow.set_tag("acceptance_version", "1")
     print("Logged acceptance report to MLflow.")
