@@ -119,15 +119,15 @@ def unit_test(t: str) -> bool:
 
 def classify(t: str) -> tuple[int, str]:
     v, c, u = verb_test(t), counterfactual_test(t), unit_test(t)
-    if u and v:
-        return 3, "counterfactual: causal verb + specific realized unit"
+    if u:
+        return 3, "counterfactual: 'would have'/'this run'/'without the' names a specific unhappened world"
     if v or c:
         return 2, "interventional: causal verb/preposition implies a do() question"
     return 1, "associational: descriptive summary of observed data"
 
 CLAIMS = [
     Claim("The model scores 0.61 on the held-out reasoning split.", "capability card"),
-    Claim("Post-training accuracy rose to 0.61, up from 0.52 before RL.", "capability card"),
+    Claim("Post-training accuracy improved to 0.61, up from 0.52 before RL.", "capability card"),
     Claim("4-bit quantization degraded chain-of-thought accuracy by 3 points.", "quant report"),
     Claim("Longer responses are positively correlated with judge scores.", "judge study"),
     Claim("The instruction-tuned variant outperforms the base model because of preference data.", "capability card"),
@@ -168,7 +168,7 @@ uv run labs/p4-01-ladder/classify_claims.py
 
 The artifact is `labs/p4-01-ladder/claim_rungs.json`: ten claims, each stamped with its three boolean test results, the assigned rung, and a one-line rationale. That file is the durable object. It is also the seed of a habit. From here on, whenever I paste a sentence into the thesis, I can run it through the same rubric and see immediately whether I am about to stand on rung two while pointing at rung-one evidence.
 
-**What you should see.** Ten lines to stdout, one per claim, each tagged with a rung, then a count line. The two pure measurements (the 0.61 split score and the MATH pass@1 line) come back as rung 1. The comparative and causal claims (up from 0.52, degraded by 3 points, improves over baseline, outperforms because of preference data, boosts GSM8K) come back as rung 2, because a causal verb sits on top of a comparison to an unobserved alternative. The one claim that names a specific realized run and changes one of its inputs (the "this run would have plateaued") surfaces as rung 3. The counts should land near four rung-1, five rung-2, one rung-3, and the exact split matters less than the reflex: every causal verb in a results section is a promissory note that the rest of Part IV has to pay off. If a claim you expected to be causal came back rung 1, read its `verb_test` field; that is the classifier telling you the sentence is quietly descriptive and the causal reading was in your head, not on the page.
+**What you should see.** Ten lines to stdout, one per claim, each tagged with a rung, then a count line reading `{1: 4, 2: 5, 3: 1}`. Four claims land at rung 1: the two pure measurements (the 0.61 split score and the MATH pass@1 line) and, more instructively, the two comparative-but-verbless claims (longer responses are "correlated" with scores, the judge "assigns higher ratings than" a panel), which describe observed differences without any causal verb and so stay associational. Five land at rung 2, the ones carrying an explicit causal verb or preposition (improved to 0.61, degraded by 3 points, outperforms because of preference data, improves over baseline, boosts GSM8K), because a causal verb sits on top of a comparison to an unobserved alternative. One lands at rung 3: "without the verifiable reward, this run would have plateaued," which names a specific realized run and a world where one of its inputs was changed. The exact split matters less than the reflex: every causal verb in a results section is a promissory note that the rest of Part IV has to pay off. The two verbless comparatives are the ones worth staring at, because they read as causal to a hurried reader but the `verb_test` field is `false`, which is the classifier telling you the causal reading was in your head, not on the page.
 
 ```admonish substack-seed
 Every results table in machine learning is a photograph, and every abstract quietly captions it as a movie. The photograph says "the model scored 0.61." The caption says "training made it better." Those are not the same claim, and Judea Pearl's ladder of causation tells you exactly why: the table lives on rung one (seeing), and the word "better" lives on rung two (doing), the rung where you have to reason about what would have happened otherwise. This post is a 900-word field guide to spotting the jump in your own writing, a three-question rubric (is there a causal verb, is there an unobserved "otherwise," is it about one specific run) that tells you which rung a sentence is standing on, run over ten real-flavored model-card claims. The punchline is that the gap between rungs is not pedantry. It is the exact seam where an eval result turns into a lie you did not mean to tell.
