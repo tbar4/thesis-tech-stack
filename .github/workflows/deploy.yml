@@ -28,6 +28,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
       - name: Install mdbook and preprocessors
         run: |
           set -euo pipefail
@@ -49,17 +52,13 @@ jobs:
         working-directory: book
         run: mdbook build
 
-      - name: Upload rendered book
-        uses: actions/upload-artifact@v4
-        with:
-          name: book
-          path: book/book/html
-          if-no-files-found: warn
-
-      - name: Upload artifact
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: book
+          # mdbook renders HTML here (the html + linkcheck renderers put the
+          # site under book/book/html). Pages needs the dir that holds
+          # index.html, NOT the whole book/ source tree.
+          path: book/book/html
 
   deploy:
     needs: build
