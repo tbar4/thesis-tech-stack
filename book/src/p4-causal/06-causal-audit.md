@@ -180,7 +180,7 @@ def render_md(threats: list[Threat]) -> str:
         "# Causal audit of the thesis eval design (v1.0)",
         f"\nFrozen {date.today().isoformat()}. Cited verbatim in chapter 9.2.",
         "\n**Estimand.** Causal effect of GRPO verifiable-reward training on "
-        "SDA pass@1: E[score | do(train)] - E[score | do(no train)].",
+        "Space Domain Awareness (SDA) pass@1: E[score | do(train)] - E[score | do(no train)].",
         "\n## Pipeline DAG (unrolled in time)\n", DAG_MERMAID,
         "\n## Threats to validity\n",
         "| ID | Validity | Unwanted path | Mitigation | Owner | Residual risk |",

@@ -77,7 +77,7 @@ $$
 \frac{\sigma}{\sqrt{n}} \lesssim \Delta_a \quad\Longrightarrow\quad n \gtrsim \frac{\sigma^2}{\Delta_a^2}
 $$
 
-pulls to be sure. Each of those pulls costs you $\Delta_a$ in regret, contributing $\sim \sigma^2/\Delta_a$ to $L_T$ for that arm. The $\ln T$ appears once you demand the *confidence* grow with the horizon (you must keep re-checking as $T$ grows), which multiplies the pull count by a $\ln T$ factor. The takeaway for LLM training: **exploration is not free, but the cost of confirming an arm is bad is bounded, so a little exploration buys a lot of insurance.** Refuse to explore and you risk linear regret, which in fine-tuning shows up as a policy that commits early to a mediocre reasoning style and never escapes it.
+pulls to be sure. Each of those pulls costs you $\Delta_a$ in regret, contributing $\sim \sigma^2/\Delta_a$ to $L_T$ for that arm. The $\ln T$ appears once you insist the arm stay separated over the *whole* horizon: to keep the total probability of ever mistaking $a$ for the best arm bounded across $T$ rounds, a union bound over those rounds asks each confidence interval to fail with probability $\sim 1/T$, and a Gaussian tail reaches that level only when its half-width shrinks like $\sigma\sqrt{\ln T / n}$. Setting that width below $\Delta_a$ forces $n \gtrsim (\sigma^2/\Delta_a^2)\,\ln T$, which is the $\ln T$ factor on the pull count. The takeaway for LLM training: **exploration is not free, but the cost of confirming an arm is bad is bounded, so a little exploration buys a lot of insurance.** Refuse to explore and you risk linear regret, which in fine-tuning shows up as a policy that commits early to a mediocre reasoning style and never escapes it.
 ```
 
 ### Temperature as the LLM's exploration knob

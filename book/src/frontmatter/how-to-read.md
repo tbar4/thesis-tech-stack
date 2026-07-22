@@ -23,7 +23,7 @@ Throughout the book I use a small set of labeled callout boxes (mdBook calls the
 | `derivation` | A result worked from definitions, step by step, rigorous enough for the thesis committee. Skip if you trust the result; read if you need to defend it. |
 | `under-the-hood` | What the library or hardware is actually doing beneath the API, when the abstraction hides something worth seeing. |
 | `vram-budget` | Explicit memory accounting: where the gigabytes went, and whether it fits in 16GB. The running constraint of the book. |
-| `thesis-thread` | The recurring SDA-flavored verifiable-reasoning worked example. Follow it for a sustained single problem; skip it and the main line still stands. |
+| `thesis-thread` | The recurring Space Domain Awareness (SDA)-flavored verifiable-reasoning worked example. Follow it for a sustained single problem; skip it and the main line still stands. |
 | `substack-seed` | A framing or hook written to travel: the shareable core of an idea, sized for a post. |
 | `gotcha` | A specific trap I hit or expect you to hit, and how to get past it. Read these; they are cheap insurance. |
 | `read-along` | A pointer into one of the reference books below, so you can go deeper on a topic from someone who wrote a whole book on it. |

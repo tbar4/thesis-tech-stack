@@ -61,7 +61,7 @@ For a three-way pairwise verdict (A wins / tie / B wins) kappa is computed over 
 Here is the part that makes this a thesis chapter and not a blog post. I am going to choose between two local judges, the provisional default **Qwen3-14B-AWQ** and the challenger **gpt-oss-20b (MXFP4)**, and I am writing the decision rule *now*, before running anything, so that I cannot rationalize my way to a favorite after seeing the numbers. Pre-registration is the cheapest defense against the garden of forking paths there is, and it costs me nothing but the discipline to write the rule down and follow it.
 
 ```admonish note title="Pre-registered judge selection criterion (locked before data)"
-On a hand-labeled gold set of pairwise comparisons over SDA-flavored verifiable-reasoning responses, at a **matched judge token budget** of 512 completion tokens and identical reason-then-verdict rubric, select the default judge by:
+On a hand-labeled gold set of pairwise comparisons over Space Domain Awareness (SDA)-flavored verifiable-reasoning responses, at a **matched judge token budget** of 512 completion tokens and identical reason-then-verdict rubric, select the default judge by:
 
 1. **Primary:** highest Cohen's kappa (Eq. 6.3) with the gold labels. If the 95% bootstrap confidence intervals (Chapter 3.7) for the two kappas overlap, treat it as a tie on the primary criterion and go to the tie-breaker.
 2. **Tie-breaker:** lowest bias, scored as the sum of positional inconsistency (fraction of swapped pairs whose verdict flips) and verbosity slope magnitude (absolute standardized coefficient of length-difference on verdict).

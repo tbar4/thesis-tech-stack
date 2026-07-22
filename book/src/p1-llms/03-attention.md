@@ -132,6 +132,9 @@ def manual_attention(x, layer, cfg):
     isolates the scaled-dot-product-attention math of this chapter. We do
     apply Qwen3's per-head q_norm/k_norm, because the reference layer applies
     them to Q and K before attention and the outputs will not match without it.
+    (RMSNorm is the normalization I derive in the next chapter, 1.4; here treat
+    q_norm/k_norm as a black box the reference applies to Q and K before RoPE,
+    needed only so the numbers match.)
     """
     b, s, _ = x.shape
     n_q = cfg.num_attention_heads

@@ -267,6 +267,15 @@ vector by its root-mean-square (no mean-subtraction, no bias), then applies a le
 per-dimension gain. It is cheaper than LayerNorm and is what Qwen3 and most current
 open models use. See *The transformer block*.
 
+### SDA (Space Domain Awareness)
+
+The Thesis Thread's task domain: reasoning about objects in orbit and the space
+environment (tracking, conjunction or close-approach screening, maneuver detection,
+catalog correlation), where an answer can be checked against ground truth or orbital
+mechanics rather than merely judged. That checkability is exactly what makes it a
+verifiable-reward domain and the reason the thread uses it end to end. See *Building
+the thesis task suite* (chapter 3.9).
+
 ### Verifiable reward
 
 A reward signal produced by a deterministic checker rather than a learned model: it
