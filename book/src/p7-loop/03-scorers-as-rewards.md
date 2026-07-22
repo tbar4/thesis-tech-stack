@@ -94,7 +94,7 @@ from functools import lru_cache
 
 # The pure verifier from Part III chapter 3.4. Same function used for
 # measurement; imported here, not reimplemented, so the two never drift.
-from thesis_suite.scorers import verify_sda_answer  # (completion_text, target) -> bool
+from thesis_suite import verify_sda_answer  # (response, target) -> bool
 
 THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
 ANSWER_RE = re.compile(r"<answer>(.*?)</answer>", re.DOTALL)
@@ -203,7 +203,7 @@ GROUP = 8
 def main() -> None:
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=MODEL, max_seq_length=MAX_SEQ, load_in_4bit=True,
-        fast_inference=True, max_lora_rank=LORA_R, gpu_memory_utilization=0.55,
+        fast_inference=True, max_lora_rank=LORA_R, gpu_memory_utilization=0.16,
     )
     model = FastLanguageModel.get_peft_model(
         model, r=LORA_R,

@@ -51,7 +51,7 @@ $$
 $$
 8 \times 1024 \times 147{,}456\ \text{byte} \approx 1.21\times10^{9}\ \text{byte} \approx \mathbf{1.13\ GiB}
 $$
-of *live* KV. vLLM does not allocate exactly this; it claims a slab sized by `gpu_memory_utilization` and pages completions into it, so the slab is bigger than the live minimum but that headroom is what lets it batch. The live floor is 1.13 GiB; a comfortable slab is $\approx 2\ \text{to}\ 3\ \text{GiB}$.
+of *live* KV. vLLM does not allocate exactly this; it claims a slab sized by `gpu_memory_utilization` and pages completions into it, so the slab is bigger than the live minimum but that headroom is what lets it batch. The live floor is 1.13 GiB, and the number that actually enters the budget below is the *slab*, which at `gpu_memory_utilization=0.16` on this 16 GiB card is $\approx 2.5\ \text{GiB}$. So the budgeted line 6 is the slab (**$\approx 2.5\ \text{GiB}$**), not the live floor.
 
 **7. Training activations, checkpointed and chunked (the variable term).** With Unsloth's offloaded gradient checkpointing, only layer-boundary activations are kept and most are pushed to the 32GB of system DDR5, so the GPU-resident activation peak is roughly one layer's recompute buffer plus the chunked-cross-entropy block, not the whole graph. Order of magnitude for a $T=1024$ micro-sequence: a layer activation is $T \times d \times 2\ \text{byte} = 1024\times2560\times2 \approx 5.2\ \text{MB}$, and the working set across recompute plus the chunked-CE block and attention scratch lands around $1.0\ \text{to}\ 1.5\ \text{GiB}$ at peak. Budget **$\approx 1.5\ \text{GiB}$** *(measure)*, and note that *without* chunked CE this line would spike by the multi-GiB logits tensor from the last chapter.
 
@@ -85,7 +85,7 @@ Two objects carry a GRPO run: the model, loaded by `FastLanguageModel` exactly a
 - **`beta`** is the KL-to-reference coefficient. It is the leash on how far the policy drifts from the base model, and it is the main dial the reward-hacking chapter turns. Some recipes (DAPO-style) set it to 0 and rely on clipping alone; I start with a small positive value.
 - **`epsilon`** (and `epsilon_high` for clip-higher) is the PPO clip range on the importance ratio, capping how much one step can move the policy on any token.
 - **`num_iterations`** is $\mu$, the number of optimization passes over each batch of generated data (the PPO inner epochs). More reuse of expensive generations, at the risk of going off-policy.
-- **`loss_type`** selects the aggregation: `"grpo"` (token-mean with the length quirk), `"dr_grpo"` (the length-bias fix from Part V), or the DAPO variant. This choice interacts with reward hacking, so I name it explicitly rather than take the default.
+- **`loss_type`** selects the aggregation: `"grpo"` (token-mean with the length quirk) or `"dr_grpo"` (the length-bias fix from Part V, the aggregation the DAPO recipe popularized). DAPO itself is a training recipe, not a `loss_type` value, so the valid TRL choice for its length-unbiased aggregation is `dr_grpo`. This choice interacts with reward hacking, so I name it explicitly rather than take the default.
 - **`temperature`**, **`top_p`**: the sampling parameters vLLM uses to generate the group. Diversity in the group is what makes the advantage informative, so I do not sample greedily.
 - **`report_to="mlflow"`** wires the trainer's metrics into the tracking spine from Part 0.
 
@@ -209,7 +209,7 @@ def main() -> None:
         load_in_4bit=True,
         fast_inference=True,
         max_lora_rank=LORA_R,
-        gpu_memory_utilization=0.55,   # line 6 of the budget: vLLM's slab
+        gpu_memory_utilization=0.16,   # line 6 of the budget: vLLM's ~2.5 GiB slab
     )
     model = FastLanguageModel.get_peft_model(
         model,
@@ -264,7 +264,7 @@ def main() -> None:
         )
         trainer.train()
 
-        peak = torch.cuda.max_memory_allocated()
+        peak = torch.cuda.max_memory_allocated()  # caveat: misses vLLM's separate KV slab
         mlflow.log_metric("vram_peak_gib", peak / 2**30)
         adapter_dir = Path("outputs/final-adapter")
         model.save_lora(str(adapter_dir))
@@ -289,7 +289,7 @@ If TRL raises about batch size at trainer construction, it is the divisibility r
 
 ### What you should see
 
-Two artifacts land: `outputs/final-adapter/`, the trained LoRA adapter (a few tens of MB, matching budget line 3), and an MLflow run under the `p7-grpo` experiment holding the config params, the `uv.lock` hash, the driver string, the per-step reward, and `vram_peak_gib`. In the MLflow UI, the reward curve is the thing to watch: on a task this easy, `correctness_reward` should climb from near zero toward 1.0 within the 100 steps as the policy learns to actually emit the right integer, and `format_reward` should saturate near its 0.2 ceiling almost immediately, because getting the tag right is easier than getting the sum right. If correctness never moves, the usual culprits are a completion length too short to fit the model's chain of thought before the tag, a temperature so low the group has no diversity for the advantage to exploit, or a reward function silently returning zeros because the tag parse failed. The number that validates this whole chapter is `vram_peak_gib`: the budget predicted roughly 6.9 GiB, and the measured peak should land in that neighborhood, a couple of GiB either way depending on how big a slab vLLM actually claimed at `gpu_memory_utilization=0.55` and how long the longest group's completions ran. Record it with the date and driver (measured on the baseline machine, record value, date, driver). When the measured peak and the symbolic budget agree to within the *(measure)* lines' uncertainty, the accounting is trustworthy, and I can spend the remaining headroom in the next chapters knowing what each choice costs. When they disagree, the disagreement is the most useful thing the run produced, because it points at exactly which line of the budget I got wrong.
+Two artifacts land: `outputs/final-adapter/`, the trained LoRA adapter (a few tens of MB, matching budget line 3), and an MLflow run under the `p7-grpo` experiment holding the config params, the `uv.lock` hash, the driver string, the per-step reward, and `vram_peak_gib`. In the MLflow UI, the reward curve is the thing to watch: on a task this easy, `correctness_reward` should climb from near zero toward 1.0 within the 100 steps as the policy learns to actually emit the right integer, and `format_reward` should saturate near its 0.2 ceiling almost immediately, because getting the tag right is easier than getting the sum right. If correctness never moves, the usual culprits are a completion length too short to fit the model's chain of thought before the tag, a temperature so low the group has no diversity for the advantage to exploit, or a reward function silently returning zeros because the tag parse failed. The number that validates this whole chapter is `vram_peak_gib`: the budget predicted roughly 6.9 GiB, and the measured peak should land in that neighborhood, a couple of GiB either way depending on how big a slab vLLM actually claimed at `gpu_memory_utilization=0.16` and how long the longest group's completions ran. One caveat on that measurement: `torch.cuda.max_memory_allocated()` counts only the PyTorch caching allocator's peak, so it misses vLLM's separate KV slab (line 6) entirely; the honest total is the reported peak plus that slab, and `nvidia-smi` is the cross-check that catches what the torch counter cannot see. Record it with the date and driver (measured on the baseline machine, record value, date, driver). When the measured peak and the symbolic budget agree to within the *(measure)* lines' uncertainty, the accounting is trustworthy, and I can spend the remaining headroom in the next chapters knowing what each choice costs. When they disagree, the disagreement is the most useful thing the run produced, because it points at exactly which line of the budget I got wrong.
 
 ```mermaid
 flowchart LR

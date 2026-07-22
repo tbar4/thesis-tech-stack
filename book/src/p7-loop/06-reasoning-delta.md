@@ -341,7 +341,7 @@ The lab wires the pieces into one command that consumes the two eval logs from t
 """Pre/post delta analysis of the 7.3 GRPO run -> delta-report artifact."""
 from __future__ import annotations
 
-import json
+import argparse
 from pathlib import Path
 
 from schema import EvalLog
@@ -354,10 +354,19 @@ def load(path: str) -> EvalLog:
 
 
 def main() -> None:
-    pre = load("logs/eval_M0.json")    # baseline eval log (chapter 3.7 harness)
-    post = load("logs/eval_M1.json")   # trained-checkpoint eval log
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--pre", default="logs/eval_M0.json",
+                    help="baseline M0 eval log (chapter 3.7 harness format)")
+    ap.add_argument("--post", default="logs/eval_M1.json",
+                    help="trained-checkpoint M1 eval log")
+    ap.add_argument("--out", default="out",
+                    help="output dir for delta_report.{md,json} + passk_curve.png")
+    args = ap.parse_args()
+
+    pre = load(args.pre)               # baseline eval log
+    post = load(args.post)             # trained-checkpoint eval log
     report = build(pre, post)
-    render(report, Path("out"))
+    render(report, Path(args.out))
     print(f"delta = {report['delta_mean']:+.4f}  "
           f"95% CI {report['delta_ci95']}  "
           f"perm p = {report['perm_p']:.4g}  "

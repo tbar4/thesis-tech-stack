@@ -27,7 +27,7 @@ $$
 That $p(1-p)$ is the whole story of difficulty filtering. It is zero at $p=0$ and $p=1$ and maximized at $p=0.5$. A prompt the model already solves every time ($p \approx 1$) is as useless for training as one it never solves ($p \approx 0$), and for the identical reason: no disagreement, no signal. The informative prompts live in a band around the middle.
 
 ```admonish derivation
-The probability that a group of $K$ binary rewards is degenerate (all same, hence zero advantage) is $P_{\text{deg}}(p) = p^K + (1-p)^K$. The probability a prompt contributes any gradient at all is $1 - P_{\text{deg}}(p)$. For $K=8$ this is above $0.9$ across roughly $0.2 \le p \le 0.8$, and it falls off a cliff outside that: at $p = 0.95$ it is only about $0.34$, and at $p = 0.99$ about $0.077$. In plain terms, with a group size of 8, a prompt the model solves 95% of the time contributes a usable gradient on barely a third of the steps it appears in. That is the arithmetic justification for a solve-rate band of roughly $[0.2, 0.8]$: it is not a taste, it is where $1 - P_{\text{deg}}$ is large. Larger $K$ widens the usable band (more rollouts, more chances for disagreement) at linear cost in generation time, which is exactly the trade chapter 7.7 ablates.
+The probability that a group of $K$ binary rewards is degenerate (all same, hence zero advantage) is $P_{\text{deg}}(p) = p^K + (1-p)^K$. The probability a prompt contributes any gradient at all is $1 - P_{\text{deg}}(p)$. For $K=8$ this is above $\approx 0.83$ across roughly $0.2 \le p \le 0.8$ (it is $0.832$ at the band edges and peaks at $\approx 0.992$ near $p=0.5$), and it falls off a cliff outside that: at $p = 0.95$ it is only about $0.34$, and at $p = 0.99$ about $0.077$. In plain terms, with a group size of 8, a prompt the model solves 95% of the time contributes a usable gradient on barely a third of the steps it appears in. That is the arithmetic justification for a solve-rate band of roughly $[0.2, 0.8]$: it is not a taste, it is where $1 - P_{\text{deg}}$ is large. Larger $K$ widens the usable band (more rollouts, more chances for disagreement) at linear cost in generation time, which is exactly the trade chapter 7.7 ablates.
 ```
 
 ### Solve-rate bands are a measurement, and they drift
@@ -157,22 +157,24 @@ class Manifest(BaseModel):
 
 ### Difficulty estimation against the served baseline
 
-Difficulty estimation is just a small eval: for each candidate prompt, ask the local server for $K$ completions, verifier-score each with the *same* scorer the trainer uses (imported from the chapter 7.3 reward module, so the definition of "solved" is identical on both sides), and record the empirical solve rate $\hat p = \frac{1}{K}\sum r_i$.
+Difficulty estimation is just a small eval: for each candidate prompt, ask the local server for $K$ completions, verifier-score each with the *same* thesis-suite verifier the trainer's reward is built on (`verify_correct` imported straight from `thesis_suite`, the chapter 3.9 package, so the definition of "solved" is identical on both sides), and record the empirical solve rate $\hat p = \frac{1}{K}\sum r_i$.
 
 ```python title="curriculum/difficulty.py"
 """Estimate per-prompt solve rate against the served baseline policy.
 
-Talks to the 2.6 vLLM substrate over the OpenAI API. The scorer is
-imported from the 7.3 reward module so 'solved' means exactly what it
-means to the trainer -- no second definition to drift.
+Talks to the 2.6 vLLM substrate over the OpenAI chat API (so the server
+applies the model's chat template). The verifier is imported from the
+thesis suite so 'solved' means exactly what it means to the trainer --
+no second definition to drift.
 """
 from __future__ import annotations
 
 import numpy as np
 from openai import OpenAI
 
-# The verifier from chapter 7.3, reused verbatim as the difficulty judge.
-from rewards import verify_correct  # (x_prompt, completion, gold) -> 0.0 | 1.0
+# The verifier from the thesis suite (chapter 3.9), the same 'solved'
+# definition the 7.3 reward core is built on.
+from thesis_suite import verify_correct  # (prompt, response, answer) -> bool
 
 
 def solve_rate(
@@ -186,15 +188,17 @@ def solve_rate(
     seed: int,
 ) -> float:
     """Empirical per-sample solve probability p_hat from k rollouts."""
-    resp = client.completions.create(
+    # Chat endpoint, not the legacy completions one: the served M0 is an
+    # instruction-tuned model, so the server must apply its chat template.
+    resp = client.chat.completions.create(
         model=model,
-        prompt=prompt,
+        messages=[{"role": "user", "content": prompt}],
         n=k,
         temperature=temperature,
         max_tokens=max_tokens,
         seed=seed,
     )
-    rewards = [verify_correct(prompt, c.text, gold) for c in resp.choices]
+    rewards = [verify_correct(prompt, c.message.content, gold) for c in resp.choices]
     return float(np.mean(rewards))
 
 
@@ -311,7 +315,7 @@ SOURCE_REVISION = "PIN_ME_to_a_commit_hash" # exact revision, not "main"
 SOURCE_SPLIT = "train"
 SOURCE_LICENSE = "record from the dataset card"
 
-POLICY_MODEL = "Qwen/Qwen2.5-3B-Instruct"   # the M0 you serve on 2.6
+POLICY_MODEL = "unsloth/Qwen3-4B"           # the M0 you serve on 2.6
 SERVED_ENDPOINT = "http://localhost:8000/v1"
 K_ROLLOUTS = 6
 TEMPERATURE = 0.8
@@ -401,7 +405,7 @@ Run it with the baseline served on the 2.6 substrate:
 
 ```bash title="shell: build the prompt set (baseline must be serving)"
 # in one terminal: serve M0 exactly as chapter 2.6 specifies
-# vllm serve Qwen/Qwen2.5-3B-Instruct --port 8000 ...
+# vllm serve unsloth/Qwen3-4B --port 8000 ...
 uv run python build_prompt_set.py
 ```
 
