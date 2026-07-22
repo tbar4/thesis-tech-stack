@@ -119,6 +119,10 @@ def unit_test(t: str) -> bool:
 
 def classify(t: str) -> tuple[int, str]:
     v, c, u = verb_test(t), counterfactual_test(t), unit_test(t)
+    # NOTE: c (counterfactual_test) is a diagnostic feature, not a decision
+    # input. It is defined as (comparative AND verb_test), so it can never flip
+    # a rung that v has not already set; the rung is decided by u and v alone.
+    # I report it to flag "compared-to-otherwise" phrasing, not to classify.
     if u:
         return 3, "counterfactual: 'would have'/'this run'/'without the' names a specific unhappened world"
     if v or c:

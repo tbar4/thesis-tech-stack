@@ -2,7 +2,7 @@
 
 **Goal.** Take the three graph atoms from chapter 4.2 and use them to name, precisely, the ways an eval pipeline lies: confounding, mediation dressed as confounding, survivorship, and collider bias from filtering. Then reanalyze the judge-calibration data from chapter 3.6 through an explicit DAG.
 
-**Covers.** Judge identity as a confounder of model comparisons; verbosity and position as mediators versus confounders; leaderboard survivorship; collider bias when filtering runs by "completed successfully."
+**Covers.** Judge identity as a confounder of model comparisons; verbosity as a mediator and position as a nuisance channel made non-ignorable by non-random assignment; leaderboard survivorship; collider bias when filtering runs by "completed successfully."
 
 ## Theory
 
@@ -20,9 +20,9 @@ $$
 \text{Model} \leftarrow (\text{schedule}) \rightarrow \text{Judge} \rightarrow \text{Score}. \tag{3.1}
 $$
 
-More commonly the confounder is the judge directly: I use a single judge but its behavior drifts, or I use its own family of models to grade its own family, injecting self-preference. In every version the fix is the same as any fork: hold the confounder fixed. Use one frozen judge, pinned to a revision and a decoding seed, across every model in the comparison, so that the judge cannot vary with the model. When I cannot freeze it (an API judge that silently updates), the confounder is unmeasured and I am in the territory of chapter 4.5's sensitivity analysis. Judge identity is the confounder I worry about most because it is the easiest to introduce by accident and the hardest to detect after the fact.
+Strictly, the confounder is that common cause, the schedule or my own inconsistency, not the judge itself; the judge sits on the backdoor path $\text{Model} \leftarrow \text{schedule} \rightarrow \text{Judge} \rightarrow \text{Score}$, and freezing the judge to one revision blocks that path by making the $\text{Judge} \rightarrow \text{Score}$ contribution identical across models. More commonly the entanglement runs through the judge's own behavior: I use a single judge but its behavior drifts, or I use its own family of models to grade its own family, injecting self-preference. In every version the fix is the same as any fork: block the backdoor by holding the shared cause fixed. Use one frozen judge, pinned to a revision and a decoding seed, across every model in the comparison, so that the judge cannot vary with the model. When I cannot freeze it (an API judge that silently updates), the confounder is unmeasured and I am in the territory of chapter 4.5's sensitivity analysis. Judge identity is the confounder I worry about most because it is the easiest to introduce by accident and the hardest to detect after the fact.
 
-### Verbosity and position: mediator or confounder, and it matters
+### Verbosity and position: mediator or nuisance channel, and it matters
 
 Response length is the variable that trips everyone, because whether it is a confounder or a mediator depends entirely on the causal question, and the two roles demand opposite handling.
 
@@ -34,7 +34,7 @@ $$
 
 If my question is "is $B$ actually better," the length path is a nuisance channel: $B$ might score higher purely because it rambles more, not because it reasons better. I might want to block it (condition on length) to isolate the quality path. But if my question is "does $B$ produce higher-rated outputs in deployment, by whatever means," then length is part of the effect and I must not block it, because conditioning on a mediator throws away a real part of the causal effect I asked about. Same variable, opposite treatment, and the graph plus the question is the only thing that tells them apart.
 
-Case two: position bias in pairwise judging. When a judge scores $A$ versus $B$ and I always present $A$ first, presentation order is a **confounder** of the pairwise comparison, because order affects the score and is correlated with which model I labeled "first." The fix is not conditioning; it is randomization. Swap positions across items so that order is independent of model, which severs the confounding edge by design. Position bias is a confounder you defeat with a coin flip, verbosity is a mediator you defeat (or preserve) with a decision about your estimand, and calling them both "judge bias" and reaching for the same fix is how people get it wrong.
+Case two: position bias in pairwise judging. Presentation order is a nuisance cause of the score in its own right (a judge favors whichever answer it reads first), and on its own it confounds nothing, because a randomized order is independent of which model I am testing. What makes it dangerous is non-random assignment. When a judge scores $A$ versus $B$ and I always present $A$ first, order is fixed by which model I labeled "first," so the structure is $\text{Model} \to \text{position} \to \text{Score}$: a **spurious channel** that leaks position bias into the comparison as if it were quality. The fix is not conditioning; it is randomization. Swap positions across items so that order is independent of model, which severs the $\text{Model} \to \text{position}$ edge by design and kills the leak. Position bias is a nuisance channel you defeat with a coin flip, verbosity is a mediator you defeat (or preserve) with a decision about your estimand, and calling them both "judge bias" and reaching for the same fix is how people get it wrong.
 
 ### Leaderboard survivorship (selection on a descendant)
 
@@ -178,7 +178,7 @@ flowchart TD
 ```
 Mitigation: freeze ONE judge (pinned revision + seed) across every model.
 
-## Panel B. Verbosity is a mediator, position is a confounder
+## Panel B. Verbosity is a mediator, position is a nuisance channel
 
 ```mermaid
 flowchart TD
@@ -186,10 +186,12 @@ flowchart TD
     MOD --> QUAL[true quality]
     LEN --> SC[score]
     QUAL --> SC
-    POS[presentation position] --> SC
+    MOD -->|non-random assignment| POS[presentation position]
+    POS --> SC
 ```
 Mitigation: length -> decide the estimand (block to isolate quality, keep to
-measure deployed ratings). position -> randomize order so it cannot confound.
+measure deployed ratings). position -> randomize order so it is independent of
+the model, severing MOD -> POS so it cannot leak into the score.
 
 ## Panel C. 'completed successfully' is a collider
 
@@ -232,7 +234,7 @@ uv run labs/p4-03-confounding/reanalyze_judge_data.py
 
 The artifact is `labs/p4-03-confounding/eval_bias_dag_gallery.md`, a four-panel gallery where each bias gets its graph and its mitigation, ready to drop into the methodology chapter or a slide. The stdout is the numerical proof that the structures do what the graphs say.
 
-**What you should see.** Three numerical stories. The confounder panel prints two mean ratings by judge, and the `drifting_api` judge sits about 0.15 higher than `frozen_v1` for no reason but generosity, which is exactly why any model I happened to route to the generous judge would look unfairly good; restricting to the frozen judge gives a clean rating-versus-gold correlation. The mediator panel prints, for each fixed gold label, a clearly positive correlation between length and rating (near +0.4 to +0.5), which is verbosity bias visible even after I hold true correctness constant, the signature of a mediating path I have to decide about rather than ignore. The collider panel is the punchline: `corr(gold, length)` is essentially zero in the full population (I generated them independent) but turns visibly negative once I filter to `completed == 1`, because among survivors a long response had to be competent to complete. That sign flip, from zero to negative purely by filtering, is collider bias caught red-handed on the exact "drop the failed runs" move everyone makes. When I later run this against 3.6's real `judge_calibration.jsonl`, the numbers will differ (record them, with date and driver) but the three structures, if my graph is right, will show the same qualitative fingerprints.
+**What you should see.** Three numerical stories. The confounder panel prints two mean ratings by judge, and the `drifting_api` judge sits about 0.15 higher than `frozen_v1` for no reason but generosity, which is exactly why any model I happened to route to the generous judge would look unfairly good; restricting to the frozen judge gives a clean rating-versus-gold correlation. The mediator panel prints, for each fixed gold label, a clearly positive correlation between length and rating (near +0.4 to +0.5), which is verbosity bias visible even after I hold true correctness constant, the signature of a mediating path I have to decide about rather than ignore. The collider panel is the punchline: `corr(gold, length)` is essentially zero in the full population (I generated them independent) but turns visibly positive once I filter to `completed == 1`, because among survivors a long response had to be competent to complete (competence pushes completion up, length pushes it down, so among survivors the two rise together). That sign flip, from roughly zero to positive purely by filtering, is collider bias caught red-handed on the exact "drop the failed runs" move everyone makes. When I later run this against 3.6's real `judge_calibration.jsonl`, the numbers will differ (record them, with date and driver) but the three structures, if my graph is right, will show the same qualitative fingerprints.
 
 ```admonish substack-seed
 There is a one-line data-cleaning step in almost every eval notebook: drop the runs that crashed, keep the ones that finished, then analyze. It feels like hygiene. It is actually one of the most reliable ways to invent a finding that is not real. "Finished successfully" is caused by several things at once (how good the model is, how hard the item was, how long the answer ran), which makes it a collider, and filtering on a collider forges correlations among its causes. This post walks one synthetic-but-realistic judge dataset where competence and answer-length are provably independent, then shows that keeping only the completed runs makes them correlated, out of nothing. The moral is a rule you can enforce tomorrow: every filter is a causal choice, so score your failures instead of deleting them, and report completion as its own number.
