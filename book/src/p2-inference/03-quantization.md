@@ -2,6 +2,10 @@
 
 The last two chapters kept arriving at the same verdict: on 16GB, weight bytes are the tyrant. They set the decode ceiling (bandwidth over bytes-per-token) and they crowd out the KV cache. Quantization is the one lever that attacks both at once. Store weights in 4 bits instead of 16 and you read a quarter of the bytes per token (faster decode) and you free three quarters of the weight footprint (more KV, more concurrency). The catch is that you are throwing away information, and the entire craft is throwing it away where the model will not miss it. This chapter builds the error theory from scratch, then explains AWQ, GPTQ, FP8, and MXFP4 both conceptually and mathematically, and finishes by measuring the perplexity cost of two schemes on a real model.
 
+```admonish read-along
+**[AIE] Huyen, *AI Engineering*, chapter 9** surveys quantization as the industry ships it (weight-only versus activation quantization, and the serving formats that follow from each); this chapter supplies the error math the survey elides. Read the two in either order depending on whether you want the map or the territory first.
+```
+
 ## Theory
 
 ### Uniform quantization and its error

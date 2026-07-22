@@ -12,8 +12,8 @@ untracked — do not force copyrighted PDFs into the repo (note that GitHub's we
 | **[RLHF]** | Lambert, *RLHF: LLM Alignment and Post-Training* | `Reinforcement_Learning_from_Human_Feedba.pdf` |
 | **[BRM]** | Raschka, *Build a Reasoning Model (From Scratch)* | `Build_a_Reasoning_Model_(From_Scratch).pdf` |
 | **[BLLM]** | Raschka, *Build a Large Language Model (From Scratch)* | `Build_a_Large_Language_Model_(From_Scrat.pdf` |
-| **[MADL]** | Chaudhuri, *Math and Architectures of Deep Learning* | _pending — not yet added_ |
-| **[GAIA]** | Hurbans, *Grokking AI Algorithms* (2e) | _pending — not yet added_ |
+| **[MADL]** | Chaudhuri, *Math and Architectures of Deep Learning* | `Math_and_Architectures_of_Deep_Learning.pdf` |
+| **[GAIA]** | Hurbans, *Grokking AI Algorithms* (2e) | `Grokking_AI_Algorithms_Second_Edition.pdf` |
 | **[CAI]** | Ness, *Causal AI* | `Causal_AI.pdf` |
 | **[AIE]** | Huyen, *AI Engineering* | `AI Engineering - Chip Huyen.epub` |
 

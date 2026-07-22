@@ -4,6 +4,10 @@ Every token a reasoning model emits is paid for twice: once when it reads the pr
 
 This chapter builds the roofline model for the baseline machine (MSI Aegis R2, RTX 5080 16GB, Blackwell, GDDR7 at ~960 GB/s) and derives a hard ceiling on decode throughput that no amount of clever code can beat. Then the lab measures both phases and plots them against that ceiling so I can see, in one figure, how much of the theoretical roof my stack actually reaches.
 
+```admonish read-along
+**[AIE] Huyen, *AI Engineering*, chapter 9** frames the same split from the service side: which optimization levers attack compute-bound prefill versus bandwidth-bound decode, and how the latency metrics inference is bought and sold by (time to first token, time per output token) map onto the two phases. Read it as the vendor-agnostic survey; this chapter derives the hard ceiling for one specific card.
+```
+
 ## Theory
 
 ### The two phases of autoregressive generation

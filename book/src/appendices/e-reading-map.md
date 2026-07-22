@@ -20,7 +20,7 @@ distributed with the book.
 | **[MADL]** | Chaudhuri, *Math and Architectures of Deep Learning* | Part I math spine (ch. 2–9) |
 | **[GAIA]** | Hurbans, *Grokking AI Algorithms* (2e) | Pre-reading only; RL intuition (ch. 10) |
 | **[CAI]** | Ness, *Causal AI* | Part IV |
-| **[AIE]** | Huyen, *AI Engineering* | Breadth complement: Parts II–III, VI, and 7.5 (ch. 3–4, 7–9) |
+| **[AIE]** | Huyen, *AI Engineering* | Breadth complement: Parts I–III, VI, and 7.5 (ch. 2–4, 7–10) |
 
 Three of these earn special notes. **[GAIA]** is deliberately light-duty: it
 overlaps the other texts at lower depth, so it serves as optional pre-reading
@@ -52,16 +52,18 @@ parts they serve, in roughly the authoring-wave order (spec §8).
 6. **With Part VI (post-training):** **[RLHF]** ch. 1–8 is the throughline;
    **[BRM]** ch. 4–5 and ch. 8 cover reasoning-time scaling and distillation.
 7. **Anytime, in parallel (optional):** **[AIE]** reads well cover to cover as
-   the production-context companion; its evaluation chapters (ch. 3–4) pair
-   with Part III, finetuning (ch. 7) with Part VI, dataset engineering (ch. 8)
-   with 3.8/7.5, and inference optimization (ch. 9) with Part II.
+   the production-context companion; its foundation-model survey (ch. 2) pairs
+   with 1.7 and 6.1, evaluation chapters (ch. 3–4) with Part III, finetuning
+   (ch. 7) with Part VI, dataset engineering (ch. 8) with 3.8/7.5, inference
+   optimization (ch. 9) with Part II, and its architecture chapter (ch. 10)
+   with 3.10.
 
 ## Per-chapter pairings
 
 Every entry below mirrors the `read-along` admonition in the named chapter.
-Chapters with no reference pairing are hands-on or self-contained (Part 0, most
+Chapters with no reference pairing are hands-on or self-contained (Part 0, parts
 of Part II, and Part IX lean on tooling and the book's own artifacts rather than
-outside reading; 2.6 picks up an [AIE] pairing). Part VII does carry read-along pointers, because the loop
+outside reading; 2.1, 2.3, and 2.6 pick up [AIE] pairings). Part VII does carry read-along pointers, because the loop
 chapters lean on [RLHF], [S&B], and [MADL] for the algorithm and kernel math
 even as the labs are hands-on; its per-chapter rows are below.
 
@@ -75,13 +77,15 @@ even as the labs are hands-on; its per-chapter rows are below.
 | 1.4 The transformer block | [BLLM] ch. 4; [BRM] App. C |
 | 1.5 The language-modeling objective | [BLLM] ch. 5 |
 | 1.6 Where memory goes: training vs inference | [MADL] ch. 8–9 |
-| 1.7 Sampling and decoding | [BRM] ch. 2 |
+| 1.7 Sampling and decoding | [BRM] ch. 2; [AIE] ch. 2 (sampling) |
 | 1.8 Anatomy of the open-model zoo | [BRM] ch. 1, App. C |
 
 ### Part II — Inference Engineering
 
 | Chapter | Read-along |
 |---|---|
+| 2.1 Prefill, decode, and the roofline | [AIE] ch. 9 |
+| 2.3 Quantization: theory and formats | [AIE] ch. 9 |
 | 2.6 Benchmarking without lying to yourself | [AIE] ch. 9 |
 
 ### Part III — Evaluation Engineering
@@ -89,10 +93,11 @@ even as the labs are hands-on; its per-chapter rows are below.
 | Chapter | Read-along |
 |---|---|
 | 3.1 What an eval is | [BRM] ch. 3; [RLHF] Part 3; [AIE] ch. 3–4 |
-| 3.2 Metrics and their math | [BRM] ch. 3; [RLHF] Part 3 |
+| 3.2 Metrics and their math | [BRM] ch. 3; [RLHF] Part 3; [AIE] ch. 3 |
 | 3.6 Judge models | [RLHF]; [AIE] ch. 3 (AI-as-judge) |
 | 3.7 The statistics of evals | [CAI] |
 | 3.8 Contamination and dataset hygiene | [BRM]; [AIE] ch. 8 |
+| 3.10 Eval ops | [RLHF]; [AIE] ch. 10 |
 
 ### Part IV — Causal Inference for Evaluation
 
@@ -124,9 +129,9 @@ Part-wide spine: **[CAI] Parts 1–3.**
 
 | Chapter | Read-along |
 |---|---|
-| 6.1 The post-training landscape | [RLHF] ch. 1–3 |
+| 6.1 The post-training landscape | [RLHF] ch. 1–3; [AIE] ch. 2 (post-training) |
 | 6.2 SFT and instruction tuning | [RLHF] ch. 4; [BLLM] ch. 7; [AIE] ch. 7 |
-| 6.3 LoRA and QLoRA, mathematically | [RLHF] ch. 4; Part II ch. 3 |
+| 6.3 LoRA and QLoRA, mathematically | [RLHF] ch. 4; Part II ch. 3; [AIE] ch. 7 |
 | 6.4 Reward models and preference data | [RLHF] ch. 5 |
 | 6.5 Direct alignment: DPO and family | [RLHF] ch. 8 |
 | 6.6 Reasoning models and inference-time scaling | [BRM] ch. 4–5; [RLHF] ch. 7 |

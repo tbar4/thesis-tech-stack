@@ -16,7 +16,7 @@ order per the authoring workflow in the spec.
 
 ```
 book/            # the mdbook (book.toml, src/, theme/)
-references/      # local copies of the seven reference books (gitignored)
+references/      # local copies of the eight reference books (gitignored)
 .github/         # CI that builds the book with linkcheck
 ```
 
