@@ -31,6 +31,32 @@ includes the per-group scales, so it is not a clean power of two.
 
 $$W_{\text{weights}} = N_{\text{params}} \times \beta_{\text{dtype}}\ \text{byte}$$
 
+```admonish info title="Reading the dtypes"
+A one-line gloss on the names in the column below, so the table reads without a
+detour:
+
+- **FP32 / FP16 / BF16 / FP8** are floating-point: a sign bit, an exponent (which
+  buys range), and a mantissa (which buys precision); fewer total bits buy memory.
+  BF16 keeps FP32's full exponent, its whole range, at half the bytes, which is why
+  mixed-precision training lives in it.
+- **INT8 / INT4** are integer quantization: map weights onto a small grid of evenly
+  spaced integers with a stored scale factor.
+- **NF4** ("NormalFloat4") is the 4-bit format QLoRA freezes weights in; its 16
+  levels sit at the quantiles of a normal distribution (weights are roughly
+  Gaussian), so it spends precision where the mass is. ~4.13 effective bits once the
+  block scale is counted.
+- **MXFP4** ("microscaling FP4") is the 4-bit format gpt-oss ships in: 4-bit floats
+  sharing one 8-bit (E8M0) scale per small block.
+- **AWQ / GPTQ** are not storage dtypes but post-training quantization *methods*:
+  they decide *how* to round a trained model's weights down to ~4 bits (AWQ protects
+  activation-salient channels; GPTQ uses second-order / Hessian information), and the
+  result is stored as INT4-with-group-scales.
+
+Chapter 1.1 (*Tensors, autograd, and number formats*) walks the float formats bit by
+bit; chapter 2.3 (*Quantization: theory and formats*) derives the methods. Appendix D
+glosses the acronyms.
+```
+
 | dtype | layout (s, e, m) | bits/param | $\beta$ (byte/param) | notes |
 |---|---|---|---|---|
 | FP32 | 1, 8, 23 | 32 | 4.0 | master weights, optimizer state |
@@ -63,7 +89,11 @@ Parameter counts are the published totals; verify against each model's
 | Qwen3-8B | $8.2\times10^{9}$ | FP8 | 1.0 | $8.2\times10^{9}$ | 7.6 |
 | Qwen3-14B | $1.48\times10^{10}$ | BF16 | 2.0 | $2.96\times10^{10}$ | 27.6 (does not fit) |
 | Qwen3-14B | $1.48\times10^{10}$ | AWQ 4-bit | 0.56 | $8.3\times10^{9}$ | 7.7 |
-| gpt-oss-20b | $2.1\times10^{10}$ total | MXFP4 | 0.53 | $\approx1.1\times10^{10}$ | ~10.4 |
+| gpt-oss-20b | $2.1\times10^{10}$ total | MXFP4 | 0.53 | $\approx1.1\times10^{10}$ | ~10.4* |
+
+*The ~10.4 GiB gpt-oss figure is the naive MXFP4-only estimate (all params at
+0.53 byte). The shipped checkpoint is ~12-13 GiB because attention, embeddings,
+and the router are kept at higher precision; only the expert MLPs are MXFP4.
 
 ```admonish vram-budget title="What actually fits, and why the repertoire is what it is"
 The card is 16 GiB. vLLM claims a fraction via `--gpu-memory-utilization`; the
@@ -74,11 +104,15 @@ rest is weights + activation/CUDA-graph overhead (~1 GiB, measure it) + KV pool.
   the honest reason the repertoire also carries a 4-bit 14B.
 - **Qwen3-14B AWQ** at 7.7 GiB leaves ~5.9 GiB of KV pool at `util=0.92`. This is
   the workhorse: quantizing the weights buys concurrency and context.
-- **gpt-oss-20b MXFP4** at ~10.4 GiB fits with a modest KV pool; being an MoE, its
-  *decode* cost is set by active experts, not total params (see below).
+- **gpt-oss-20b MXFP4** at ~10.4 GiB is the *naive* figure: it MXFP4-counts all
+  $2.1\times10^{10}$ params. The real checkpoint is larger, ~12-13 GiB, because
+  attention, embeddings, and the router stay in higher precision and only the
+  expert MLPs are MXFP4. So the KV pool it leaves is tighter than 10.4 suggests;
+  confirm the on-disk safetensors size before promising context. Being an MoE, its
+  *decode* cost is still set by active experts, not total params (see below).
 
-The ~1 GiB overhead and the real weight-file sizes are the placeholders to pin on
-the machine: record value, date, driver.
+The ~1 GiB overhead and the real weight-file sizes (gpt-oss especially) are the
+placeholders to pin on the machine: record value, date, driver.
 ```
 
 ## Per-token KV-cache bytes
@@ -219,26 +253,35 @@ second copy of weights; the extra cost is KV and activations.
 
 **Generation KV.** $G$ completions per prompt, each up to $S_{\text{gen}}$ tokens
 plus a prompt of $S_{\text{prompt}}$, at the 4B's $B_{\text{tok}} = 144\
-\text{KiB}$:
+\text{KiB}$. I use the actual *GRPO on 16GB* config ($S_{\text{prompt}}=256$,
+$S_{\text{gen}}=768$, so $T=1024$) so this line matches that chapter's budget:
 
 $$M_{\text{KV,gen}} = G \times (S_{\text{prompt}} + S_{\text{gen}}) \times B_{\text{tok}}$$
 
-For $G=8$, $S_{\text{prompt}}=512$, $S_{\text{gen}}=1024$:
-$$8 \times 1536 \times 147{,}456 = 1.81\times10^{9}\ \text{byte} = 1.69\ \text{GiB}$$
+For $G=8$, $S_{\text{prompt}}=256$, $S_{\text{gen}}=768$ ($T=1024$):
+$$8 \times 1024 \times 147{,}456 = 1.21\times10^{9}\ \text{byte} = 1.13\ \text{GiB}$$
+
+This is the *live* KV floor; vLLM claims a larger slab (~2.5 GiB) sized by
+`gpu_memory_utilization` and pages completions into it. The table below counts
+the slab, and the 8-bit AdamW optimizer (Unsloth's default), so its total
+reconciles with *GRPO on 16GB*'s ~6.9 GiB rather than the FP32-AdamW QLoRA table
+above.
 
 | Account | source | GiB |
 |---|---|---|
-| base NF4 (frozen, shared serve+train) | QLoRA table | 1.92 |
-| adapter + grad + AdamW + master | QLoRA table | ~0.5 |
-| generation KV ($G{=}8$, 1536 tok) | formula above | 1.69 |
+| CUDA context + allocator + Triton cache | measure (per 7.2) | ~0.8 |
+| base NF4 (frozen, shared serve+train) | QLoRA table | 1.93 |
+| adapter + grad + 8-bit AdamW | QLoRA table (8-bit opt) | ~0.18 |
+| generation KV, vLLM slab ($G{=}8$, 1024 tok; live floor 1.13) | formula above | ~2.5 |
 | reference-policy KL (recompute, no weight copy) | activations | measured |
-| training activations (ckpt) | measured | 2-5 |
-| **total (static + KV)** | | **~4.1 + activations** |
+| training activations (ckpt) | measured | ~1.5 |
+| **total** | | **~6.9** |
 
 ```admonish vram-budget title="GRPO levers on 16 GiB, in order of bluntness"
 When GRPO OOMs, pull these in order (each is a term in the budget above):
 
-1. **Group size $G$** — linear in generation KV. $G{:}8\to4$ halves the 1.69 GiB.
+1. **Group size $G$** — linear in generation KV. $G{:}8\to4$ halves the 1.13 GiB
+   live KV (and the slab that pages it).
 2. **Generation length $S_{\text{gen}}$** — linear in generation KV *and* in
    rollout time. Cap it to what the reward actually needs.
 3. **KV dtype FP8** — halves $B_{\text{tok}}$, halving generation KV.
@@ -249,9 +292,10 @@ When GRPO OOMs, pull these in order (each is a term in the budget above):
 6. **Policy size** — the repertoire caps training policies at $\le 4$B for exactly
    this reason; a 1.7B policy roughly halves base + activations.
 
-The static + KV floor is ~4.1 GiB, leaving ~10-11 GiB for activations at
-`util=0.9`. Activations and the reference-KL forward are the measured quantities;
-record them with date and driver, and reconcile against `nvidia-smi` peak.
+The full budget lands at ~6.9 GiB (mirroring *GRPO on 16GB* line for line),
+leaving ~9 GiB of headroom at `util=0.9`. Activations and the reference-KL
+forward are the measured quantities; record them with date and driver, and
+reconcile against `nvidia-smi` peak.
 ```
 
 ## Regenerating these tables
