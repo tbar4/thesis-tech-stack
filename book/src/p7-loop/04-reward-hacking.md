@@ -86,7 +86,7 @@ canonicalizes ONLY the <answer> tag and compares symbolically. The gap between
 them is the reward-hacking meter.
 """
 import re
-from thesis_suite.scorers import verify_sda_answer  # strict, canonicalizing
+from thesis_suite import verify_sda_answer  # strict, canonicalizing
 
 ANSWER_RE = re.compile(r"<answer>(.*?)</answer>", re.DOTALL)
 
@@ -115,6 +115,7 @@ from collections import Counter
 
 import mlflow
 from transformers import TrainerCallback
+from vllm import SamplingParams
 
 from verifiers import lax_correctness, strict_correctness
 
@@ -139,8 +140,9 @@ class HackMonitor(TrainerCallback):
         if state.global_step == 0 or state.global_step % self.every:
             return
         # Sample the CURRENT policy via the in-process vLLM engine.
+        sampling_params = SamplingParams(temperature=1.0, max_tokens=self.max_new)
         outs = self.model.fast_generate(
-            self.prompts, max_new_tokens=self.max_new, temperature=1.0)
+            self.prompts, sampling_params=sampling_params)
         texts = [o.outputs[0].text if hasattr(o, "outputs") else str(o)
                  for o in outs]
         lax = [lax_correctness(t, tg) for t, tg in zip(texts, self.targets)]
@@ -181,7 +183,7 @@ def lax_reward(prompts, completions, target, **kwargs):
 def main() -> None:
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=MODEL, max_seq_length=2048, load_in_4bit=True,
-        fast_inference=True, max_lora_rank=LORA_R, gpu_memory_utilization=0.55)
+        fast_inference=True, max_lora_rank=LORA_R, gpu_memory_utilization=0.16)
     model = FastLanguageModel.get_peft_model(
         model, r=LORA_R,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
@@ -237,17 +239,17 @@ panels:
     metrics: ["heldout/hack_gap"]
     alarm: {metric: "heldout/hack_gap", op: ">", threshold: 0.15}
   - title: "KL to reference"
-    metrics: ["objective/kl"]
-    alarm: {metric: "objective/kl", op: ">", threshold: 10.0}
+    metrics: ["kl"]                          # TRL GRPOTrainer logs this as `kl`
+    alarm: {metric: "kl", op: ">", threshold: 10.0}
   - title: "Entropy / diversity proxy"
     metrics: ["heldout/diversity"]
     alarm: {metric: "heldout/diversity", op: "<", threshold: 0.35}
   - title: "Completion length"
     metrics: ["heldout/mean_len_tokens", "completions/mean_length"]
     note: "Hard drift in either direction with flat correctness = length gaming."
-  - title: "Format vs correctness"
-    metrics: ["rewards/format_reward/mean", "heldout/strict_reward"]
-    note: "Format saturated + correctness flat = format gaming."
+  # (No format-vs-correctness panel here: this lab trains with reward_funcs=[lax_reward]
+  #  only, so `rewards/format_reward/mean` is never logged. Add that panel back when the
+  #  run carries a separate format_reward, as the 7.3 run does.)
 ```
 
 ```markdown title="labs/grpo-hack/stop_criteria.md"
@@ -258,7 +260,7 @@ maximum held-out (strict) reward, not the last checkpoint.
 
 1. Held-out reward peak: strict held-out reward has declined for 3 consecutive
    monitor evaluations while training reward kept rising. -> stop, keep the peak.
-2. KL ceiling: objective/kl > 10.0 (calibrate per run). -> stop or raise beta.
+2. KL ceiling: kl > 10.0 (calibrate per run). -> stop or raise beta.
 3. Entropy floor: diversity proxy < 0.35. -> stop; policy has mode-collapsed.
 4. Verifier-gap alarm: heldout/hack_gap > 0.15, especially on honeypots.
    -> stop and inspect completions; a verifier exploit is underway.
@@ -271,7 +273,7 @@ entropy, and the honeypot gap. The run stops when they stop agreeing.
 ```
 
 ```admonish gotcha title="`beta=0` removes your KL signal along with your KL leash"
-Some strong GRPO recipes set `beta=0`, relying on the PPO clip alone to limit per-step movement. That can train well, but it has a monitoring cost: with no KL term in the objective, TRL may not log `objective/kl`, and you lose one of your three over-optimization signals. If you run `beta=0`, add KL logging back in the monitor callback (compute reference logprobs with the adapter disabled, as in chapter 7.1) so the KL panel is not silently empty. Losing the leash is a choice; losing the gauge should not be.
+Some strong GRPO recipes set `beta=0`, relying on the PPO clip alone to limit per-step movement. That can train well, but it has a monitoring cost: with no KL term in the objective, TRL may not log `kl`, and you lose one of your three over-optimization signals. If you run `beta=0`, add KL logging back in the monitor callback (compute reference logprobs with the adapter disabled, as in chapter 7.1) so the KL panel is not silently empty. Losing the leash is a choice; losing the gauge should not be.
 ```
 
 ### What you should see

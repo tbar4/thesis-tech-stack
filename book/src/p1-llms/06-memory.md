@@ -34,7 +34,7 @@ Now the accounting. Consider a full fine-tune with mixed-precision AdamW, the st
 
 $$\underbrace{4}_{\text{fp32 master}} + \underbrace{2}_{\text{bf16 weight}} + \underbrace{2}_{\text{grad}} + \underbrace{4}_{\text{Adam } m} + \underbrace{4}_{\text{Adam } v} = 16 \text{ bytes per parameter}. \tag{6.4}$$
 
-AdamW is "2 extra copies" in the sense that $m$ and $v$ are each a full parameter-sized FP32 tensor on top of the weights and gradient; those two moments alone are 8 of the 16 bytes. So the fixed, activation-independent cost of full-fine-tuning a $P$-parameter model is $16P$ bytes, versus $2P$ bytes to merely run it in BF16. That factor of eight, before activations, is most of the "4-16x more" in the chapter title. On top of it sit the stored activations from equation (6.3), whose size scales with batch size, sequence length, and depth:
+AdamW is "2 extra copies" in the sense that $m$ and $v$ are each a full parameter-sized FP32 tensor on top of the weights and gradient; those two moments alone are 8 of the 16 bytes. So the fixed, activation-independent cost of full-fine-tuning a $P$-parameter model is $16P$ bytes, versus $2P$ bytes to merely run it in BF16. That factor of eight, before activations, is most of the "8-16x more" this chapter opened with. On top of it sit the stored activations from equation (6.3), whose size scales with batch size, sequence length, and depth:
 
 $$M_{\text{train}} = \underbrace{16 P}_{\text{weights, grads, Adam } m,v} + \underbrace{A \cdot B \cdot L \cdot N}_{\text{stored activations}} + (\text{CUDA context}), \tag{6.5}$$
 

@@ -79,6 +79,7 @@ The artifacts are two Dockerfiles, a `.dockerignore`, and a parity smoke-test sc
 
 ```text title="repo layout (relevant parts)"
 thesis-tech-stack/
+  .dockerignore           # MUST live at the build-context root (context is `.`)
   serve/                  # vLLM serving project (has its own uv.lock)
     pyproject.toml
     uv.lock
@@ -90,7 +91,6 @@ thesis-tech-stack/
   docker/
     serve.Dockerfile
     train.Dockerfile
-    .dockerignore
     parity_check.py
     build.sh
 ```
@@ -206,9 +206,9 @@ CMD ["--help"]
 
 ### The dockerignore
 
-Keep the build context tiny and, more importantly, keep weights, datasets, and MLflow runs out of the image. This is the first line of the open-data boundary: things that could carry non-open data never enter the build context.
+Keep the build context tiny and, more importantly, keep weights, datasets, and MLflow runs out of the image. This is the first line of the open-data boundary: things that could carry non-open data never enter the build context. Docker only reads `.dockerignore` from the root of the build context, and `build.sh` builds with the context set to the repo root (the trailing `.` in each `docker build`), so this file lives at the repo root, not inside `docker/`. Put it anywhere else and Docker silently ignores it, and the weights, data, mlruns, and `.venv` excludes never apply.
 
-```text title="docker/.dockerignore"
+```text title=".dockerignore"
 **/.venv
 **/__pycache__
 **/*.pyc
@@ -304,27 +304,34 @@ echo "Building serve:${TAG} and train:${TAG}"
 docker build -f docker/serve.Dockerfile -t thesis-serve:"${TAG}" .
 docker build -f docker/train.Dockerfile -t thesis-train:"${TAG}" .
 
+# --entrypoint python OVERRIDES each image's ENTRYPOINT (vllm serve /
+# python -m train.run); without it the args just append and the parity
+# script never runs. Redirect stdout (pure JSON) into its own clean file.
 echo "Parity check (serve image):"
-docker run --rm --gpus all -v "$(pwd)/docker":/chk thesis-serve:"${TAG}" \
-    python /chk/parity_check.py
+docker run --rm --gpus all --entrypoint python \
+    -v "$(pwd)/docker":/chk thesis-serve:"${TAG}" \
+    /chk/parity_check.py > docker/parity_serve.json
 
 echo "Parity check (train image):"
-docker run --rm --gpus all -v "$(pwd)/docker":/chk thesis-train:"${TAG}" \
-    python /chk/parity_check.py
+docker run --rm --gpus all --entrypoint python \
+    -v "$(pwd)/docker":/chk thesis-train:"${TAG}" \
+    /chk/parity_check.py > docker/parity_train.json
 ```
 
-Build and run it locally:
+Before the first build, resolve the base digest by hand and paste it over `REPLACE_WITH_RESOLVED_DIGEST` in *both* Dockerfiles (run `docker buildx imagetools inspect nvidia/cuda:12.8.0-runtime-ubuntu24.04` for the serve base and the `-devel` variant for train). `build.sh` does not resolve the digest for you, and with the placeholder still in place the build fails immediately on an unresolvable base. Then build and run it locally:
 
 ```bash title="shell: on the baseline 5080"
 chmod +x docker/build.sh
-TAG=local ./docker/build.sh | tee docker/parity_local.json
+TAG=local ./docker/build.sh
+# build.sh writes two clean JSON files, docker/parity_serve.json and
+# docker/parity_train.json, each a single JSON object ready for json.load.
 ```
 
 ### What you should see
 
 Two images build (`thesis-serve:local` and `thesis-train:local`), and each parity check prints a JSON block. On the baseline machine the interesting lines read something like `"device_name": "NVIDIA GeForce RTX 5080"`, `"device_capability": "12.0"`, an `"arch_list"` that **includes** both `sm_90` and `sm_120`, and `"matmul_ok": true`. The `"software_fingerprint"` is a short hash of the Python/torch/arch fields only, so it is deliberately blind to which GPU ran it.
 
-The point of the exercise is the *next* run, not this one. When I bring the same `thesis-train` image up on the rented H100 in the next chapter and run the identical `parity_check.py`, the `device_name` flips to `"NVIDIA H100"` and the capability to `"9.0"`, and the driver version reads whatever Lambda ships (record it: measured on the rented H100, with date and driver). But the `software_fingerprint` must be **byte-identical** to the one I just wrote to `docker/parity_local.json`. If it is, the image did its job: I have changed $H$ and only $H$. If it differs, I stop and rebuild before spending another rented minute, because I have lost the one guarantee that makes a burst result trustworthy. Save `parity_local.json` next to the Dockerfiles; it is the reference the rented box gets compared against.
+The point of the exercise is the *next* run, not this one. When I bring the same `thesis-train` image up on the rented H100 in the next chapter and run the identical `parity_check.py`, the `device_name` flips to `"NVIDIA H100"` and the capability to `"9.0"`, and the driver version reads whatever Lambda ships (record it: measured on the rented H100, with date and driver). But the `software_fingerprint` must be **byte-identical** to the one I just wrote to `docker/parity_train.json` (the train image is the one I carry to the H100). If it is, the image did its job: I have changed $H$ and only $H$. If it differs, I stop and rebuild before spending another rented minute, because I have lost the one guarantee that makes a burst result trustworthy. Keep `docker/parity_serve.json` and `docker/parity_train.json` next to the Dockerfiles; the one matching the image I burst is the reference the rented box gets compared against.
 
 ```mermaid
 flowchart LR

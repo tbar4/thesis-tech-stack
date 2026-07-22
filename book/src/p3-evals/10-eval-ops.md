@@ -179,7 +179,7 @@ from evalops.ops import record_generation, record_scoring, promote
 # Pretend these came from a served model over the frozen suite (Ch 3.9).
 GENERATIONS = [
     {"id": "sda-0002", "response": "Filtering... the count is 2."},
-    {"id": "sda-0004", "response": "Elements in A not in B: 1,3"},   # no space
+    {"id": "sda-0004", "response": "1,3"},   # no space: v1 exact-match fails, v2 set-check passes
 ]
 ITEMS = {
     "sda-0002": {"verifier": "numeric", "target": "2"},

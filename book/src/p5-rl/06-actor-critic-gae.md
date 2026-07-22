@@ -126,7 +126,7 @@ uv add numpy matplotlib
 """Visualize the GAE(lambda) bias-variance tradeoff on a known-answer MDP.
 
 A short linear-chain MDP with deterministic rewards gives a closed-form true
-advantage. We corrupt the critic with a fixed error, then measure how GAE's
+advantage. We corrupt the critic with a state-dependent error, then measure how GAE's
 bias (systematic offset from the true advantage) and variance (spread across
 noisy reward rollouts) move as lambda sweeps 0 -> 1.
 """
@@ -145,7 +145,7 @@ GAMMA = 0.99
 T = 20                 # steps per episode
 N_EPISODES = 4000      # rollouts to estimate variance
 REWARD_NOISE = 1.0     # std of per-step reward noise
-CRITIC_BIAS = 0.5      # systematic error we bake into V_phi
+CRITIC_ERR = 0.5       # amplitude of the state-dependent error in V_phi
 
 rng = np.random.default_rng(0)
 
@@ -168,7 +168,18 @@ def gae(deltas, lam):
 def main():
     mean_rewards = np.linspace(1.0, 0.2, T)      # deterministic reward means
     V_true = true_values(mean_rewards)
-    V_phi = V_true + CRITIC_BIAS                  # a critic that is wrong by +0.5
+    # A *state-dependent* critic error, not a uniform offset. It is calibrated
+    # at the two anchored states -- the start s_0 (every rollout begins there, so
+    # it gets the most training signal) and the terminal s_T (value known to be
+    # 0) -- and wrong by +CRITIC_ERR everywhere in between. A uniform offset
+    # would cancel in every TD residual yet survive as the lone baseline term at
+    # the Monte-Carlo limit, making |bias| *grow* with lambda; pinning s_0 (and
+    # s_T) to the truth is what makes the MC estimate (lambda=1) unbiased while
+    # bootstrap (lambda=0) still leans on the wrong interior values.
+    err = np.full(T + 1, CRITIC_ERR)
+    err[0] = 0.0
+    err[T] = 0.0
+    V_phi = V_true + err                          # critic wrong in the interior
 
     # True advantage at t=0 for the greedy step: A = Q - V. With deterministic
     # dynamics and this policy, the true A_0 is 0 in expectation (the baseline
@@ -228,7 +239,7 @@ uv run python gae_bias_variance.py
 ```
 
 ```admonish gotcha
-The bias in this toy comes entirely from `CRITIC_BIAS`, the deliberate error I baked into $V_\phi$. That is the honest picture: GAE's bias is *inherited from the critic*, so at $\lambda = 0$ (pure bootstrap) the estimate leans hardest on the wrong critic and shows the most bias, while at $\lambda = 1$ (pure Monte Carlo) the critic's error washes out of the advantage almost entirely because the value terms telescope away, leaving only the real (noisy) rewards. If you set `CRITIC_BIAS = 0`, the |bias| curve flattens to zero and only the variance curve moves, which is the clean way to confirm that $\lambda$ trades variance for a bias you only pay when your critic is wrong. In real training the critic is always at least a little wrong, especially early, which is why $\lambda = 1$ is rarely used despite being unbiased.
+The bias in this toy comes entirely from `CRITIC_ERR`, the deliberate state-dependent error I baked into $V_\phi$. That is the honest picture: GAE's bias is *inherited from the critic*, so at $\lambda = 0$ (pure bootstrap) the estimate leans hardest on the wrong interior values and shows the most bias, while at $\lambda = 1$ (pure Monte Carlo) the critic's error washes out of the advantage almost entirely because the value terms telescope away, leaving only the real (noisy) rewards. Note *why* the MC limit is unbiased here: the only critic term that survives the telescoping is the baseline at the start state $s_0$, and I deliberately calibrated the critic there, so a uniform offset (present at $s_0$) would *not* wash out. If you set `CRITIC_ERR = 0`, the |bias| curve flattens to zero and only the variance curve moves, which is the clean way to confirm that $\lambda$ trades variance for a bias you only pay when your critic is wrong. In real training the critic is always at least a little wrong, especially early, which is why $\lambda = 1$ is rarely used despite being unbiased.
 ```
 
 **What you should see.** As $\lambda$ climbs from 0 to 1, the `|bias|` curve falls toward zero (the critic's baked-in error drains out of the estimate) while the `variance` curve climbs steeply (more real, noisy rewards enter the sum). The two curves cross somewhere in the middle, and the region around $\lambda \approx 0.9$ to $0.97$ is visibly the sweet spot: most of the bias is already gone but the variance has not yet exploded, which is the empirical reason the field settled on $\lambda = 0.95$. The printed lines give you three points on that curve to sanity-check against the plot, and the CSV lets you re-plot or fit the tradeoff yourself. Read this figure as the picture behind one hyperparameter you will otherwise copy on faith into every PPO and GRPO config in Part VII.

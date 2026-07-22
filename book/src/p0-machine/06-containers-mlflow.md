@@ -70,13 +70,35 @@ I install and verify the nvidia-container-toolkit, stand up MLflow via Docker Co
 
 ```bash title="scripts/00-container-gpu.sh"
 #!/usr/bin/env bash
-# Install Docker's NVIDIA container toolkit and prove the GPU crosses the container boundary.
+# Install Docker Engine + NVIDIA container toolkit, then prove the GPU crosses
+# the container boundary.
 set -euo pipefail
 
-# (Docker Engine assumed installed via the official apt repo.)
-# Install the toolkit, register it with the Docker runtime, restart the daemon.
+# --- Docker Engine, from Docker's official apt repo ---
+sudo apt update
+sudo apt install -y ca-certificates curl gnupg
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] \
+https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+  | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io \
+  docker-buildx-plugin docker-compose-plugin
+
+# --- NVIDIA container toolkit, from NVIDIA's libnvidia-container apt repo ---
+# Stock Ubuntu has no nvidia-container-toolkit package; add the repo first.
+curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey \
+  | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+curl -fsSL https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list \
+  | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' \
+  | sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list > /dev/null
 sudo apt update
 sudo apt install -y nvidia-container-toolkit
+
+# Register the toolkit with the Docker runtime, restart the daemon.
 sudo nvidia-ctk runtime configure --runtime=docker
 sudo systemctl restart docker
 
@@ -110,7 +132,8 @@ services:
 ```
 
 ```bash title="bash - start the spine and create the working dirs"
-mkdir -p /data/mlflow/{store,artifacts}     # on the NVMe working tier
+sudo mkdir -p /data/mlflow/{store,artifacts}   # on the NVMe working tier
+sudo chown -R "$USER:$USER" /data/mlflow       # own it so the container can write
 cd tracking
 docker compose up -d
 # UI now at http://127.0.0.1:5000
@@ -141,7 +164,11 @@ MLFLOW_URI = "http://127.0.0.1:5000"
 
 def _git_sha() -> str:
     sha = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
-    dirty = subprocess.call(["git", "diff", "--quiet"]) != 0
+    # Dirty if there are unstaged OR staged-but-uncommitted changes.
+    dirty = (
+        subprocess.call(["git", "diff", "--quiet"]) != 0
+        or subprocess.call(["git", "diff", "--cached", "--quiet"]) != 0
+    )
     return sha + ("-dirty" if dirty else "")
 
 

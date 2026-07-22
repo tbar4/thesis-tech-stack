@@ -96,7 +96,7 @@ Two practical choices dominate DPO outcomes, and both fall out of the derivation
 
 ## Tooling
 
-TRL's `DPOTrainer` implements equation (6.5.11) directly, and its variants are one config flag away (`loss_type="ipo"`, `loss_type="kto_pair"`, and `ORPOTrainer`/`KTOTrainer` for the standalone ones). It expects a dataset with `prompt`, `chosen`, `rejected` fields, and it manages the reference model for you: with a LoRA policy, the reference is simply the base model with the adapter *disabled*, so you do not pay for a second full model in VRAM, a genuinely important trick on 16GB that Unsloth and PEFT make automatic. The trainer computes the four log-probabilities per pair, forms the margin, and applies the logistic loss. Evaluation is the same as any alignment run: score the DPO'd model on the frozen thesis suite and report the delta versus the SFT starting point through chapter 3.7's `evalstats.bootstrap_paired_diff` and `evalstats.mcnemar`, so "DPO helped" is an interval and a p-value.
+TRL's `DPOTrainer` implements equation (6.5.11) directly, and its in-family variants are one config flag away (`loss_type="ipo"` for IPO); the ones that change the *data* or drop the reference are separate trainers, `KTOTrainer` for KTO on *unpaired* good/bad labels and `ORPOTrainer` for ORPO. It expects a dataset with `prompt`, `chosen`, `rejected` fields, and it manages the reference model for you: with a LoRA policy, the reference is simply the base model with the adapter *disabled*, so you do not pay for a second full model in VRAM, a genuinely important trick on 16GB that Unsloth and PEFT make automatic. The trainer computes the four log-probabilities per pair, forms the margin, and applies the logistic loss. Evaluation is the same as any alignment run: score the DPO'd model on the frozen thesis suite and report the delta versus the SFT starting point through chapter 3.7's `evalstats.bootstrap_paired_diff` and `evalstats.mcnemar`, so "DPO helped" is an interval and a p-value.
 
 ## Lab
 
@@ -124,28 +124,27 @@ from trl import DPOConfig, DPOTrainer
 from unsloth import FastLanguageModel
 
 SFT_ADAPTER = "../sft-4b/artifacts/adapter"   # cold start from chapter 6.2
-BASE = "unsloth/Qwen3-4B-Base"
 OUT = Path("artifacts")
 OUT.mkdir(exist_ok=True)
 
 
 def main() -> None:
-    # Load base + SFT adapter as the policy. The reference is this same base
-    # with the adapter disabled (TRL/PEFT handle that -> no second full model).
+    # Policy = base + the chapter-6.2 SFT adapter (the actual cold start).
+    # Loading the SAVED adapter continues training from the SFT weights; a
+    # fresh get_peft_model would zero-init a NEW adapter and DPO from base,
+    # discarding the cold start. Unsloth reads the base off the adapter config.
+    # DPOTrainer then uses this same model with the adapter disabled as the
+    # frozen reference, so no second full model sits in VRAM.
     model, tok = FastLanguageModel.from_pretrained(
-        model_name=BASE, max_seq_length=2048, load_in_4bit=True, dtype=None)
-    model = FastLanguageModel.get_peft_model(
-        model, r=16, lora_alpha=32, lora_dropout=0.0,
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
-                        "gate_proj", "up_proj", "down_proj"],
-        use_gradient_checkpointing="unsloth", random_state=3407)
+        model_name=SFT_ADAPTER, max_seq_length=2048, load_in_4bit=True, dtype=None)
 
     ds = load_dataset("trl-lib/ultrafeedback_binarized", split="train[:4000]")
 
     cfg = DPOConfig(
         output_dir=str(OUT / "run"),
         beta=0.1,                        # the beta of equations (6.5.9)/(6.5.11)
-        loss_type="sigmoid",             # "ipo" / "kto_pair" swap the link here
+        loss_type="sigmoid",             # DPO link; set "ipo" for IPO. KTO is a
+                                         # separate KTOTrainer on unpaired data.
         per_device_train_batch_size=1,
         gradient_accumulation_steps=16,
         num_train_epochs=1, learning_rate=5e-6,

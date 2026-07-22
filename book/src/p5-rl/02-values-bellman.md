@@ -109,7 +109,7 @@ using that $P_\pi$ is a stochastic matrix, so applying it can only average, neve
 Policy evaluation tells you how good a *given* policy is. Control asks for the *best* policy. Define the optimal value functions as the pointwise maximum over all policies:
 
 $$
-v_*(s) = \max_\pi v_\pi(s), \qquad q_*(s,a) = \max_\pi q_\pi(s,a). \tag{6}
+v_*(s) = \max_\pi v_\pi(s), \qquad q_*(s,a) = \max_\pi q_\pi(s,a). \tag{7}
 $$
 
 There always exists at least one deterministic policy that attains this maximum in every state simultaneously (a standard result for finite MDPs, [S&B] Section 3.6). The optimal value functions satisfy their own self-consistency, the *Bellman optimality equations*, and the key change is that averaging over the policy becomes maximizing over the action.
@@ -130,11 +130,11 @@ $$
 Substitute the first line into the second to eliminate $v_*$, or the second into the first to eliminate $q_*$, giving the two boxed forms:
 
 $$
-\boxed{\,v_*(s) = \max_a \sum_{s',r} p(s',r\mid s,a)\big[\, r + \gamma\, v_*(s') \,\big]\,}. \tag{7}
+\boxed{\,v_*(s) = \max_a \sum_{s',r} p(s',r\mid s,a)\big[\, r + \gamma\, v_*(s') \,\big]\,}. \tag{8}
 $$
 
 $$
-\boxed{\,q_*(s,a) = \sum_{s',r} p(s',r\mid s,a)\Big[\, r + \gamma \max_{a'} q_*(s',a') \,\Big]\,}. \tag{8}
+\boxed{\,q_*(s,a) = \sum_{s',r} p(s',r\mid s,a)\Big[\, r + \gamma \max_{a'} q_*(s',a') \,\Big]\,}. \tag{9}
 $$
 
 The only difference from the expectation equations (4) and (5) is the $\max$ where the policy average used to be. That $\max$ is what makes the optimality equations *nonlinear*: you cannot solve them by matrix inversion, you iterate (value iteration) or improve a policy repeatedly (policy iteration). But the payoff is enormous: once you have $q_*$, the optimal policy is trivial, just act greedily, $\pi_*(s) = \arg\max_a q_*(s,a)$, with no further planning required. Knowing $q_*$ turns control into a lookup.
@@ -161,7 +161,7 @@ A common misreading is that GRPO throws away the entire value-function machinery
 ```
 
 ```admonish read-along title="Read-along: Sutton & Barto, Chapters 3 and 4"
-[S&B] Section 3.5 defines $v_\pi$ and $q_\pi$; Section 3.6 gives the Bellman expectation equation, my (4); Section 3.7 does optimality and the Bellman optimality equation, my (7) and (8), including the existence of a deterministic optimal policy. Chapter 4 then turns these equations into algorithms: Section 4.1 is iterative policy evaluation (solving (4) by repeated backups), Section 4.3 is policy iteration, and Section 4.4 is value iteration (turning (7) into an update rule). The lab below is a stripped-down value iteration, so read Section 4.4 next to it. Do not miss the backup diagrams in Section 3.5; they are the mental model I sketched in mermaid above.
+[S&B] Section 3.5 defines $v_\pi$ and $q_\pi$; Section 3.6 gives the Bellman expectation equation, my (4); Section 3.7 does optimality and the Bellman optimality equation, my (8) and (9), including the existence of a deterministic optimal policy. Chapter 4 then turns these equations into algorithms: Section 4.1 is iterative policy evaluation (solving (4) by repeated backups), Section 4.3 is policy iteration, and Section 4.4 is value iteration (turning (8) into an update rule). The lab below is a stripped-down value iteration, so read Section 4.4 next to it. Do not miss the backup diagrams in Section 3.5; they are the mental model I sketched in mermaid above.
 ```
 
 ## Tooling
@@ -170,11 +170,11 @@ The tool here is dynamic programming itself, which you only get to use when the 
 
 ## Lab
 
-The artifact is a value-iteration solver on a tiny gridworld that prints the converged optimal values and the greedy policy they induce. Watching (7) converge in a handful of sweeps on 12 states is the concrete counterpoint to "you cannot do this on $|\mathcal{V}|^{L}$ states."
+The artifact is a value-iteration solver on a tiny gridworld that prints the converged optimal values and the greedy policy they induce. Watching (8) converge in a handful of sweeps on 12 states is the concrete counterpoint to "you cannot do this on $|\mathcal{V}|^{L}$ states."
 
 ```python title="labs/value_iteration.py"
 """Value iteration on a 4x3 gridworld: solve the Bellman optimality
-equation (7) by repeated backups until the values stop moving.
+equation (8) by repeated backups until the values stop moving.
 
 This is the thing we CANNOT do for an LLM (state space too large,
 dynamics only implicitly known). Seeing it converge here is the point.
@@ -277,7 +277,7 @@ if __name__ == "__main__":
     render(V, policy)
 ```
 
-**What you should see.** Value iteration converges in on the order of a few hundred sweeps at $\gamma = 0.99$ (the exact count prints), and the rendered grid shows optimal values that decay smoothly from the $+1$ terminal, with a greedy policy of arrows that route around the $-1$ trap and the wall toward the goal. The lesson is not the gridworld, it is the contrast: this took 12 states and full knowledge of $p$. A language model has neither, which is precisely why the next three chapters build policy-gradient methods that need neither the dynamics nor a tabulated value function, only the ability to sample and to score.
+**What you should see.** Value iteration converges in on the order of two thousand sweeps at $\gamma = 0.99$ (the exact count prints; the operator contracts at rate $\gamma$ per sweep, so reaching the $10^{-8}$ tolerance takes roughly $\ln(10^{-8})/\ln\gamma \approx 1.8\times10^3$ sweeps), and the rendered grid shows optimal values that decay smoothly from the $+1$ terminal, with a greedy policy of arrows that route around the $-1$ trap and the wall toward the goal. The lesson is not the gridworld, it is the contrast: this took 12 states and full knowledge of $p$. A language model has neither, which is precisely why the next three chapters build policy-gradient methods that need neither the dynamics nor a tabulated value function, only the ability to sample and to score.
 
 ```admonish substack-seed
 Post angle: "Why the smartest way to train a reasoning model is to refuse to predict the future." Value functions are the classic RL tool for figuring out how good a situation is, and they power the famous algorithms behind game-playing agents. But for a language model on a single desktop GPU, learning that "how good is this half-finished sentence" network is expensive and shaky, so the current crop of reasoning-model recipes (GRPO) skips it and uses a dead-simple trick instead: generate a handful of answers to the same question and grade each one against the average. The essay writes itself around the punchline that sometimes the frontier move is to *delete* the fanciest component, and that this is only possible because the reward comes from a verifier at the end, not from a critic in the middle.

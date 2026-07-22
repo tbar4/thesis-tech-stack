@@ -2,8 +2,9 @@
 
 The symbols the book's derivations use, grouped by domain and pinned to one meaning
 each. Where a symbol is genuinely overloaded across domains (the classic offender is
-$b$, bytes-per-element in the KV formula versus bit-width in quantization), the
-collision is flagged so a reader jumping between chapters is never guessing. Each
+$B$, which the book uses for the bootstrap-resample count, the LoRA
+up-projection matrix, and an NF4 quantization block), the collision is flagged
+so a reader jumping between chapters is never guessing. Each
 table gives the symbol, its meaning as the book uses it, and the chapter where it is
 first introduced.
 
@@ -121,11 +122,13 @@ disjoint contexts.
 | $\text{tok/s}_{\max}$ | decode throughput ceiling, $BW / B_{\text{read}}$ | Prefill, decode, and the roofline |
 
 ```admonish gotcha
-$b$ (lowercase) is bytes-per-cached-element in the KV formula and bit-width in the
-quantization table below; $B$ (uppercase) is the bootstrap-resample count in the
-statistics table and the KL/weight-byte contexts elsewhere. The KV chapter writes
-$b$ for element bytes and always states "2 for BF16, 1 for FP8" inline so the
-meaning travels with the symbol.
+$b$ (lowercase) is bytes-per-cached-element in the KV formula; the quantization
+table below deliberately writes bit-width as $b_{\text{bits}}$, not $b$, to keep
+the two apart. $B$ (uppercase) is triply booked, the bootstrap-resample count in
+the statistics table, the LoRA up-projection matrix, and an NF4 quantization
+block (*Parameter-efficient fine-tuning*). The KV chapter writes $b$ for element
+bytes and always states "2 for BF16, 1 for FP8" inline so the meaning travels
+with the symbol.
 ```
 
 ## Number formats and quantization
@@ -143,7 +146,7 @@ meaning travels with the symbol.
 | $q$ | stored integer code in integer quantization | Tensors, autograd, and number formats |
 | $s_{\text{q}}$ | quantization scale, real $\approx s_{\text{q}}(q - z)$ | Tensors, autograd, and number formats |
 | $z$ | zero-point (integer offset in asymmetric quantization) | Tensors, autograd, and number formats |
-| $g$ | group size for group-wise scales (e.g. 128 AWQ, 32 MXFP4, 64 NF4) | Quantization: theory and formats |
+| $g$ | group/block size for group-wise scales (e.g. 128 AWQ, 32 MXFP4, 64 NF4); chapter 6.3 writes the NF4 block size as $B$ | Quantization: theory and formats |
 | $b_{\text{bits}}$ | bit-width of the quantized element (4, 8, 16) | Quantization: theory and formats |
 | $\beta$ | effective bytes per parameter for a dtype (VRAM tables) | Appendix A |
 
@@ -154,4 +157,30 @@ quantization scale, it is the same $s$ shown here, not the floating-point sign b
 the surrounding equation always makes clear which. The effective-bytes symbol
 $\beta$ is what turns a bit-width into the byte-per-parameter figures the VRAM tables
 multiply by $N_{\text{params}}$.
+```
+
+## Parameter-efficient fine-tuning (LoRA / QLoRA)
+
+The LoRA/QLoRA symbols from *LoRA and QLoRA, mathematically* and *GRPO on 16GB*.
+This group collides hard with the RL and statistics tables above, by inheritance
+from the source chapters rather than by accident; every clash is flagged below.
+
+| Symbol | Meaning | First introduced |
+|---|---|---|
+| $r$ | LoRA rank: inner dimension of the low-rank update (collides with reward $r$) | LoRA and QLoRA, mathematically |
+| $\alpha$ | LoRA scaling in the $\alpha/r$ update strength (collides with significance level $\alpha$) | LoRA and QLoRA, mathematically |
+| $A$ | LoRA down-projection, $A \in \mathbb{R}^{r \times k}$ (Gaussian-initialized) | LoRA and QLoRA, mathematically |
+| $B$ | LoRA up-projection, $B \in \mathbb{R}^{d \times r}$ (zero-initialized) (collides with bootstrap count $B$) | LoRA and QLoRA, mathematically |
+| $\Delta W$ | the low-rank weight update, $\Delta W = \frac{\alpha}{r} B A$ | LoRA and QLoRA, mathematically |
+| $B$ (block) | NF4 quantization block size in elements (QLoRA uses 64); the quantization table above calls this $g$ | LoRA and QLoRA, mathematically |
+
+```admonish gotcha
+This group is a collision minefield with the RL and statistics tables, and every
+clash is deliberate so the symbols match the source chapters. $r$ is the LoRA rank
+here but the reward $r(s,a)$ in the RL table; $\alpha$ is the LoRA scaling factor
+here but the significance level in the statistics table; and $B$ is triply booked,
+the LoRA up-projection matrix, the bootstrap-resample count (statistics table), and
+the NF4 block size the quantization table writes as $g$. Chapter 6.3 sets these
+symbols, so the appendix follows it rather than renaming; the surrounding equation
+is always what disambiguates.
 ```

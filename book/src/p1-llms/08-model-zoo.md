@@ -38,7 +38,7 @@ The ratio $P_{\text{active}} / P_{\text{total}} \approx k / E$ (when experts dom
 
 Two model families recur throughout this book, and their concrete choices are worth stating once. **Qwen3** comes in dense variants (0.6B, 1.7B, 4B, 8B, and up) and MoE variants (like the 30B-total/3B-active). Across them it uses the modern block I derived in chapter 4: GQA (the 0.6B has 16 query heads and 8 KV heads), SwiGLU, RMSNorm, RoPE, and, a Qwen3-specific detail, per-head RMSNorm on the query and key projections (`q_norm`/`k_norm`), the small extra tensors that made my hand-built block's parameter count come up slightly short in that chapter's lab. The smaller Qwen3 models tie their embeddings; the config's `tie_word_embeddings` tells you which. Qwen3 is my default workhorse because the dense 0.6B–4B range spans "trivially fits" to "fits with care" on 16GB, which is exactly the regime this book lives in.
 
-**gpt-oss** (OpenAI's open-weight release) is the MoE case study: 20B-total and 120B-total, both mixture-of-experts, and notably shipped natively in **MXFP4**, the 4.25-bits-per-weight microscaling format I derived in chapter 1, for the expert weights, which is how the 120B version is even distributable. Reading a gpt-oss checkpoint is the payoff for the dtype chapter: you will see the expert tensors stored in a 4-bit format with block scales, not BF16, and the config's expert and top-$k$ fields let you compute equations (8.1) and (8.2) yourself. gpt-oss also uses attention-sink and sliding-window details that I will meet in the inference part; here the point is that it is the concrete example of MoE-plus-low-bit-quantization, the two techniques that let a "large" model touch a small card at all.
+**gpt-oss** (OpenAI's open-weight release) is the MoE case study: 20B-total and 120B-total, both mixture-of-experts, and notably shipped natively in **MXFP4**, the 4.25-bits-per-weight microscaling format I derived in chapter 1, for the expert weights, which is how the 120B version is even distributable. Reading a gpt-oss checkpoint is the payoff for the dtype chapter: you will see the expert weights stored as packed `uint8` blocks (two fp4 values per byte, so the safetensors header reports them as `U8`, not a 4-bit dtype) alongside E8M0 `uint8` block-scale tensors, not BF16, and the config's expert and top-$k$ fields let you compute equations (8.1) and (8.2) yourself. gpt-oss also uses attention-sink and sliding-window details that I will meet in the inference part; here the point is that it is the concrete example of MoE-plus-low-bit-quantization, the two techniques that let a "large" model touch a small card at all.
 
 ### What "open" means for a thesis
 
@@ -82,7 +82,9 @@ OUT.mkdir(exist_ok=True)
 
 DTYPE_BYTES = {  # bytes per element for common safetensors dtypes
     "F32": 4, "F16": 2, "BF16": 2, "F8_E4M3": 1, "F8_E5M2": 1,
-    "I8": 1, "U8": 1, "I32": 4, "I64": 8, "F4": 0.5, "MXFP4": 0.5,
+    "I8": 1, "U8": 1, "I32": 4, "I64": 8,
+    # safetensors has no MXFP4/F4 dtype: gpt-oss stores 4-bit MoE experts as
+    # packed U8 *_blocks (two fp4 values per byte) plus U8 *_scales.
 }
 
 def inspect(model_id: str) -> dict:
@@ -103,8 +105,14 @@ def inspect(model_id: str) -> dict:
                 n = 1
                 for d in shape:
                     n *= d
-                total_params += n
-                dtype_params[dtype] += n
+                # gpt-oss packs each MXFP4 expert matrix into a uint8 *_blocks
+                # tensor at two fp4 values per byte, so the logical parameter
+                # count is twice the stored element count (the *_scales tensors
+                # are E8M0 uint8 block scales, counted as-is). Size storage from
+                # the real stored bytes, not the doubled parameter count.
+                n_params = n * 2 if key.endswith("_blocks") else n
+                total_params += n_params
+                dtype_params[dtype] += n_params
                 dtype_bytes[dtype] += n * DTYPE_BYTES.get(dtype, 2)
 
     is_moe = hasattr(cfg, "num_experts") and getattr(cfg, "num_experts", 0)
@@ -161,10 +169,10 @@ uv run python inspect_model.py Qwen/Qwen3-0.6B
 ```
 
 ```admonish gotcha
-`list_repo_files` plus `hf_hub_download` on every shard will pull the full weights the first time you inspect a large model, which defeats the "metadata only" goal for a 120B checkpoint. For true header-only inspection on huge models, fetch just the `model.safetensors.index.json` (a small file mapping tensor names to shards and, in newer exports, carrying dtype/shape metadata) and parse that, or read only the first shard's header. The script as written is fine for the small Qwen3 models the book uses day to day; the header-only optimization matters exactly when the model is too big to want on disk, which is the case the metadata-first workflow is *for*. Also, the `DTYPE_BYTES` table treats 4-bit formats as 0.5 bytes, which is the element size but ignores the block-scale overhead (MXFP4's true 4.25 bits/element from chapter 1), so the storage estimate for an MXFP4 model reads slightly low, a knowingly small approximation worth a comment in the card.
+`list_repo_files` plus `hf_hub_download` on every shard will pull the full weights the first time you inspect a large model, which defeats the "metadata only" goal for a 120B checkpoint. For true header-only inspection on huge models, fetch just the `model.safetensors.index.json` (a small file mapping tensor names to shards and, in newer exports, carrying dtype/shape metadata) and parse that, or read only the first shard's header. The script as written is fine for the small Qwen3 models the book uses day to day; the header-only optimization matters exactly when the model is too big to want on disk, which is the case the metadata-first workflow is *for*. Also, gpt-oss does not expose an MXFP4 dtype to safetensors at all: it stores each expert weight matrix as a packed `uint8` `*_blocks` tensor (two fp4 values per byte) next to an E8M0 `uint8` `*_scales` tensor, so the header reports `U8` and a naive element count undercounts the expert parameters by 2x. The inspector detects the `*_blocks` tensors and doubles their logical parameter count (while still sizing storage from the real `uint8` bytes), which is why its total for gpt-oss matches the published figure instead of coming in at half; the tiny `*_scales` bytes are left counted as-is.
 ```
 
-**What you should see.** The script writes `artifacts/model_card_<name>.json` and prints a complete anatomy of the checkpoint from metadata: the true total parameter count (verified against the safetensors headers, not the model name), a per-dtype breakdown showing exactly how many parameters and gigabytes sit in each format, the GQA group size read straight from the head counts, whether embeddings are tied, the context length, and, for an MoE model, the expert count, top-$k$, and active fraction that feed equations (8.1) and (8.2). Running it on the dense Qwen3-0.6B shows a clean single-dtype BF16 checkpoint around 1.2 GB; running it on a Qwen3 MoE or gpt-oss checkpoint shows the total-versus-active gap that is the whole point of the mixture-of-experts section, and (for gpt-oss) a mixed-dtype breakdown with the experts in a 4-bit format. This JSON card is the triage artifact I keep for every model the thesis uses: it answers "will this fit, is it dense or sparse, and can I legally build on it" before I spend disk or VRAM. Record the license separately from the card (the inspector reads architecture, not the license file); pull it from the repo's `LICENSE` and note it in your thesis's model table.
+**What you should see.** The script writes `artifacts/model_card_<name>.json` and prints a complete anatomy of the checkpoint from metadata: the true total parameter count (verified against the safetensors headers, not the model name), a per-dtype breakdown showing exactly how many parameters and gigabytes sit in each format, the GQA group size read straight from the head counts, whether embeddings are tied, the context length, and, for an MoE model, the expert count, top-$k$, and active fraction that feed equations (8.1) and (8.2). Running it on the dense Qwen3-0.6B shows a clean single-dtype BF16 checkpoint around 1.2 GB; running it on a Qwen3 MoE or gpt-oss checkpoint shows the total-versus-active gap that is the whole point of the mixture-of-experts section, and (for gpt-oss) a mixed-dtype breakdown with the experts as packed `uint8` blocks (two fp4 values per byte, doubled back to their true parameter count) plus their `uint8` block scales. This JSON card is the triage artifact I keep for every model the thesis uses: it answers "will this fit, is it dense or sparse, and can I legally build on it" before I spend disk or VRAM. Record the license separately from the card (the inspector reads architecture, not the license file); pull it from the repo's `LICENSE` and note it in your thesis's model table.
 
 ```admonish read-along
 Read **[BRM]** ch. 1 for the survey of the open reasoning-model landscape and App. C for the Qwen3 architecture in full source, which is the concrete backing for the Qwen3 specifics here (the GQA head counts, the q/k norms, the SwiGLU and RoPE settings you will see this lab's inspector report). Raschka's appendix walks the exact config fields this chapter reads, so running the inspector on Qwen3-0.6B while reading App. C lets you match every printed number to a line of the architecture it describes.

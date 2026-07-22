@@ -54,11 +54,11 @@ A methodology chapter is stronger when it knows where it ends. Not every threat 
 
 ### Citing the causal audit verbatim
 
-The causal audit from chapter 4.6 is the single most useful methodology exhibit in the book, because it is already written in the register a committee wants: a DAG, an enumerated threat list, and a mitigation for each threat with a pointer to where it was handled. In the thesis I quote it verbatim rather than paraphrase, so the methodology chapter and the causal chapter cannot drift apart. The audit's framing statement, quoted as it appears in chapter 4.6, is:
+The causal audit from chapter 4.6 is the single most useful methodology exhibit in the book, because it is already written in the register a committee wants: a DAG, an enumerated threat list, and a mitigation for each threat with a pointer to where it was handled. In the thesis I quote it verbatim rather than paraphrase, so the methodology chapter and the causal chapter cannot drift apart. The audit's estimand, quoted as it appears in chapter 4.6, is:
 
-> "The estimand is the causal effect of the GRPO update on reasoning capability, not on scorer output. We treat the scorer as a measurement instrument sitting on the causal path from capability to reward, and every threat below is a way that path can be confounded, blocked, or short-circuited so that reward moves without capability moving. A result is admissible as evidence of a reasoning delta only if the threat that would produce the same reward movement without a capability change has been ruled out or bounded." (chapter 4.6, causal audit v1.0)
+> "Estimand. Causal effect of GRPO verifiable-reward training on SDA pass@1: E[score | do(train)] - E[score | do(no train)]." (chapter 4.6, causal audit v1.0)
 
-That paragraph does more work in a committee room than any results table, because it states plainly that I know the difference between "reward went up" and "the model got better at reasoning," and that my design is built to tell them apart. The audit's threats table, also quoted verbatim in the thesis, enumerates the specific ways reward can move without capability (reward hacking, contamination, decoding-parameter confounds between the baseline and post-training serve, selection on solved items, judge-model drift) and points each at its mitigation chapter. The methodology chapter's job is to reproduce that table and let it stand.
+That one line does more work in a committee room than any results table, because it states plainly that the target is the causal effect of the training intervention on the score under a do-operation, not the raw movement of reward, and that my design is built to tell those two apart. The audit's threats table, also quoted verbatim in the thesis, enumerates the specific ways the delta can be confounded or short-circuited (judge revision drift, pre-existing optimizer drift, pipeline-invariant drift across pre and post, verbosity as a construct confound, judge self-preference, contamination, item/seed/machine specificity, sampling noise, and selection on a collider) and points each at its mitigation chapter. The methodology chapter's job is to reproduce that table and let it stand.
 
 ```admonish gotcha
 The most common self-inflicted wound in a methodology chapter is quoting your own earlier work approximately. If the thesis paraphrases the audit and the audit later gets revised, the two say slightly different things and a careful reader (or examiner) catches the seam. Quote verbatim with a version tag ("causal audit v1.0, chapter 4.6") and treat the audit as a single source of truth that both the book and the thesis point at. When the audit changes, bump its version and re-quote, never let two copies of a methodological claim exist that can disagree.
@@ -148,25 +148,27 @@ claims:
 version: "v1.0"
 source: "chapter 4.6, causal audit v1.0"
 framing: >
-  The estimand is the causal effect of the GRPO update on reasoning
-  capability, not on scorer output. We treat the scorer as a measurement
-  instrument sitting on the causal path from capability to reward, and every
-  threat below is a way that path can be confounded, blocked, or
-  short-circuited so that reward moves without capability moving. A result is
-  admissible as evidence of a reasoning delta only if the threat that would
-  produce the same reward movement without a capability change has been ruled
-  out or bounded.
+  Estimand. Causal effect of GRPO verifiable-reward training on SDA pass@1:
+  E[score | do(train)] - E[score | do(no train)].
 threats:
-  - name: "Reward hacking (Goodhart on the scorer)"
-    mitigation: "7.4 Reward hacking and Goodhart"
-  - name: "Contamination (benchmark in pretraining)"
-    mitigation: "3.8 Contamination and dataset hygiene"
-  - name: "Decoding-parameter confound (baseline vs post serve differ)"
-    mitigation: "2.6 Benchmarking without lying to yourself"
-  - name: "Selection on solved items"
-    mitigation: "7.6 Measuring the reasoning delta"
-  - name: "Judge-model drift"
-    mitigation: "3.6 Judge models"
+  - name: "Judge revision differs pre vs post"
+    mitigation: "3.6 (calibration), 4.3 (diagnosis)"
+  - name: "Pre-existing KL/optimizer drift misattributed to the reward"
+    mitigation: "4.5 (controls), 7.7 (run matrix)"
+  - name: "Decoding seed / vLLM version / template differ pre vs post"
+    mitigation: "0.4 (envs), 2.5 (vLLM ops), 4.5 (protocol invariants)"
+  - name: "Score reflects verbosity/formatting, not reasoning"
+    mitigation: "3.4 (scorers), 4.3 (mediator vs confounder)"
+  - name: "Judge self-preference inflates in-family scores"
+    mitigation: "3.6 (judge calibration)"
+  - name: "Contamination: model may have seen frozen eval items"
+    mitigation: "3.8 (contamination), 3.9 (frozen suite v1.0)"
+  - name: "Effect specific to item set / seed / machine"
+    mitigation: "4.5 (negative control), 7.7 (seeds from power analysis)"
+  - name: "Delta indistinguishable from sampling noise"
+    mitigation: "3.7 (eval statistics), 7.6 (paired analysis)"
+  - name: "Selection on failed/incomplete runs (collider)"
+    mitigation: "4.3 (collider), 3.10 (eval ops)"
 ```
 
 ### The skeleton generator
@@ -270,7 +272,7 @@ uv run python make_skeleton.py
 
 ### What you should see
 
-A `methodology_skeleton.md` file with three top-level sections in the fixed order reproducibility, validity, statistics. Under validity, the `valid-estimand` entry carries the audit's framing paragraph as a block quote attributed to "chapter 4.6, causal audit v1.0," followed by the verbatim threats table mapping each threat (reward hacking, contamination, decoding-parameter confound, selection on solved items, judge-model drift) to its mitigation chapter. Every claim shows its thesis section, the book chapter that backs it, and a concrete artifact path. The final "Coverage check" section prints "All claims resolve to an artifact. Coverage complete." Now delete the `artifact:` line from any claim in `claim_map.yaml` and regenerate: that claim renders with "MISSING ARTIFACT, resolve before defense" and the coverage check names it as unfinished. That is the skeleton doing its job. It will not let me walk into a defense with a methodological claim I can't point at a file for. The prose I still write myself, section by section, into a private copy of this scaffold. What the tool guarantees is that I addressed all three challenges the committee will raise, quoted the audit exactly rather than approximately, and left no claim floating without evidence.
+A `methodology_skeleton.md` file with three top-level sections in the fixed order reproducibility, validity, statistics. Under validity, the `valid-estimand` entry carries the audit's estimand as a block quote attributed to "chapter 4.6, causal audit v1.0," followed by the verbatim threats table mapping each threat (judge revision drift, optimizer drift, pipeline-invariant drift, verbosity confound, judge self-preference, contamination, item/seed/machine specificity, sampling noise, selection collider) to its mitigation chapter. Every claim shows its thesis section, the book chapter that backs it, and a concrete artifact path. The final "Coverage check" section prints "All claims resolve to an artifact. Coverage complete." Now delete the `artifact:` line from any claim in `claim_map.yaml` and regenerate: that claim renders with "MISSING ARTIFACT, resolve before defense" and the coverage check names it as unfinished. That is the skeleton doing its job. It will not let me walk into a defense with a methodological claim I can't point at a file for. The prose I still write myself, section by section, into a private copy of this scaffold. What the tool guarantees is that I addressed all three challenges the committee will raise, quoted the audit exactly rather than approximately, and left no claim floating without evidence.
 
 ```admonish substack-seed
 "How to pre-answer your thesis committee." Every eval-based ML thesis faces the same three questions: can it be re-run, does it measure the thing, and is the improvement real. This post turns that into a reusable pattern: a claim map that forces every methodological sentence to resolve to an artifact on disk, and a generator that fails when a claim has no evidence. The sharpest angle is the construct-validity trap specific to training-from-evals, reinforcement learning optimizes the scorer, so "reward went up" and "the model got smarter" are different claims, and your methodology has to be built to tell them apart before anyone asks.

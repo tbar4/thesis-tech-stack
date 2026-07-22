@@ -1,16 +1,16 @@
 # vLLM operations
 
-The internals chapter explained the mechanisms; this chapter turns them into commands I can run at 2am without thinking. The goal is a serving runbook for the whole repertoire (Qwen3-8B at BF16, Qwen3-14B at AWQ, gpt-oss-20b at MXFP4) where every flag has a reason traceable to the arithmetic of the last four chapters, plus the operational scaffolding that makes serving durable: health checks, a systemd unit so the server survives a logout or reboot, and a clean model-swap workflow because a 16GB card holds exactly one of these models at a time. The deliverable is that runbook, committed to the repo, and its value is that six months from now, mid-experiment, I can bring any model in the repertoire up and swap between them without re-deriving a thing or rediscovering the same three failure modes. A runbook is a promise to my future self that the boring parts are already solved.
+The internals chapter explained the mechanisms; this chapter turns them into commands I can run at 2am without thinking. The goal is a serving runbook for the whole repertoire (Qwen3-8B at FP8, Qwen3-14B at AWQ, gpt-oss-20b at MXFP4) where every flag has a reason traceable to the arithmetic of the last four chapters, plus the operational scaffolding that makes serving durable: health checks, a systemd unit so the server survives a logout or reboot, and a clean model-swap workflow because a 16GB card holds exactly one of these models at a time. The deliverable is that runbook, committed to the repo, and its value is that six months from now, mid-experiment, I can bring any model in the repertoire up and swap between them without re-deriving a thing or rediscovering the same three failure modes. A runbook is a promise to my future self that the boring parts are already solved.
 
 ## Theory
 
 There is not much new theory here, which is the point: operations is where theory becomes muscle memory. The chapters before this one earned the right to be terse now: I already know why each flag exists and what it trades off, so the job is to assemble the pieces into commands and scaffolding that run without me thinking about the arithmetic each time. That assembly is itself a skill worth writing down, because the failure modes of operations are not intellectual (I understand the KV budget fine) but procedural (I forgot the old process was still holding the card). Three operational facts frame everything.
 
-First, **one model at a time.** Qwen3-8B BF16 alone needs ~15 GiB of the 16 GiB card for weights (chapter 2's budget), so there is no holding two models resident. Every serving session is a single `vllm serve` process bound to port 8000, and switching models means stopping one and starting another. This is why the swap workflow is a first-class artifact, not an afterthought.
+First, **one model at a time.** Qwen3-8B in full BF16 alone needs ~15 GiB of the 16 GiB card for weights (chapter 2's budget), so much that it leaves no usable KV pool and must itself be served in FP8, so there is certainly no holding two models resident. Every serving session is a single `vllm serve` process bound to port 8000, and switching models means stopping one and starting another. This is why the swap workflow is a first-class artifact, not an afterthought.
 
-Third, **persistence and swap safety are the real deliverables.** A `vllm serve` typed into a terminal dies the moment the SSH session drops or the machine reboots, which is fine for a five-minute test and useless for a substrate that eval and training runs depend on for hours. Wrapping the serve in a supervised service that restarts on failure and survives logout, and making the model swap a scripted sequence that cannot race itself, is what separates a demo from infrastructure. Everything below builds toward those two.
+Second, **persistence and swap safety are the real deliverables.** A `vllm serve` typed into a terminal dies the moment the SSH session drops or the machine reboots, which is fine for a five-minute test and useless for a substrate that eval and training runs depend on for hours. Wrapping the serve in a supervised service that restarts on failure and survives logout, and making the model swap a scripted sequence that cannot race itself, is what separates a demo from infrastructure. Everything below builds toward those two.
 
-Second, **the flags are the exposed controls on the mechanisms.** `--gpu-memory-utilization` sets the memory vLLM claims (chapter 2's $M_{kv}$); `--max-model-len` sets per-sequence context $S_{\text{ctx}}$; `--max-num-seqs` caps concurrency $N_{\text{seq}}$; `--kv-cache-dtype` sets the KV byte width $b$; `--quantization` selects the weight kernel; `--max-num-batched-tokens` sets the chunked-prefill chunk budget. Choosing them is just plugging the KV arithmetic back in.
+Third, **the flags are the exposed controls on the mechanisms.** `--gpu-memory-utilization` sets the memory vLLM claims (chapter 2's $M_{kv}$); `--max-model-len` sets per-sequence context $S_{\text{ctx}}$; `--max-num-seqs` caps concurrency $N_{\text{seq}}$; `--kv-cache-dtype` sets the KV byte width $b$; `--quantization` selects the weight kernel; `--max-num-batched-tokens` sets the chunked-prefill chunk budget. Choosing them is just plugging the KV arithmetic back in.
 
 ```admonish read-along title="Confirm the flags against your vLLM version before trusting a script"
 Every serve command in this chapter is coupled to a vLLM version. Run `uv run vllm serve --help | less` on the machine and confirm the exact spelling and defaults of the six flags above before committing a runbook, because they drift: quantization backends get renamed, KV-dtype values change, and MXFP4 auto-detection has moved between releases. Then run `uv run vllm --version` and write that string at the top of the runbook. A serve command with no version stamp is not reproducible, and reproducibility is the entire reason this book exists.
@@ -18,29 +18,29 @@ Every serve command in this chapter is coupled to a vLLM version. Run `uv run vl
 
 ## Tooling: the canonical serve commands, every flag justified
 
-### Qwen3-8B at BF16
+### Qwen3-8B at FP8
 
-This model is right at the edge of the card (weights ~15.3 GiB), so the settings are conservative: high memory utilization to scrape together a KV pool, a modest context so the per-sequence reservation stays small, and FP8 KV to claw back room.
+Full BF16 weights (~15.3 GiB) do not fit on this 16GB card with any usable KV pool (chapter 2's budget goes negative), so the reference model is served with FP8 *weights* via `--quantization fp8`. That halves the weight footprint to ~7.7 GiB and opens a real KV pool; FP8 KV on top keeps the per-token cost low. The served name stays `qwen3-8b` so downstream configs do not care that the weights are quantized.
 
-```bash title="serve/qwen3-8b-bf16.sh"
+```bash title="serve/qwen3-8b-fp8.sh"
 #!/usr/bin/env bash
 set -euo pipefail
 uv run vllm serve Qwen/Qwen3-8B \
-    --dtype bfloat16 \
+    --quantization fp8 \
     --max-model-len 8192 \
     --kv-cache-dtype fp8 \
-    --gpu-memory-utilization 0.95 \
-    --max-num-seqs 8 \
+    --gpu-memory-utilization 0.92 \
+    --max-num-seqs 16 \
     --enable-prefix-caching \
     --port 8000 \
     --served-model-name qwen3-8b
 ```
 
-- `--dtype bfloat16`: the model's native precision; no weight quantization here, this is the full-fidelity reference in the repertoire.
-- `--max-model-len 8192`: keeps the worst-case per-sequence KV reservation small (8K, not the model's 32K native) because the pool is tiny after 15.3 GiB of weights. Raise only if a task needs it and accept fewer concurrent seqs.
-- `--kv-cache-dtype fp8`: halves KV bytes/token (chapter 2), roughly doubling the seats this cramped pool can hold. The accuracy cost is a fraction of a point; measure it.
-- `--gpu-memory-utilization 0.95`: pushed high deliberately because this model needs every spare byte for KV. Watch for OOM at boot; back off to 0.93 if the graph capture or activations do not fit.
-- `--max-num-seqs 8`: an honest cap given the pool; setting it higher just invites preemption (chapter 4's gotcha).
+- `--quantization fp8`: serve the 8B with FP8 weights, because full BF16 (~15.3 GiB) leaves no KV pool on 16GB (chapter 2). FP8 halves the weight read, roughly doubling the decode ceiling as a bonus. Lowering `--gpu-memory-utilization` is *not* an alternative here: it gives less memory, not more, and BF16 cannot load at all.
+- `--max-model-len 8192`: keeps the worst-case per-sequence KV reservation modest (8K, not the model's 32K native). With ~6 GiB of KV pool now available, raise it if a task needs the context and accept fewer concurrent seqs.
+- `--kv-cache-dtype fp8`: halves KV bytes/token (chapter 2), stretching concurrency and context further. The accuracy cost is a fraction of a point; measure it.
+- `--gpu-memory-utilization 0.92`: standard headroom now that FP8 weights leave a real pool; no need to push to 0.95.
+- `--max-num-seqs 16`: the FP8-weight pool (~6 GiB) supports real concurrency at short contexts, unlike the BF16 case that could not load.
 - `--enable-prefix-caching`: the eval workload shares long instruction scaffolds, so this is a free prefill saving.
 - `--served-model-name qwen3-8b`: a stable client-facing name so the swap workflow does not break downstream configs.
 
@@ -129,9 +129,8 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=/home/trevor/thesis-tech-stack/serve
-# MODEL_SCRIPT is set per-model via the drop-in override; default is the workhorse.
-Environment=MODEL_SCRIPT=qwen3-14b-awq.sh
 Environment=HF_HOME=/home/trevor/.cache/huggingface
+# The instance name selects the script: vllm@qwen3-14b-awq runs qwen3-14b-awq.sh.
 ExecStart=/usr/bin/env bash /home/trevor/thesis-tech-stack/serve/%i.sh
 Restart=on-failure
 RestartSec=5
@@ -161,7 +160,7 @@ Because only one model fits, swapping is: stop the current server, wait for VRAM
 #!/usr/bin/env bash
 # Swap the resident model: ./swap.sh <target-unit-instance> <served-name>
 set -euo pipefail
-TARGET="${1:?usage: swap.sh <qwen3-8b-bf16|qwen3-14b-awq|gpt-oss-20b> <served-name>}"
+TARGET="${1:?usage: swap.sh <qwen3-8b-fp8|qwen3-14b-awq|gpt-oss-20b> <served-name>}"
 SERVED="${2:?served model name for healthcheck}"
 
 echo "stopping any running vllm@ unit..."
@@ -195,7 +194,7 @@ The VRAM-drain wait loop is the load-bearing part: it polls `nvidia-smi` until t
 
 ### Observability: what to watch while a model serves
 
-A server that booted healthy can still degrade under load, and the window into that is the Prometheus `/metrics` endpoint (chapter 4). The three gauges worth a persistent eye are the running/waiting/swapped sequence counts, the KV cache usage fraction, and the preemption counter. A quick one-liner keeps them on screen:
+A server that booted healthy can still degrade under load, and the window into that is the Prometheus `/metrics` endpoint (chapter 4). The three gauges worth a persistent eye are the running/waiting/swapped sequence counts, the KV cache usage fraction, and the preemption counter. (The swapped count is a V0 metric; on the V1 engine preemption is by recompute, so it stays 0 and the preemption counter is the one to watch.) A quick one-liner keeps them on screen:
 
 ```bash title="serve/watch.sh"
 #!/usr/bin/env bash
@@ -215,7 +214,7 @@ The reading is diagnostic, not decorative. KV cache usage creeping toward 100% w
 
 Almost every serving failure on this card is one of three things, and recognizing them by their symptom saves hours.
 
-- **OOM during graph capture.** The server loads weights fine, then dies while capturing CUDA graphs or allocating the KV pool. Cause: `--gpu-memory-utilization` is too high for the real activation and graph overhead on the day, most often on Qwen3-8B BF16 at 0.95. Fix: lower utilization a notch, or shorten `--max-model-len`, or add `--kv-cache-dtype fp8` to shrink the pool's per-token cost.
+- **OOM during graph capture.** The server loads weights fine, then dies while capturing CUDA graphs or allocating the KV pool. Cause: `--gpu-memory-utilization` is too high for the real activation and graph overhead on the day. Fix: lower utilization a notch, shorten `--max-model-len`, or add `--kv-cache-dtype fp8` to shrink the pool's per-token cost. This is distinct from a model that cannot fit at all: Qwen3-8B in full BF16 exceeds the card no matter the utilization (lowering it gives *less* memory), which is why the reference is served with FP8 weights rather than tuned to fit.
 - **OOM right after a swap.** The new server dies immediately even though its config fit before. Cause: the previous process had not released its CUDA context, so the card was still full. Fix: this is exactly what the swap script's VRAM-drain loop prevents; if it still happens, raise the drain threshold or the retry count.
 - **Quantization backend mismatch.** The server refuses to load an AWQ or MXFP4 checkpoint. Cause: a `--quantization` value that this vLLM version spells differently, or a checkpoint whose format the installed kernels do not support. Fix: check `vllm serve --help` for the accepted values (the read-along), and confirm the Blackwell FP4/Marlin paths are present in this build.
 
@@ -242,7 +241,7 @@ systemctl --user start vllm@qwen3-14b-awq
 ./healthcheck.sh http://localhost:8000 qwen3-14b
 
 # swap to the reference model
-./swap.sh qwen3-8b-bf16 qwen3-8b
+./swap.sh qwen3-8b-fp8 qwen3-8b
 
 # swap to the MoE
 ./swap.sh gpt-oss-20b gpt-oss-20b
@@ -258,12 +257,12 @@ Stamp: vLLM VERSION, NVIDIA 570-open, DATE. One model resident at a time (16GB).
 ## Models and their configs
 | served name | checkpoint | precision | max ctx | max seqs | KV dtype | notes |
 |---|---|---|---|---|---|---|
-| qwen3-8b   | Qwen/Qwen3-8B      | BF16   | 8192  | 8  | fp8  | edge of card; weights ~15.3 GiB |
+| qwen3-8b   | Qwen/Qwen3-8B      | FP8    | 8192  | 16 | fp8  | FP8 weights ~7.7 GiB (BF16 ~15.3 GiB won't fit) |
 | qwen3-14b  | Qwen/Qwen3-14B-AWQ | INT4-g | 16384 | 16 | bf16 | workhorse; ~6 GiB KV pool |
 | gpt-oss-20b| openai/gpt-oss-20b | MXFP4  | 16384 | 12 | bf16 | MoE, ~3.6B active, fast decode |
 
 ## Start a model
-    systemctl --user start vllm@<unit>     # qwen3-8b-bf16 | qwen3-14b-awq | gpt-oss-20b
+    systemctl --user start vllm@<unit>     # qwen3-8b-fp8 | qwen3-14b-awq | gpt-oss-20b
     ./healthcheck.sh http://localhost:8000 <served-name>
 
 ## Swap models (only one fits)
@@ -280,7 +279,7 @@ Stamp: vLLM VERSION, NVIDIA 570-open, DATE. One model resident at a time (16GB).
 
 ## Acceptance evidence (fill on the machine)
 - qwen3-14b boot KV blocks: RECORD ; implied max seqs @16k: RECORD
-- qwen3-8b  boot: fits at util=0.95? RECORD (else back off)
+- qwen3-8b (FP8) boot KV blocks: RECORD ; KV pool GiB at util=0.92: RECORD
 - gpt-oss   boot KV blocks: RECORD
 - swap round-trip time (14b -> 8b -> 20b): RECORD seconds
 - date / driver: RECORD
@@ -288,7 +287,7 @@ Stamp: vLLM VERSION, NVIDIA 570-open, DATE. One model resident at a time (16GB).
 
 ### What you should see
 
-Each `systemctl --user start` should bring a server to a healthy state within a couple of minutes (the first launch is slower because of weight download and CUDA-graph capture, both of which are one-time costs cached for subsequent boots), and `healthcheck.sh` should print the model list, a tiny correct generation, and "healthcheck passed." The generation step matters more than it looks: a server can pass a liveness probe while quietly serving a broken chat template or a mis-quantized checkpoint, and only an actual token round-trip catches that, which is why the health check ends by asking the model to compute two plus two rather than trusting a 200 response. The swap script is where the real proof is: after `swap.sh`, `nvidia-smi` should show VRAM dropping back to driver overhead before the next server claims it, and the whole round trip should take on the order of tens of seconds plus the target's startup time, with no OOM. Qwen3-8B BF16 is the one to watch: at `util=0.95` it may or may not fit depending on the exact activation and graph-capture overhead on the day, and if it OOMs at boot the runbook's job is to tell me to back off to 0.93 and accept a smaller pool. The committed `serve/RUNBOOK.md`, with its acceptance table filled in from the real machine (block counts, swap timing, date, driver), is the artifact the rest of the thesis leans on whenever it needs a model up. It is deliberately boring, and boring is the whole objective of an operations chapter. The exciting version of serving infrastructure is the one that surprises you at midnight; the boring version is the one you can run half-asleep because every sharp edge was filed down in daylight and written into a script. I am aiming squarely for boring.
+Each `systemctl --user start` should bring a server to a healthy state within a couple of minutes (the first launch is slower because of weight download and CUDA-graph capture, both of which are one-time costs cached for subsequent boots), and `healthcheck.sh` should print the model list, a tiny correct generation, and "healthcheck passed." The generation step matters more than it looks: a server can pass a liveness probe while quietly serving a broken chat template or a mis-quantized checkpoint, and only an actual token round-trip catches that, which is why the health check ends by asking the model to compute two plus two rather than trusting a 200 response. The swap script is where the real proof is: after `swap.sh`, `nvidia-smi` should show VRAM dropping back to driver overhead before the next server claims it, and the whole round trip should take on the order of tens of seconds plus the target's startup time, with no OOM. Qwen3-8B is the one to watch: full BF16 weights (~15.3 GiB) simply do not fit on 16GB with any usable KV pool, so the reference is served with FP8 weights (`--quantization fp8`), which brings the weights to ~7.7 GiB and opens a real pool. If it still OOMs at boot the cause is graph-capture overhead, not the weights, and the fix is a slightly lower `--gpu-memory-utilization` or a shorter `--max-model-len`, never a hoped-for BF16 fit. The committed `serve/RUNBOOK.md`, with its acceptance table filled in from the real machine (block counts, swap timing, date, driver), is the artifact the rest of the thesis leans on whenever it needs a model up. It is deliberately boring, and boring is the whole objective of an operations chapter. The exciting version of serving infrastructure is the one that surprises you at midnight; the boring version is the one you can run half-asleep because every sharp edge was filed down in daylight and written into a script. I am aiming squarely for boring.
 
 ```admonish substack-seed
 "One GPU, three models, zero drama." The unglamorous truth of single-GPU serving is that the hard part is not making a model fast, it is making the swap between models reliable. On a 16GB card you can hold exactly one of your models at a time, so your real infrastructure is the thirty-second choreography of stopping one server, waiting for the VRAM to actually drain (the race that OOMs everyone who skips it), and bringing up the next. This post is a love letter to operational boredom: a systemd unit, a health check that generates a token instead of trusting a 200, and a swap script whose most important line is a polling loop on nvidia-smi. Every serving flag gets exactly one sentence of justification traceable to arithmetic, and the reward is a runbook you can follow half-asleep.

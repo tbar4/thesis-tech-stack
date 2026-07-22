@@ -87,10 +87,10 @@ set -euo pipefail
 
 sudo apt update && sudo apt full-upgrade -y
 
-# HWE kernel + graphics HWE meta-packages for 24.04.
+# HWE kernel meta-package for 24.04 (the -generic-hwe metapackage already
+# pulls the matching linux-image, so I do not name it separately).
 sudo apt install -y \
   linux-generic-hwe-24.04 \
-  linux-image-generic-hwe-24.04 \
   build-essential dkms mokutil pciutils
 
 echo "Reboot, then confirm the running kernel:"
@@ -112,6 +112,9 @@ set -euo pipefail
 ubuntu-drivers devices || true
 
 # Install the OPEN 570 driver explicitly. Do NOT install the non-open variant on Blackwell.
+# The 570 branch ships in 24.04.2+; on older point releases it may be absent from
+# the archive, in which case add the graphics-drivers PPA first:
+#   sudo add-apt-repository ppa:graphics-drivers/ppa && sudo apt update
 sudo apt update
 sudo apt install -y nvidia-driver-570-open
 
@@ -129,7 +132,7 @@ Reboot. Before the OS loads, the blue MOK-management screen appears. Choose Enro
 
 ```bash title="bash - confirm Secure Boot is on and the module is trusted"
 mokutil --sb-state          # expect: SecureBoot enabled
-mokutil --list-enrolled | grep -i -A2 'nvidia\|DKMS\|Machine Owner' || true
+mokutil --list-enrolled | grep -i -A2 'Signature key' || true
 ```
 
 If the driver still will not load, this is where `nomodeset` earns its keep: reboot, edit the GRUB `linux` line to append `nomodeset`, boot to a working desktop, and re-check the driver install and MOK state from there.
@@ -146,8 +149,8 @@ set -euo pipefail
 STAMP="$(date --iso-8601=seconds)"
 OUT="gpu-state-$(date +%Y%m%d).log"
 
-# Find the NVIDIA GPU's PCI address for the link query.
-GPU_ADDR="$(lspci | grep -Ei 'nvidia.*(vga|3d)' | head -n1 | awk '{print $1}')"
+# Find the NVIDIA GPU's PCI address for the link query (select by NVIDIA vendor id 10de).
+GPU_ADDR="$(lspci -d 10de: | grep -Ei 'vga|3d' | head -n1 | awk '{print $1}')"
 
 {
   echo "# GPU state capture - $STAMP"
