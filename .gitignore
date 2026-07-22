@@ -1,0 +1,11 @@
+# Lab code in this book is inline in the chapters (no companion repo).
+# Anything an agent or a reader generates by *running* a lab is scratch and
+# stays out of the repo.
+labs/
+mlruns/
+outputs/
+*.png
+*.pyc
+__pycache__/
+.venv/
+.ipynb_checkpoints/
