@@ -102,8 +102,8 @@ $$ \delta = \big(z_{1-\alpha/2} + z_{1-\beta}\big)\,\frac{\sigma_d}{\sqrt n} \;\
 $$ n \approx \frac{\big(z_{1-\alpha/2}\sqrt{\psi} + z_{1-\beta}\sqrt{\psi - \delta^2}\big)^2}{\delta^2}. \tag{7.11}$$
 
 **A worked number the suite will use.** Take $\alpha = 0.05$ two-sided ($z_{1-\alpha/2} = 1.96$), power $1-\beta = 0.80$ ($z_{1-\beta} = 0.8416$), and suppose a training run flips a quarter of the items in one direction or the other, $\psi = 0.25$. Then $\sqrt\psi = 0.5$. For a target detectable gain of $\delta = 0.08$ (eight accuracy points), $\sqrt{\psi - \delta^2} = \sqrt{0.25 - 0.0064} = 0.4936$, so
-$$ n \approx \frac{(1.96\cdot 0.5 + 0.8416\cdot 0.4936)^2}{0.08^2} = \frac{(0.980 + 0.4154)^2}{0.0064} = \frac{1.947}{0.0064} \approx 304. $$
-So roughly **300 shared items** detect an eight-point paired accuracy gain at 80% power. Rerunning the arithmetic: a five-point gain ($\delta = 0.05$) needs $\approx 783$ items, and a ten-point gain ($\delta = 0.10$) needs only $\approx 194$. These three numbers (194 / 304 / 783 for 10 / 8 / 5 points) are exactly what Chapter 3.9 uses to choose the suite size, trading detectable effect against hand-verification cost.
+$$ n \approx \frac{(1.96\cdot 0.5 + 0.8416\cdot 0.4936)^2}{0.08^2} = \frac{(0.980 + 0.4154)^2}{0.0064} = \frac{1.947}{0.0064} = 304.23 \;\Longrightarrow\; \lceil 304.23 \rceil = 305. $$
+So roughly **300 shared items** detect an eight-point paired accuracy gain at 80% power (the formula lands at 304.23, and `np.ceil` rounds the required-$n$ up to **305**). Rerunning the arithmetic: a five-point gain ($\delta = 0.05$) needs $\approx 783$ items, and a ten-point gain ($\delta = 0.10$) needs only $\approx 194$. These three numbers (194 / 305 / 783 for 10 / 8 / 5 points) are exactly what Chapter 3.9 uses to choose the suite size, trading detectable effect against hand-verification cost.
 ```
 
 ## Tooling
@@ -112,7 +112,7 @@ The module could lean entirely on `scipy.stats`, and it uses `scipy` for the t a
 
 ## Lab
 
-We build `evalstats`, the module every later comparison in the book imports. It has four estimators (`bootstrap`, `paired`, `correction`, `power`), a result type, and tests that check the bootstrap's coverage by simulation and check McNemar against `scipy`.
+We build `evalstats`, the module every later comparison in the book imports. It has four estimators (`bootstrap`, `paired`, `correction`, `power`), a result type, and tests that check the bootstrap's coverage by simulation and check McNemar against a hand binomial.
 
 ### Project setup
 
@@ -159,14 +159,6 @@ class Estimate:
 import numpy as np
 from typing import Callable, Optional, Sequence
 from .result import Estimate
-
-def _resample_indices(rng, groups):
-    """Return row indices for one bootstrap resample, clustering by group.
-    If groups is None, resample rows i.i.d. (each row is its own cluster)."""
-    if groups is None:
-        n = groups_n
-        return rng.integers(0, n, size=n)  # replaced below
-    raise NotImplementedError
 
 def bootstrap_mean(scores: Sequence[float],
                    groups: Optional[Sequence] = None,
@@ -388,7 +380,7 @@ def test_bh_monotone_and_bonferroni_bound():
 def test_power_numbers_match_chapter():
     # The three numbers Chapter 3.9 consumes (psi = 0.25).
     assert es.required_n_mcnemar(0.10, 0.25) == 194
-    assert es.required_n_mcnemar(0.08, 0.25) == 304
+    assert es.required_n_mcnemar(0.08, 0.25) == 305
     assert es.required_n_mcnemar(0.05, 0.25) == 783
 ```
 
@@ -398,7 +390,7 @@ The single most common way to lie to yourself with these tools is to run an *unp
 
 ### The artifact and what you should see
 
-The artifact is the installed `evalstats` module plus a green `pytest`. Run `uv run pytest -q`. You should see four tests pass: the bootstrap's 95% interval covers the true accuracy on the order of 95% of the time (the coverage test), McNemar's exact p-value matches a hand binomial to numerical precision, Benjamini-Hochberg rejects at least as many hypotheses as Bonferroni on the same p-values (BH is uniformly more powerful), and the power module reproduces the exact item counts (194, 304, 783 items for a ten-, eight-, and five-point paired gain at 80% power with a discordant rate of 0.25) that the derivation computed by hand and that Chapter 3.9 will consume to size the thesis suite. From here on, no comparison in this book reports a bare number: an accuracy comes with a `bootstrap_mean` interval, a model-versus-model claim comes with a `bootstrap_paired_diff` or `mcnemar` p-value, a sweep comes with a `benjamini_hochberg` correction, and every one of them carries its method and seed into MLflow. That is the whole point of building the module once, here, and importing it everywhere after.
+The artifact is the installed `evalstats` module plus a green `pytest`. Run `uv run pytest -q`. You should see four tests pass: the bootstrap's 95% interval covers the true accuracy on the order of 95% of the time (the coverage test), McNemar's exact p-value matches a hand binomial to numerical precision, Benjamini-Hochberg rejects at least as many hypotheses as Bonferroni on the same p-values (BH is uniformly more powerful), and the power module reproduces the exact item counts (194, 305, 783 items for a ten-, eight-, and five-point paired gain at 80% power with a discordant rate of 0.25) that the derivation computed by hand and that Chapter 3.9 will consume to size the thesis suite. From here on, no comparison in this book reports a bare number: an accuracy comes with a `bootstrap_mean` interval, a model-versus-model claim comes with a `bootstrap_paired_diff` or `mcnemar` p-value, a sweep comes with a `benjamini_hochberg` correction, and every one of them carries its method and seed into MLflow. That is the whole point of building the module once, here, and importing it everywhere after.
 
 ```admonish read-along
 [CAI] is the reference this part leans on for causal thinking, and it pairs naturally with this chapter: a confidence interval tells you whether a difference is real, but Part IV's causal machinery tells you whether that real difference is *attributable to the intervention you made* rather than to a confounder in the eval design. Read this chapter for the "is it noise" question and [CAI] for the "is it causal" question; the thesis needs both answered.

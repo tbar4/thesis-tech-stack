@@ -16,10 +16,10 @@ An item's difficulty is not a property you assign, it is a property you *measure
 
 ### Sizing the suite from the power analysis
 
-Here the thread reconnects to Chapter 3.7, and this is the load-bearing quantitative decision of the chapter. The power analysis (Eq. 7.11) told us exactly how many shared items it takes to detect a paired accuracy gain at 80% power and $\alpha = 0.05$, given a discordant rate $\psi \approx 0.25$: about **194 items** for a ten-point gain, **304 items** for an eight-point gain, and **783 items** for a five-point gain. These are not round numbers I picked; they came out of the derivation and are checked by `evalstats.required_n_mcnemar` in the test suite. Now I trade detectable effect against the cost of hand-verifying items.
+Here the thread reconnects to Chapter 3.7, and this is the load-bearing quantitative decision of the chapter. The power analysis (Eq. 7.11) told us exactly how many shared items it takes to detect a paired accuracy gain at 80% power and $\alpha = 0.05$, given a discordant rate $\psi \approx 0.25$: about **194 items** for a ten-point gain, **305 items** for an eight-point gain, and **783 items** for a five-point gain. These are not round numbers I picked; they came out of the derivation and are checked by `evalstats.required_n_mcnemar` in the test suite. Now I trade detectable effect against the cost of hand-verifying items.
 
 ```admonish derivation
-**Choosing the suite size.** The thesis needs to detect training deltas that are scientifically interesting but not enormous; sub-five-point gains are hard to argue matter, and ten-point gains would be a very strong result I should not design *only* for. Targeting an **eight-point** detectable paired gain sets the required test size at $n = 304$ shared items (Eq. 7.11 with $\delta = 0.08$, $\psi = 0.25$, power 0.80, $\alpha = 0.05$). I round to **300 test items**, stratified as 100 easy / 100 medium / 100 hard, plus a separate **60-item dev slice** for prompt and pipeline iteration that is never scored in a reported result. Rounding 304 down to 300 shaves the power by a negligible amount: redo Eq. 7.10's logic and the achieved power at $n = 300$ for $\delta = 0.08$ is within a fraction of a percent of 0.80, well inside the slack already present in the $\psi = 0.25$ assumption.
+**Choosing the suite size.** The thesis needs to detect training deltas that are scientifically interesting but not enormous; sub-five-point gains are hard to argue matter, and ten-point gains would be a very strong result I should not design *only* for. Targeting an **eight-point** detectable paired gain sets the required test size at $n = 305$ shared items (Eq. 7.11 with $\delta = 0.08$, $\psi = 0.25$, power 0.80, $\alpha = 0.05$; the formula gives 304.23 and `np.ceil` rounds up to 305). I round to **300 test items**, stratified as 100 easy / 100 medium / 100 hard, plus a separate **60-item dev slice** for prompt and pipeline iteration that is never scored in a reported result. Rounding 305 down to 300 shaves the power by a negligible amount: redo Eq. 7.10's logic and the achieved power at $n = 300$ for $\delta = 0.08$ is within a fraction of a percent of 0.80, well inside the slack already present in the $\psi = 0.25$ assumption.
 
 Two escape hatches are worth stating now so v2.0 has somewhere to go. If a five-point gain must be detectable, the suite has to grow to ~780 items, roughly $2.5\times$ the hand-verification cost. Alternatively, drawing multiple completions per item and analyzing with the clustered bootstrap (Chapter 3.7) reduces within-item variance and buys back some power without adding items, at the cost of more inference. v1.0 commits to 300 items and an eight-point target; the escape hatches are documented, not taken.
 ```
@@ -199,7 +199,7 @@ def freeze():
         "sizing_rationale": {
             "target_detectable_delta": 0.08, "power": 0.80, "alpha": 0.05,
             "assumed_discordant_rate": 0.25,
-            "required_n_from_ch37": 304, "chosen_n": 300,
+            "required_n_from_ch37": 305, "chosen_n": 300,
             "source": "evalstats.required_n_mcnemar (Eq. 7.11)"},
         "content_sha256": {"test": sha256_items(test), "dev": sha256_items(dev)},
         "verifiers": sorted({i["verifier"] for i in items}),
@@ -247,7 +247,7 @@ Each item has exactly one programmatically verifiable answer. Stratified
 
 ## Sizing
 n_test = 300 chosen to detect an 8-point paired accuracy gain at 80% power,
-alpha = 0.05, assumed discordant rate 0.25 (evalstats, Eq. 7.11 -> 304, rounded).
+alpha = 0.05, assumed discordant rate 0.25 (evalstats, Eq. 7.11 -> 305, rounded).
 
 ## Collection & preprocessing
 Items generated or programmatically transformed (small contamination surface);
@@ -265,6 +265,102 @@ but correct answer forms (audit false negatives before reporting).
 v1.0 is immutable (git tag suite-v1.0). Corrections -> v1.1; growth -> v2.0.
 Every reported result cites the version and content hash it used.
 ```
+
+### The `thesis_suite` convenience package
+
+The `suite/` package above is the builder: it calibrates, freezes, and datasheets. But the chapters downstream (the judge calibration in 3.6, the reward core in Part VII) do not want to reach into `suite/frozen/` and re-implement item loading and verifier dispatch every time. So I add one thin package, `thesis_suite`, that wraps the frozen split and the audited verifiers behind a single stable surface. It builds nothing new: `load_suite` reads the frozen JSONL, and every correctness call routes back into `suite.verifiers` (Chapter 3.9) or the extract-and-compare reward core (Chapter 3.4), so the semantics are exactly what was validated here. Downstream code imports `thesis_suite` and never has to know where the JSONL lives or which checker an item uses.
+
+```python title="thesis_suite/__init__.py"
+"""Stable import surface over the frozen thesis task suite (v1.0) and its
+verifiers. Chapters 6.x (judges) and 7.x (rewards) import from HERE, not from
+suite internals. Thin by design: all real logic lives in suite/verifiers.py
+(Ch 3.9) and the frozen JSONL under suite/frozen/ (this chapter)."""
+from __future__ import annotations
+import json
+from dataclasses import dataclass
+from pathlib import Path
+
+from suite.verifiers import VERIFIERS, exact_match, numeric
+
+_FROZEN = Path(__file__).resolve().parent.parent / "suite" / "frozen"
+_DEFAULT_REV = "v1.0"
+
+
+@dataclass(frozen=True)
+class Item:
+    id: str
+    prompt: str          # input + question, exactly as the model is asked
+    answer: str          # the gold target
+    difficulty: str      # easy | medium | hard
+    verifier: str        # which deterministic checker validates it
+
+
+@dataclass(frozen=True)
+class Suite:
+    items: list[Item]
+    revision: str
+
+
+def _to_item(raw: dict) -> Item:
+    prompt = (f"{raw['input']}\n\n{raw['question']}"
+              if raw.get("input") else raw["question"])
+    return Item(id=raw["id"], prompt=prompt, answer=raw["target"],
+                difficulty=raw.get("difficulty", "medium"),
+                verifier=raw.get("verifier", "exact"))
+
+
+def load_suite(rev: str | None = None) -> Suite:
+    """Load the frozen TEST split at revision `rev` (default v1.0)."""
+    rev = rev or _DEFAULT_REV
+    path = _FROZEN / rev / "test.jsonl"
+    raw = [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
+    return Suite(items=[_to_item(r) for r in raw], revision=rev)
+
+
+def verify(item: Item, response: str) -> bool:
+    """Primary correctness signal for an item: dispatch to its own verifier
+    (Ch 3.9). This is the number every reported score is built from."""
+    return VERIFIERS[item.verifier](response, item.answer)
+
+
+def verify_sda_answer(response: str, target: str) -> bool:
+    """Low-level extract-and-compare reward core (Ch 3.4): pull the answer out
+    of a free-form response and compare to `target` -- numeric extraction first
+    (the dominant SDA answer form), exact-match after normalization otherwise.
+    This is the pure function Part VII turns into a training reward."""
+    return numeric(response, target) or exact_match(response, target)
+
+
+def verify_correct(prompt: str, response: str, answer: str) -> bool:
+    """Verify a (prompt, response, answer) triple when the caller has no Item
+    in hand (6.x, 7.x). `prompt` is accepted for call-site symmetry; correctness
+    routes through the same reward core as `verify_sda_answer`."""
+    return verify_sda_answer(response, answer)
+
+
+def score_model(client, suite: Suite, *, model: str = "Qwen/Qwen3-14B-AWQ",
+                temperature: float = 0.0, max_tokens: int = 512,
+                seed: int = 0) -> list[dict]:
+    """Score `model` (served behind an OpenAI-compatible `client`) over the
+    suite; return one row per item with response, correctness, and difficulty.
+    Greedy by default so the score is a fixed measurement, not a coin flip."""
+    rows = []
+    for it in suite.items:
+        r = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": it.prompt}],
+            temperature=temperature, max_tokens=max_tokens, seed=seed)
+        resp = r.choices[0].message.content
+        rows.append({"id": it.id, "response": resp,
+                     "correct": verify(it, resp), "difficulty": it.difficulty})
+    return rows
+
+
+__all__ = ["Item", "Suite", "load_suite", "verify", "verify_sda_answer",
+           "verify_correct", "score_model"]
+```
+
+The split of responsibility is deliberate: `verify` is the item-aware primary signal (it honors each item's declared checker, so a `set` item is graded set-wise and a `numeric` item numerically), while `verify_sda_answer` is the item-agnostic reward core that Part VII optimizes against. They agree on the SDA-flavored items the reward is trained on; keeping both means a downstream caller can grade against the frozen suite *or* score a free-form generation with the same package.
 
 ```admonish thesis-thread
 The SDA thread has been a running illustration since the preface; here it becomes a real artifact. We now hold **thesis task suite v1.0**: 300 frozen, content-hashed, difficulty-stratified, contamination-scanned verifiable-reasoning items plus a 60-item dev slice, sized by the power analysis to resolve an eight-point paired gain, tagged `suite-v1.0` in git with a datasheet. From this point on, every claim the thesis makes ("INT4 matches BF16 on reasoning," "GRPO training moved the reasoning delta") is a paired comparison taken on *this exact instrument*, cited by version and hash. Part IV interrogates whether the deltas measured on it are causal; Parts V through VII generate and score against it and try to move its number. The instrument is built; the rest of the book is readings from it.

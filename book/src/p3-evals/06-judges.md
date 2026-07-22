@@ -240,11 +240,16 @@ def positional_inconsistency(rows):
 
 def verbosity_slope(rows):
     """Standardized slope of (verdict favors longer) on length difference.
-    Encode verdict as +1 if it favors A, -1 if B, 0 if tie; regress on
-    standardized (len_a - len_b). A positive slope means 'longer tends to win'."""
+    Encode verdict as +1 if it favors A, -1 if B, 0 if tie. To isolate length
+    from POSITION, average the signed verdict over both presentation orders
+    (v_orig and the swapped v_swap, both already mapped to a/b content): the
+    position-dependent component cancels and only the content/length preference
+    survives. Regressing v_orig alone would leak position bias into the slope.
+    A positive slope means 'longer tends to win' independent of where it sat."""
     def signed(v):
         return {"A": 1.0, "B": -1.0, "tie": 0.0}.get(v, 0.0)
-    y = np.array([signed(r["v_orig"]) for r in rows])
+    y = np.array([0.5 * (signed(r["v_orig"]) + signed(r["v_swap"]))
+                  for r in rows])
     dl = np.array([r["len_a"] - r["len_b"] for r in rows], dtype=float)
     if dl.std() == 0:
         return 0.0
