@@ -119,15 +119,16 @@ def build_model():
 
 
 def format_and_mask(tok):
-    """Render each example through the chat template. TRL's collator will
-    mask everything before the assistant turn (equation 6.2.4)."""
+    """Split each example into prompt/completion message lists. SFTTrainer
+    renders them through the chat template and, on prompt-completion data,
+    masks the prompt tokens automatically (equation 6.2.4), so only the
+    completion is scored, without needing a pre-rendered `text` column."""
     def fmt(ex):
-        msgs = [
-            {"role": "user", "content": ex["instruction"] + (
-                "\n\n" + ex["input"] if ex.get("input") else "")},
-            {"role": "assistant", "content": ex["output"]},
-        ]
-        return {"text": tok.apply_chat_template(msgs, tokenize=False)}
+        user = ex["instruction"] + ("\n\n" + ex["input"] if ex.get("input") else "")
+        return {
+            "prompt": [{"role": "user", "content": user}],
+            "completion": [{"role": "assistant", "content": ex["output"]}],
+        }
     return fmt
 
 
@@ -142,7 +143,9 @@ def main() -> None:
     cfg = SFTConfig(
         output_dir=str(OUT / "run"),
         max_seq_length=MAX_SEQ,
-        packing=True,                     # block-diagonal packing
+        # No packing here: completion-only masking works cleanly on
+        # prompt/completion data, but packing a pre-rendered sequence would
+        # score the whole thing. Keep them separate (chapter 6.2 theory).
         completion_only_loss=True,        # equation (6.2.3): mask the prompt
         per_device_train_batch_size=2,
         gradient_accumulation_steps=8,    # effective batch 16

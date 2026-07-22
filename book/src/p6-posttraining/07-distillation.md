@@ -78,7 +78,7 @@ TEACHER = "Qwen/Qwen3-14B"
 K = 4                                  # traces per problem; keep the correct ones
 OUT = Path("artifacts"); OUT.mkdir(exist_ok=True)
 
-from thesis_suite import extract_answer, verify   # chapter-3.9 verifier
+from thesis_suite import verify_sda_answer   # chapter-3.9 verifier
 
 
 def main() -> None:
@@ -96,8 +96,7 @@ def main() -> None:
         for prob, out in zip(problems, outs):
             gold = prob["answer"].split("####")[-1].strip()
             for comp in out.outputs:
-                ans = extract_answer(comp.text)
-                if ans is not None and verify(ans, gold):     # keep correct only
+                if verify_sda_answer(comp.text, gold):     # keep correct only
                     f.write(json.dumps({
                         "instruction": prob["question"],
                         "output": comp.text,
@@ -149,15 +148,16 @@ def student():
     return model, tok
 
 
-def train_on(jsonl_path, tag):
+def train_on(ds, tag):
     model, tok = student()
-    ds = load_dataset("json", data_files=jsonl_path, split="train")
-    ds = ds.map(lambda ex: {"text": tok.apply_chat_template(
-        [{"role": "user", "content": ex["instruction"]},
-         {"role": "assistant", "content": ex["output"]}], tokenize=False)},
+    # Prompt/completion message lists: SFTTrainer renders + masks the prompt
+    # (no packing over a pre-rendered `text`, which would score the whole seq).
+    ds = ds.map(lambda ex: {
+        "prompt": [{"role": "user", "content": ex["instruction"]}],
+        "completion": [{"role": "assistant", "content": ex["output"]}]},
         remove_columns=ds.column_names)
     cfg = SFTConfig(output_dir=str(OUT / f"run_{tag}"), max_seq_length=2048,
-                    packing=True, completion_only_loss=True,
+                    completion_only_loss=True,
                     per_device_train_batch_size=2, gradient_accumulation_steps=8,
                     num_train_epochs=1, learning_rate=2e-4, warmup_ratio=0.03,
                     lr_scheduler_type="cosine", bf16=True, logging_steps=25,
@@ -169,12 +169,17 @@ def train_on(jsonl_path, tag):
 
 def main() -> None:
     # Distilled student: trained on verified teacher traces.
-    dm, dtok = train_on(str(OUT / "distill_set.jsonl"), "distill")
+    distill_ds = load_dataset(
+        "json", data_files=str(OUT / "distill_set.jsonl"), split="train")
+    dm, dtok = train_on(distill_ds, "distill")
     distill_scores = score_model(dm, dtok)
     del dm; torch.cuda.empty_cache()
 
-    # Baseline student: plain human-demo SFT (chapter 6.2 style).
-    bm, btok = train_on("../sft-4b/artifacts/alpaca_3k.jsonl", "baseline")
+    # Baseline student: plain human-demo SFT on the same Alpaca slice as
+    # chapter 6.2, loaded straight from HF (6.2 trains on this slice but does
+    # not dump a jsonl, so read it here rather than from a nonexistent file).
+    base_ds = load_dataset("yahma/alpaca-cleaned", split="train[:3000]")
+    bm, btok = train_on(base_ds, "baseline")
     base_scores = score_model(bm, btok)
     del bm; torch.cuda.empty_cache()
 
@@ -183,7 +188,7 @@ def main() -> None:
     report = (f"distill_acc {sum(distill_scores)/len(distill_scores):.4f}\n"
               f"baseline_acc {sum(base_scores)/len(base_scores):.4f}\n"
               f"delta {est.point:+.4f} 95% CI [{est.ci_low:+.4f}, {est.ci_high:+.4f}]\n"
-              f"mcnemar p {mc.p:.4f}\n")
+              f"mcnemar p {mc.pvalue:.4f}\n")
     (OUT / "distill_delta.txt").write_text(report)
     print(report)
     print(f"Artifact: {(OUT / 'distill_delta.txt').resolve()}")
