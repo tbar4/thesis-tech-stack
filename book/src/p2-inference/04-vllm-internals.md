@@ -36,7 +36,7 @@ vLLM's engine runs a loop. Each iteration ("engine step") the scheduler decides 
 1. It maintains three queues: **waiting** (admitted, not yet prefilled), **running** (actively decoding), and **swapped/preempted** (evicted to free memory).
 2. At each step it tries to fill the batch. Running sequences that still have KV room continue decoding. If there is spare capacity, it pulls waiting sequences in and schedules their prefill.
 3. Every admission checks the block allocator: can I allocate the blocks this sequence needs this step? If the pool is full, the sequence waits.
-4. If a running sequence needs a new block and none is free, the scheduler **preempts**: it evicts the lowest-priority sequence, freeing physical blocks for the winner. The preempted sequence returns to the queue and resumes when room appears. (The V1 engine preempts by *recomputation* — it drops the blocks and re-prefills on resume; the swap-to-CPU path and the `Swapped` queue below are a V0 concept, so on V1 the swapped count stays effectively zero and preemption shows up as recompute instead.)
+4. If a running sequence needs a new block and none is free, the scheduler **preempts**: it evicts the lowest-priority sequence, freeing physical blocks for the winner. The preempted sequence returns to the queue and resumes when room appears. (The V1 engine preempts by *recomputation*: it drops the blocks and re-prefills on resume; the swap-to-CPU path and the `Swapped` queue below are a V0 concept, so on V1 the swapped count stays effectively zero and preemption shows up as recompute instead.)
 5. Finished sequences (hit EOS or max tokens) release their blocks immediately, and the freed blocks are available on the very next step.
 
 The effect is that a completed short request leaves the batch the instant it finishes and a waiting request takes its slot the same step, so the GPU stays saturated instead of idling on the longest laggard. This is the mechanism that turns decode's low per-sequence intensity into high aggregate throughput: batching many sequences amortizes each weight read across many tokens, exactly the intensity boost the roofline chapter promised.
@@ -177,7 +177,7 @@ Captured: RECORD DATE / DRIVER / vLLM VERSION
 - **Running**: sequences decoding this step. Bounded by `--max-num-seqs` (16) AND by
   the KV pool. If this pins below 16, the KV pool (ch.2) is the limit, not the flag.
 - **Swapped**: sequences preempted to CPU (a vLLM V0 metric; on the V1 engine
-  preemption is by recompute and this stays 0 — watch the preemption counter in
+  preemption is by recompute and this stays 0, so watch the preemption counter in
   `/metrics` instead). Nonzero = admitted more than the pool holds and the scheduler
   is thrashing (see the preemption gotcha).
 - **Waiting**: admitted-but-not-yet-running requests. Transient during bursts; chronic
