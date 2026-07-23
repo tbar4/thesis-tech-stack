@@ -110,6 +110,10 @@
 - [The reproducibility package](p10-assembly/03-repro-package.md)
 - [The Substack map](p10-assembly/04-substack-map.md)
 
+# Part XI — Beyond the Thesis: Toward a Product
+
+- [Agentic RL: training the model to use its tools](p11-beyond-thesis/01-agentic-rl.md)
+
 ---
 
 [Appendix A: VRAM arithmetic tables](appendices/a-vram-tables.md)
