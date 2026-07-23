@@ -34,7 +34,7 @@ A tool that hits a live feed makes the eval non-reproducible by construction: th
 
 Per the locked stack, the FastMCP server and its source clients live in their own `mcp/` uv sub-project (light, IO-bound, no GPU), separate from `data/` and `serve/`. It depends on the official SDK, `httpx` and `spacetrack` for the 3.9 fetch clients, and Skyfield/sgp4 for the 3.10 oracle.
 
-```bash
+```bash title="setup.sh"
 cd ~/thesis-tech-stack
 uv init mcp && cd mcp
 uv add "mcp[cli]" httpx spacetrack skyfield sgp4
@@ -181,7 +181,7 @@ if __name__ == "__main__":
 
 For the model to *call* these tools, the vLLM server (Part II) has to be launched with tool-calling enabled and a parser that matches the model's tool syntax. For Qwen3 that is the Hermes parser.
 
-```bash
+```bash title="serve/qwen3-8b-tools.sh"
 # vLLM must be told to emit and parse tool calls (extends the 05-vllm-ops runbook).
 uv run vllm serve Qwen/Qwen3-8B --quantization fp8 \
     --served-model-name qwen3-8b --port 8000 \
@@ -451,7 +451,7 @@ def conjunction_screen() -> Task:
 
 Run it against a pinned snapshot so the eval is reproducible, with vLLM launched in tool-calling mode. Pinned mode is the only mode that goes in a table.
 
-```bash
+```bash title="shell: run the tool-augmented eval (pinned)"
 # 1) vLLM up with tool-calling (see the Tooling serve command)
 # 2) pin the snapshot so the oracle ground truth is frozen and re-runnable
 export SDA_MODE=pinned
@@ -467,7 +467,7 @@ uv run inspect view --log-dir logs
 
 To see the same tools drive the thin vLLM loop instead of Inspect (the deployed inference path, and the "current" live mode), run the loop directly:
 
-```bash
+```bash title="shell: run the live tool loop"
 # live "current" mode: hits the feed under my space-track credentials
 SDA_MODE=current uv run mcp/loop.py
 ```
