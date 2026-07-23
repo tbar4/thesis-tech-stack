@@ -6,7 +6,7 @@ This is where the last four chapters cash out. We have metrics that mean somethi
 
 ### What makes a task suitable for a verifiable-reasoning suite
 
-The defining property is that a response can be *checked, not just liked*. A task earns its place in this suite only if there is a programmatic verifier that maps a model response to correct-or-not without a human and without a judge's opinion. That is the whole reason the thread is "SDA-flavored": these are structured-data reasoning tasks where the answer is a number, a set, a boolean, or a normalized string that a small deterministic checker can validate. Judges (Chapter 3.6) are held in reserve for partial-credit analysis of the reasoning trace; they never decide the primary correctness signal, because a suite whose ground truth depends on a model's opinion inherits that model's biases and cannot anchor a training reward.
+The defining property is that a response can be *checked, not just liked*. A task earns its place in this suite only if there is a programmatic verifier that maps a model response to correct-or-not without a human and without a judge's opinion. That is the whole reason the thread is Space Domain Awareness: these are orbital-reasoning tasks where the answer is a number, a boolean, a permutation, or a normalized identifier that a small deterministic checker validates, and for SDA that checker is a physics oracle (chapter 3.10) rather than a string comparison. The suite is built by freezing the versioned task set that chapter 3.10's generator emits from a 3.9 snapshot. Judges (Chapter 3.6) are held in reserve for partial-credit analysis of the reasoning trace; they never decide the primary correctness signal, because a suite whose ground truth depends on a model's opinion inherits that model's biases and cannot anchor a training reward.
 
 Beyond verifiability, four properties separate a good item from a bad one. It must have **unambiguous ground truth**: exactly one correct answer under a stated normalization, or a checker that accepts exactly the set of correct forms. It must be **shortcut-resistant**: a model should not be able to guess it from surface cues or answer it without doing the reasoning, which means distractors and structure that punish pattern-matching. It must sit at a **useful difficulty**: not so easy every model aces it (ceiling, zero discrimination) nor so hard every model fails (floor, also zero discrimination). And it must have a **small contamination surface**: freshly constructed or programmatically transformed items, so the Chapter 3.8 scan comes back clean by construction rather than by luck.
 
@@ -32,11 +32,11 @@ Freezing is what turns a folder of JSONL into a citable artifact. It has four pa
 
 ## Tooling
 
-The suite lives as JSONL in the Inspect-compatible schema from Chapter 3.3, so the same task and scorer machinery runs it. Each item carries the fields the scorer and the statistics need: a stable `id`, the `domain` and `difficulty` stratum, the `input`/`question`, the `target` answer, a `verifier` type naming which deterministic checker validates it, and `provenance`/`license`. Content hashing uses `hashlib`; MLflow logs the suite version, hashes, and per-stratum counts as a run so the freeze event itself is tracked on the spine. The verifiers are small pure functions (exact-match after normalization, set equality, numeric-with-tolerance, boolean) kept in one module so the checker for every item is auditable in one place.
+The suite lives as JSONL in the Inspect-compatible schema from Chapter 3.3, so the same task and scorer machinery runs it. Each item carries the fields the scorer and the statistics need: a stable `id`, the `domain` and `difficulty` stratum, the `input`/`question`, the `target` answer, a `verifier` type naming which deterministic checker validates it, and `provenance`/`license` (for SDA, `provenance` is the 3.9 snapshot content-hash the item was built from). Content hashing uses `hashlib`; MLflow logs the suite version, hashes, and per-stratum counts as a run so the freeze event itself is tracked on the spine. The verifiers are the orbital checkers built in chapter 3.10 (the conjunction verdict, the miss-distance and orbital-element values graded with the numeric tolerance band, and catalog-ID exact match), imported from the `sda_tasks` package so the suite grades every item with the same Skyfield/SGP4 oracle that generated its gold. The two generic reward-core helpers the `thesis_suite` package still exposes (exact-match after normalization, and numeric extraction) live alongside them; the toy set-difference checker that stood in before chapter 3.10 is gone.
 
 ## Lab
 
-We build the suite, pilot it to calibrate difficulty, freeze it to v1.0 with a manifest and datasheet, and tag it. The generation of items is domain-specific; I show the schema, the verifiers, the difficulty-calibration pilot, and the freeze machinery, with a small illustrative item set that a real run scales to 360 items (300 test + 60 dev).
+We build the suite, pilot it to calibrate difficulty, freeze it to v1.0 with a manifest and datasheet, and tag it. Item generation lives in chapter 3.10's `sda_tasks` generator (the oracle writes the gold); here I show the schema, the verifier dispatch, the difficulty-calibration pilot, and the freeze machinery, with a small illustrative orbital item set that a real run scales to 360 items (300 test + 60 dev).
 
 ### Project setup
 
@@ -45,23 +45,37 @@ uv init thesis-suite && cd thesis-suite
 uv add "numpy>=1.26" "openai>=1.40"        # openai client to hit the served model
 uv add "mlflow>=2.14"
 uv add --editable ../evalstats             # the module from Chapter 3.7
+uv add --editable ../sda-tasks             # the orbital oracle + verifiers, Chapter 3.10
 ```
 
 ### The item schema and verifiers
 
 ```python title="suite/verifiers.py"
-"""Deterministic checkers. The primary correctness signal is never a judge."""
+"""Deterministic checkers. The primary correctness signal is never a judge.
+
+The orbital verifiers are built in chapter 3.10 (`sda_tasks.verifiers`); each
+grades with the same Skyfield/SGP4 oracle that produced the gold, so the answer
+key and the grader are one program. This module registers them and keeps the
+two generic reward-core helpers the `thesis_suite` package (below) imports:
+`exact_match` (catalog-ID / normalized string) and `numeric` (the item-agnostic
+fallback). The toy set-difference checker that stood in before 3.10 is deleted.
+"""
 import re
 from fractions import Fraction
+
+from sda_tasks.verifiers import (          # chapter 3.10 orbital checkers
+    conjunction, numeric_km, numeric_min)
 
 def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", str(s).strip().lower())
 
 def exact_match(response: str, target: str) -> bool:
+    """Catalog-ID / normalized-string match (e.g. a NORAD ID)."""
     return _norm(response) == _norm(target)
 
 def numeric(response: str, target: str, tol: float = 1e-6) -> bool:
-    """Extract the last number in the response; compare to target within tol."""
+    """Generic numeric compare for the reward core; the orbital families use the
+    tolerance-band checkers `numeric_km` / `numeric_min` (chapter 3.10, eq 10.7)."""
     nums = re.findall(r"-?\d+(?:\.\d+)?", response.replace(",", ""))
     if not nums:
         return False
@@ -70,32 +84,27 @@ def numeric(response: str, target: str, tol: float = 1e-6) -> bool:
     except (ValueError, ZeroDivisionError):
         return False
 
-def set_equal(response: str, target: str) -> bool:
-    """Compare comma-separated sets, order-insensitive, after normalization."""
-    r = {_norm(x) for x in response.split(",") if x.strip()}
-    t = {_norm(x) for x in target.split(",") if x.strip()}
-    return r == t
-
-def boolean(response: str, target: str) -> bool:
-    truthy = {"yes", "true", "1"}; falsy = {"no", "false", "0"}
-    r = _norm(response)
-    tgt = _norm(target) in truthy
-    # grab the model's yes/no verdict token
-    hit = next((w for w in re.findall(r"[a-z]+", r) if w in truthy | falsy), None)
-    return hit is not None and (hit in truthy) == tgt
-
-VERIFIERS = {"exact": exact_match, "numeric": numeric,
-             "set": set_equal, "boolean": boolean}
+# the suite's verifier registry: orbital checkers (3.10) plus generic helpers
+VERIFIERS = {
+    "conjunction": conjunction,          # boolean conjunction verdict
+    "miss_distance_km": numeric_km,      # miss distance, tolerance band
+    "period_min": numeric_min,           # orbital period, tolerance band
+    "apogee_alt_km": numeric_km,
+    "perigee_alt_km": numeric_km,
+    "catalog": exact_match,              # NORAD-ID identification
+    "numeric": numeric,                  # generic reward-core fallback
+    "exact": exact_match,
+}
 
 def check(item: dict, response: str) -> bool:
     return VERIFIERS[item["verifier"]](response, item["target"])
 ```
 
 ```jsonl title="suite/draft/items_sample.jsonl"
-{"id": "sda-0001", "domain": "table-reasoning", "verifier": "exact", "input": "Region,Q1,Q2\nNorth,812,640\nWest,900,705\nEast,540,560", "question": "Which region had the largest quarter-over-quarter revenue drop?", "target": "West", "provenance": "generated:table-synth-v1", "license": "CC0-1.0"}
-{"id": "sda-0002", "domain": "sql-semantics", "verifier": "numeric", "input": "Table t(amount, status). Rows: (120,paid),(90,paid),(200,unpaid),(150,paid),(80,paid)", "question": "How many rows satisfy amount>100 AND status='paid'?", "target": "2", "provenance": "generated:sql-synth-v1", "license": "CC0-1.0"}
-{"id": "sda-0003", "domain": "schema-normalization", "verifier": "boolean", "input": "R(id PK, zip, city); zip -> city holds.", "question": "Is R in third normal form? Answer yes or no.", "target": "no", "provenance": "generated:schema-synth-v1", "license": "CC0-1.0"}
-{"id": "sda-0004", "domain": "set-reasoning", "verifier": "set", "input": "A={1,2,3,4,6}; B={2,4,5,6,8}", "question": "List the elements in A but not in B, comma-separated.", "target": "1, 3", "provenance": "generated:set-synth-v1", "license": "CC0-1.0"}
+{"id": "sda-conj-0001", "domain": "conjunction", "verifier": "conjunction", "input": "OBJECT A:\n1 25544U 98067A   26203.51782528  .00016717  00000-0  30074-3 0  9991\n2 25544  51.6382  88.4247 0004796  76.6963 283.4442 15.50075566454121\n\nOBJECT B:\n1 48274U 21035A    26203.47630000  .00002182  00000-0  62911-4 0  9992\n2 48274  51.6431  84.9110 0007899  92.1004 268.0912 15.48920201123456", "question": "Do these two objects conjunct within 5 km in the next 24 hours? Answer yes or no.", "target": "yes", "provenance": "snapshot:b7f3a9c1e2d4", "license": "CC0-1.0"}
+{"id": "sda-conj-0002", "domain": "conjunction", "verifier": "miss_distance_km", "input": "OBJECT A: 1 25544U 98067A ... / OBJECT B: 1 48274U 21035A ... (both TLEs as above)", "question": "What is the miss distance at closest approach, in km, over the next 24 hours?", "target": "4.812", "tolerance": {"atol": 0.05, "rtol": 0.02}, "provenance": "snapshot:b7f3a9c1e2d4", "license": "CC0-1.0"}
+{"id": "sda-elem-0001", "domain": "elements", "verifier": "period_min", "input": "1 25544U 98067A   26203.51782528  .00016717  00000-0  30074-3 0  9991\n2 25544  51.6382  88.4247 0004796  76.6963 283.4442 15.50075566454121", "question": "Compute the orbital period of this object, in minutes.", "target": "92.90", "tolerance": {"atol": 0.1, "rtol": 0.001}, "provenance": "snapshot:b7f3a9c1e2d4", "license": "CC0-1.0"}
+{"id": "sda-cat-0001", "domain": "catalog", "verifier": "catalog", "input": "Object with inclination approximately 51.64 deg, mean motion approximately 15.50 rev/day, international designator 1998-067A.", "question": "What is the NORAD catalog ID of this object? Answer with the number only.", "target": "25544", "provenance": "snapshot:b7f3a9c1e2d4", "license": "CC0-1.0"}
 ```
 
 ### The difficulty-calibration pilot
@@ -240,9 +249,10 @@ serve-evaluate-score-train loop, and to serve as the fixed instrument against
 which every training delta in this thesis is measured.
 
 ## Composition
-300 test items + 60 dev items, SDA-flavored structured-data reasoning
-(table reasoning, SQL semantics, schema normalization, set reasoning).
-Each item has exactly one programmatically verifiable answer. Stratified
+300 test items + 60 dev items, Space Domain Awareness orbital reasoning
+(conjunction screening, orbital-element derivation, decay/reentry ordering,
+pass prediction, catalog correlation). Each item has exactly one answer
+computed and graded by the chapter 3.10 Skyfield/SGP4 oracle. Stratified
 100/100/100 easy/medium/hard by reference-model pass rate.
 
 ## Sizing
@@ -250,7 +260,9 @@ n_test = 300 chosen to detect an 8-point paired accuracy gain at 80% power,
 alpha = 0.05, assumed discordant rate 0.25 (evalstats, Eq. 7.11 -> 305, rounded).
 
 ## Collection & preprocessing
-Items generated or programmatically transformed (small contamination surface);
+Items generated by the chapter 3.10 oracle from a DVC-pinned 3.9 snapshot, each
+stamped with that snapshot's content-hash as provenance (small contamination
+surface: gold is computed, never copied from a public conjunction report);
 scanned with the Chapter 3.8 contamination pipeline (13-gram MinHash + embedding).
 Difficulty calibrated with a 4-sample pilot at temperature 0.7 on the reference
 model. Recorded content SHA-256 in manifest.json.
