@@ -78,7 +78,7 @@ TEACHER = "Qwen/Qwen3-14B"
 K = 4                                  # traces per problem; keep the correct ones
 OUT = Path("artifacts"); OUT.mkdir(exist_ok=True)
 
-from thesis_suite import verify_sda_answer   # chapter-3.9 verifier
+from thesis_suite import verify_sda_answer   # chapter-3.11 verifier
 
 
 def main() -> None:
@@ -131,13 +131,13 @@ from trl import SFTConfig, SFTTrainer
 from unsloth import FastLanguageModel
 
 import evalstats as es
-# chapter-3.9 frozen suite: load the frozen v1.0 items, and grade an in-process
-# model over them (no served endpoint) with the same verifiers 3.9 froze.
+# chapter-3.11 frozen suite: load the frozen v1.0 items, and grade an in-process
+# model over them (no served endpoint) with the same verifiers 3.11 froze.
 from thesis_suite import load_suite, score_model_local
 
 BASE = "unsloth/Qwen3-4B-Base"
 OUT = Path("artifacts"); OUT.mkdir(exist_ok=True)
-SUITE = load_suite()                # frozen thesis suite v1.0 (chapter 3.9)
+SUITE = load_suite()                # frozen thesis suite v1.0 (chapter 3.11)
 
 
 def suite_scores(model, tok) -> list[int]:
@@ -217,7 +217,7 @@ uv run python distill_sft.py
 The distillation comparison is only honest if the distilled student and the baseline student are evaluated on problems the *teacher never generated traces for*. If your thesis-suite items overlap with the GSM8K training problems you distilled on, you are measuring memorization, not reasoning transfer, which is the contamination failure mode from Part III wearing a distillation costume. Keep the distillation source problems and the eval suite strictly disjoint, and prefer an eval suite drawn from a different distribution than the distillation set so a real generalization delta is what you measure. This is the single most common way a distillation result is accidentally inflated.
 ```
 
-**What you should see.** The teacher's solve rate on the source problems (printed by `gen_traces.py`) tells you your yield: a 14B teacher on GSM8K-style problems should verify-correct on the large majority of items, so you keep on the order of 1500 to 1800 traces from 2000 problems. The distilled student, trained on those verified traces, should beat the plain-SFT baseline on the frozen suite by a delta whose bootstrap CI excludes zero and whose McNemar p-value is small, the measured statement that dense correct traces beat generic instruction data for reasoning. Both training runs fit the chapter 6.3 QLoRA budget; the teacher generation is the memory-heavy step and runs in the inference environment where the 14B model in BF16 (about 28 GiB) exceeds 16 GiB, so on the baseline machine you either quantize the teacher to 4-bit to fit or generate the traces during a Lambda burst (Part VIII) and bring the `distill_set.jsonl` home. Record teacher solve rate, kept-trace count, both training wall-clocks, and the eval delta with its CI (measured on the baseline machine, record value, date, driver). The `distill_delta.txt` artifact is the baseline number every RLVR result in Part VII must be reported against.
+**What you should see.** The teacher's solve rate on the source problems (printed by `gen_traces.py`) tells you your yield: a 14B teacher on GSM8K-style problems should verify-correct on the large majority of items, so you keep on the order of 1500 to 1800 traces from 2000 problems. The distilled student, trained on those verified traces, should beat the plain-SFT baseline on the frozen suite by a delta whose bootstrap CI excludes zero and whose McNemar p-value is small, the measured statement that dense correct traces beat generic instruction data for reasoning. Both training runs fit the chapter 6.3 QLoRA budget; the teacher generation is the memory-heavy step and runs in the inference environment where the 14B model in BF16 (about 28 GiB) exceeds 16 GiB, so on the baseline machine you either quantize the teacher to 4-bit to fit or generate the traces during a Lambda burst (Part IX) and bring the `distill_set.jsonl` home. Record teacher solve rate, kept-trace count, both training wall-clocks, and the eval delta with its CI (measured on the baseline machine, record value, date, driver). The `distill_delta.txt` artifact is the baseline number every RLVR result in Part VII must be reported against.
 
 ```admonish read-along
 Pair this with **[BRM]** ch. 8, the distillation chapter, which develops trace distillation and rejection-sampling fine-tuning for reasoning models in depth and situates them against RL, exactly the "when does distillation beat RL at small scale" question equation (6.7.2)'s derivation answers here. Read it as the capstone of the reasoning-methods arc that ran through **[BRM]** ch. 4–7, and as the direct setup for this book's Part VII, where distillation is the baseline the RLVR loop is measured against.

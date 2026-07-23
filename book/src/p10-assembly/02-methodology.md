@@ -5,7 +5,7 @@ The methodology chapter is where a thesis lives or dies in the committee room. I
 The good news is that I have not been writing a thesis and a book as two separate acts of labor. Every chapter left an artifact on disk: a config, a task suite, a logged run, a figure script, a causal audit. The methodology chapter is mostly an act of *mapping*, pointing at artifacts that already exist and saying "here is the evidence for that claim, at this path, under this commit." This chapter is about doing that mapping deliberately, and about pre-loading the answers to the three challenges committees always raise: construct validity, statistics, and contamination.
 
 ```admonish read-along
-This is the one thesis-facing chapter in Part IX, so it talks about the thesis document (a private LaTeX repo) as well as the book. The methodology skeleton I build in the lab is public and lives in the repo; the filled-in thesis prose stays private until after the defense, per the licensing split in chapter 9.3. Where I quote a measured result I write "(measured on the baseline machine, record value, date, driver)" because I will not fabricate numbers, and the real values come off the MSI Aegis R2 (RTX 5080 16GB) into the private thesis, not into this book.
+This is the one thesis-facing chapter in Part X, so it talks about the thesis document (a private LaTeX repo) as well as the book. The methodology skeleton I build in the lab is public and lives in the repo; the filled-in thesis prose stays private until after the defense, per the licensing split in chapter 10.3. Where I quote a measured result I write "(measured on the baseline machine, record value, date, driver)" because I will not fabricate numbers, and the real values come off the MSI Aegis R2 (RTX 5080 16GB) into the private thesis, not into this book.
 ```
 
 ## Theory
@@ -14,7 +14,7 @@ This is the one thesis-facing chapter in Part IX, so it talks about the thesis d
 
 A results chapter answers "what happened." A methodology chapter answers "why should I believe it, and how would I redo it." Those are different burdens. The second one decomposes into three questions a reader is entitled to ask, and a good methodology chapter answers all three before the reader has to ask:
 
-The first is **reproducibility**: given your artifacts, can I re-run this and get the same thing? This is the easiest to satisfy mechanically and the one this book is built to nail, because every run is in MLflow, every figure is regenerable (chapter 9.1), and every config is version-pinned in the reproducibility package (chapter 9.3).
+The first is **reproducibility**: given your artifacts, can I re-run this and get the same thing? This is the easiest to satisfy mechanically and the one this book is built to nail, because every run is in MLflow, every figure is regenerable (chapter 10.1), and every config is version-pinned in the reproducibility package (chapter 10.3).
 
 The second is **validity**: does your measurement measure the construct you claim? A number can be perfectly reproducible and still measure the wrong thing. If my "reasoning delta" is really a "format-compliance delta" because the scorer rewards a boxed final answer and the model just learned to box its guesses, then I have a reproducible measurement of the wrong construct. This is construct validity, and it is where the causal work in Part IV earns its place in the thesis.
 
@@ -29,8 +29,8 @@ flowchart TD
   M[Thesis methodology chapter] --> R[Reproducibility claims]
   M --> V[Validity claims]
   M --> S[Statistical claims]
-  R --> R1[ch 9.3 repro package: uv locks, configs, seeds]
-  R --> R2[ch 9.1 figure pipeline: every figure regenerable]
+  R --> R1[ch 10.3 repro package: uv locks, configs, seeds]
+  R --> R2[ch 10.1 figure pipeline: every figure regenerable]
   V --> V1[ch 4.6 causal audit: the DAG + threats table]
   V --> V2[ch 3.8 contamination: dataset hygiene]
   S --> S1[ch 7.6 reasoning delta: paired stats, effect sizes]
@@ -46,7 +46,7 @@ Read that diagram as the table of contents for the methodology chapter. Each lea
 
 **Statistics: "is this improvement real or is it noise?"** Committees have seen too many deltas that evaporate under a proper test. The book's answer is that the reasoning delta was always designed as a paired comparison. Chapter 3.7 sets up the statistics of evals: accuracy is a mean of Bernoulli trials, so it has a binomial confidence interval, and when items are grouped (multiple samples per prompt, or prompts sharing a source) the naive SE understates uncertainty and you need a clustered or hierarchical estimate. Chapter 7.6 applies that to the pre/post design: same items before and after, a paired test on the per-item score differences, an effect size (standardized mean difference) with an interval, and a separate look at whether the gain is a shift in the mean or a shift in pass@k. The methodology chapter states the design (paired, shared items, seeds as the unit of replication), names the test, and points at 7.6 for the worked computation.
 
-**Contamination: "was the eval in the training data?"** For any model trained on a large web corpus, the null hypothesis a committee holds is that the benchmark leaked into pretraining. The book's answer is chapter 3.8, dataset hygiene: how I built the thesis task suite (chapter 3.9) to reduce contamination risk, the decontamination checks I ran, and the honest statement of residual risk for items I couldn't fully clear. The methodology chapter reports the hygiene procedure and cites the audit's treatment of contamination as a formal threat.
+**Contamination: "was the eval in the training data?"** For any model trained on a large web corpus, the null hypothesis a committee holds is that the benchmark leaked into pretraining. The book's answer is chapter 3.8, dataset hygiene: how I built the thesis task suite (chapter 3.11) to reduce contamination risk, the decontamination checks I ran, and the honest statement of residual risk for items I couldn't fully clear. The methodology chapter reports the hygiene procedure and cites the audit's treatment of contamination as a formal threat.
 
 ### The line between methodology and limitations
 
@@ -86,21 +86,21 @@ The artifact is a methodology skeleton with pointers into the book: a YAML claim
 # A claim with artifact: null is unfinished and the generator flags it.
 
 audit_version: "v1.0"          # chapter 4.6 causal audit; quoted verbatim
-task_suite_version: "v1.2.0"   # chapter 3.9 thesis task suite
+task_suite_version: "v1.2.0"   # chapter 3.11 thesis task suite
 
 claims:
   - id: repro-env
     section: "3.1 Computational environment"
     challenge: reproducibility
     claim: "The full software stack is pinned and re-instantiable from lockfiles."
-    book_chapter: "9.3 The reproducibility package"
+    book_chapter: "10.3 The reproducibility package"
     artifact: "repro/uv.lock, repro/configs/"
 
   - id: repro-figures
     section: "3.2 Analysis and figures"
     challenge: reproducibility
     claim: "Every figure is regenerated by script from a frozen, hashed export."
-    book_chapter: "9.1 From logs to figures"
+    book_chapter: "10.1 From logs to figures"
     artifact: "figures/build_all.py, export/export_manifest.json"
 
   - id: valid-estimand
@@ -162,13 +162,13 @@ threats:
   - name: "Judge self-preference inflates in-family scores"
     mitigation: "3.6 (judge calibration)"
   - name: "Contamination: model may have seen frozen eval items"
-    mitigation: "3.8 (contamination), 3.9 (frozen suite v1.0)"
+    mitigation: "3.8 (contamination), 3.11 (frozen suite v1.0)"
   - name: "Effect specific to item set / seed / machine"
     mitigation: "4.5 (negative control), 7.7 (seeds from power analysis)"
   - name: "Delta indistinguishable from sampling noise"
     mitigation: "3.7 (eval statistics), 7.6 (paired analysis)"
   - name: "Selection on failed/incomplete runs (collider)"
-    mitigation: "4.3 (collider), 3.10 (eval ops)"
+    mitigation: "4.3 (collider), 3.12 (eval ops)"
 ```
 
 ### The skeleton generator

@@ -92,7 +92,7 @@ This YAML is the artifact a committee reads first. It is filled in with design c
 
 title: "Reasoning delta of RLVR on the frozen thesis suite"
 machine: "MSI Aegis R2 (Core Ultra 9 285, RTX 5080 16GB, Ubuntu 24.04)"
-suite: "thesis-suite v1.0 (chapter 3.9)"
+suite: "thesis-suite v1.0 (chapter 3.11)"
 primary_metric: "mean paired delta in per-sample solve rate (chapter 7.6)"
 primary_hypothesis: >
   The full verifiable reward (correctness + format) produces a positive

@@ -24,7 +24,7 @@ flowchart LR
   B -.frozen, hashed.-> E[repro package]
 ```
 
-The arrow that matters is the dashed one. The frozen export is what goes into the reproducibility package in chapter 9.3. The live store does not.
+The arrow that matters is the dashed one. The frozen export is what goes into the reproducibility package in chapter 10.3. The live store does not.
 
 ### The shape of an MLflow export
 
@@ -95,7 +95,7 @@ This is the only script that talks to the live tracking store. It runs on the ba
 
 This is the ONLY script that reads the live MLflow store. Run it on the
 machine where MLflow lives; commit its Parquet output (or archive it to the
-NAS per chapter 9.3). Figures are a pure function of this output.
+NAS per chapter 10.3). Figures are a pure function of this output.
 """
 from __future__ import annotations
 
@@ -572,7 +572,7 @@ cp out/reward_curve.png out/delta_plot.png ../book/src/p7-loop/img/
 
 ### What you should see
 
-After step 1, an `export/` directory with `runs.parquet`, `metrics.parquet`, and `export_manifest.json`, the manifest reporting `"synthetic": true`, 3 runs, and 180 metric points. After step 2, an `out/` directory containing `reward_curve.png`/`.svg`/`.json` and `delta_plot.png`/`.svg`/`.json`. The reward curve shows three saturating lines (one per task) with faint SEM bands over the three seeds; the delta plot shows three colored lines climbing from "baseline" to "post-training" with a mean delta near +0.10 in the title (this is synthetic data, so the exact value is meaningless, on real runs, record it with the run IDs and date). Step 3 prints `all figures current`. Now change one number in the synthetic generator, re-export without rebuilding, and run `--check` again: it prints `STALE figures` and exits non-zero. That failing check is the whole point. It is the mechanical guarantee that no figure in the book can drift away from the data it claims to show. When you wire this into CI (chapter 9.3), a stale figure fails the build, and "every figure is regenerable by script" stops being a promise and becomes an invariant.
+After step 1, an `export/` directory with `runs.parquet`, `metrics.parquet`, and `export_manifest.json`, the manifest reporting `"synthetic": true`, 3 runs, and 180 metric points. After step 2, an `out/` directory containing `reward_curve.png`/`.svg`/`.json` and `delta_plot.png`/`.svg`/`.json`. The reward curve shows three saturating lines (one per task) with faint SEM bands over the three seeds; the delta plot shows three colored lines climbing from "baseline" to "post-training" with a mean delta near +0.10 in the title (this is synthetic data, so the exact value is meaningless, on real runs, record it with the run IDs and date). Step 3 prints `all figures current`. Now change one number in the synthetic generator, re-export without rebuilding, and run `--check` again: it prints `STALE figures` and exits non-zero. That failing check is the whole point. It is the mechanical guarantee that no figure in the book can drift away from the data it claims to show. When you wire this into CI (chapter 10.3), a stale figure fails the build, and "every figure is regenerable by script" stops being a promise and becomes an invariant.
 
 ```admonish substack-seed
 "Your charts are lying to you and you can't even tell." A short, opinionated post on the one rule that separates a reproducible analysis from a pile of screenshots: every figure must be a pure function of a frozen, hashed data export, rebuilt by a script that fails CI when it drifts. Show the two-table pattern (wide "what a run was," long "what a run did"), the colorblind-safe house style, and the staleness check that turns "trust me, I regenerated it" into a green or red checkmark. The hook is the demo where changing the data and forgetting to rebuild makes the build go red on its own.

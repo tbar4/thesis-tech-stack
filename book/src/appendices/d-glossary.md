@@ -274,7 +274,7 @@ environment (tracking, conjunction or close-approach screening, maneuver detecti
 catalog correlation), where an answer can be checked against ground truth or orbital
 mechanics rather than merely judged. That checkability is exactly what makes it a
 verifiable-reward domain and the reason the thread uses it end to end. See *Building
-the thesis task suite* (chapter 3.9).
+the thesis task suite* (chapter 3.11).
 
 ### Verifiable reward
 

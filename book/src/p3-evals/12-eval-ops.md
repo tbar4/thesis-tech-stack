@@ -16,7 +16,7 @@ The subtle trap is re-generating "just to be safe" when you actually only change
 
 ### Content addressing makes provenance unambiguous
 
-The mechanism that makes "re-score, don't regenerate" auditable is content addressing. When you persist a set of generations, you hash it (SHA-256 over the canonicalized responses) and that hash *is* the identity of the generation set. Every score run then records which generation hash it consumed. Now a metric is not floating free; it is bound to (this exact set of responses, scored by this exact scorer version). Two score runs that cite the same generation hash are guaranteed comparable because they scored literally the same text. A re-score after fixing a verifier is a new score run citing the same generation hash, and the diff between old and new metrics is attributable entirely to the verifier change, with proof. This is the same discipline the suite freeze used in Chapter 3.9, applied to the hot path.
+The mechanism that makes "re-score, don't regenerate" auditable is content addressing. When you persist a set of generations, you hash it (SHA-256 over the canonicalized responses) and that hash *is* the identity of the generation set. Every score run then records which generation hash it consumed. Now a metric is not floating free; it is bound to (this exact set of responses, scored by this exact scorer version). Two score runs that cite the same generation hash are guaranteed comparable because they scored literally the same text. A re-score after fixing a verifier is a new score run citing the same generation hash, and the diff between old and new metrics is attributable entirely to the verifier change, with proof. This is the same discipline the suite freeze used in Chapter 3.11, applied to the hot path.
 
 ### The MLflow schema for eval runs
 
@@ -58,7 +58,7 @@ We produce the eval-ops runbook (the artifact) plus the `evalops` helper it refe
 uv init evalops && cd evalops
 uv add "mlflow>=2.14" "numpy>=1.26"
 uv add --editable ../evalstats     # Chapter 3.7
-uv add --editable ../thesis-suite  # Chapter 3.9 verifiers
+uv add --editable ../thesis-suite  # Chapter 3.11 verifiers
 ```
 
 ### The helper
@@ -176,7 +176,7 @@ import json
 from pathlib import Path
 from evalops.ops import record_generation, record_scoring, promote
 
-# Pretend these came from a served model over the frozen suite (Ch 3.9).
+# Pretend these came from a served model over the frozen suite (Ch 3.11).
 GENERATIONS = [
     {"id": "sda-0002", "response": "Filtering... the count is 2."},
     {"id": "sda-0004", "response": "1,3"},   # no space: v1 exact-match fails, v2 set-check passes
@@ -295,7 +295,7 @@ rubric change is a RE-SCORE over the saved generations, never a regeneration.
 
 ### The artifact and what you should see
 
-The artifact is `RUNBOOK.md`, backed by the executable `evalops` helper and a worked demo. Running `demo.py`, you should see one generation event (the expensive step, run once, producing an immutable `generations.jsonl` with a recorded SHA-256) followed by two scoring events over that same file. The first scoring uses a buggy set-verifier that is space-sensitive and marks the correct answer `"1,3"` wrong; the second uses the audited Chapter 3.9 verifier and marks it right. The accuracy moves between the two scorings, and (this is the whole point) both MLflow score runs are tagged with the identical `generation_sha256`, so the improvement is provably attributable to the verifier fix and not to a fresh, different draw of generations, because the model was never re-run. Each accuracy prints with its bootstrap confidence interval, never bare. Finally `promote` moves the generations to the NAS and rewrites the manifest, leaving the metrics hot on NVMe, and `resolve` still finds the generations by hash. What you have built is the operating discipline that makes the whole loop cheap to iterate and impossible to confound: generate once, score forever, log everything with its uncertainty, keep the fast disk fast, and never throw away the expensive thing. Wall-clock and disk figures for a full-suite run are (measured on the baseline machine -- record value, date, driver).
+The artifact is `RUNBOOK.md`, backed by the executable `evalops` helper and a worked demo. Running `demo.py`, you should see one generation event (the expensive step, run once, producing an immutable `generations.jsonl` with a recorded SHA-256) followed by two scoring events over that same file. The first scoring uses a buggy set-verifier that is space-sensitive and marks the correct answer `"1,3"` wrong; the second uses the audited Chapter 3.11 verifier and marks it right. The accuracy moves between the two scorings, and (this is the whole point) both MLflow score runs are tagged with the identical `generation_sha256`, so the improvement is provably attributable to the verifier fix and not to a fresh, different draw of generations, because the model was never re-run. Each accuracy prints with its bootstrap confidence interval, never bare. Finally `promote` moves the generations to the NAS and rewrites the manifest, leaving the metrics hot on NVMe, and `resolve` still finds the generations by hash. What you have built is the operating discipline that makes the whole loop cheap to iterate and impossible to confound: generate once, score forever, log everything with its uncertainty, keep the fast disk fast, and never throw away the expensive thing. Wall-clock and disk figures for a full-suite run are (measured on the baseline machine -- record value, date, driver).
 
 ```admonish read-along
 [RLHF] and the loop's later parts assume you can cheaply re-score old generations against a new reward function, which is exactly the capability this chapter's discipline provides. When Part VII turns eval scorers into training rewards, "re-score, don't regenerate" is what lets you audit a reward change against a fixed set of policy samples without paying to sample again. Read this runbook as the operational precondition for treating evals as rewards: the two only compose cheaply if generation and scoring are already separated and content-addressed. **[AIE]** ch. 10 is the production mirror of this runbook (evaluation wired into the serving architecture, with user feedback as the ongoing signal); the pairing is looser than most in this book, but the operational mindset, that evaluation is a pipeline you run forever rather than a report you run once, is the same.

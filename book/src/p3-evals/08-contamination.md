@@ -283,7 +283,7 @@ def probe(items, base_url="http://localhost:8000/v1",
 Wire the probe's `suspected` list into the same human-review queue the n-gram and embedding passes feed. The interpretation is comparative, not absolute: a reconstruction rate meaningfully above the model's own answer accuracy on the same items is the signal, because a model that can *reason out* the answer will also fill the blank, so only the excess over its earned accuracy is evidence of memorized leakage.
 
 ```admonish gotcha
-The `revision` shas above are placeholders. Before you run this, open the dataset's Hugging Face page, copy the actual commit sha of the revision you intend to freeze, and paste it in. A bare `revision="main"` (or omitting it) means the dataset can change between your scan and your eval, which defeats the entire point: you would have certified a version you did not actually evaluate. Pin the sha, then record it in the report, then never change it without bumping the suite version in Chapter 3.9.
+The `revision` shas above are placeholders. Before you run this, open the dataset's Hugging Face page, copy the actual commit sha of the revision you intend to freeze, and paste it in. A bare `revision="main"` (or omitting it) means the dataset can change between your scan and your eval, which defeats the entire point: you would have certified a version you did not actually evaluate. Pin the sha, then record it in the report, then never change it without bumping the suite version in Chapter 3.11.
 ```
 
 ### The artifact and what you should see

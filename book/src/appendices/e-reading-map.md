@@ -56,13 +56,13 @@ parts they serve, in roughly the authoring-wave order (spec §8).
    with 1.7 and 6.1, evaluation chapters (ch. 3–4) with Part III, finetuning
    (ch. 7) with Part VI, dataset engineering (ch. 8) with 3.8/7.5, inference
    optimization (ch. 9) with Part II, and its architecture chapter (ch. 10)
-   with 3.10.
+   with 3.12.
 
 ## Per-chapter pairings
 
 Every entry below mirrors the `read-along` admonition in the named chapter.
 Chapters with no reference pairing are hands-on or self-contained (Part 0, parts
-of Part II, and Part IX lean on tooling and the book's own artifacts rather than
+of Part II, and Part X lean on tooling and the book's own artifacts rather than
 outside reading; 2.1, 2.3, and 2.6 pick up [AIE] pairings). Part VII does carry read-along pointers, because the loop
 chapters lean on [RLHF], [S&B], and [MADL] for the algorithm and kernel math
 even as the labs are hands-on; its per-chapter rows are below.
@@ -97,7 +97,7 @@ even as the labs are hands-on; its per-chapter rows are below.
 | 3.6 Judge models | [RLHF]; [AIE] ch. 3 (AI-as-judge) |
 | 3.7 The statistics of evals | [CAI] |
 | 3.8 Contamination and dataset hygiene | [BRM]; [AIE] ch. 8 |
-| 3.10 Eval ops | [RLHF]; [AIE] ch. 10 |
+| 3.12 Eval ops | [RLHF]; [AIE] ch. 10 |
 
 ### Part IV — Causal Inference for Evaluation
 
@@ -147,11 +147,11 @@ Part-wide spine: **[CAI] Parts 1–3.**
 | 7.4 Reward hacking and Goodhart | [RLHF] |
 | 7.5 Data and curriculum for RLVR | [AIE] ch. 8 |
 
-### Part VIII — Burst and Scale
+### Part IX — Burst and Scale
 
 | Chapter | Read-along |
 |---|---|
-| 8.3 When to burst | [RLHF] ch. 6 (infra notes) |
+| 9.3 When to burst | [RLHF] ch. 6 (infra notes) |
 
 ```admonish read-along
 When a chapter's `read-along` pointer and this table disagree, the chapter is

@@ -110,14 +110,14 @@ from unsloth import FastLanguageModel
 
 # chapter-3.7 machinery: paired bootstrap CI + McNemar over per-item scores.
 import evalstats as es
-# chapter-3.9 frozen suite: load the frozen v1.0 items, and grade an in-process
-# model over them (no served endpoint) with the same verifiers 3.9 froze.
+# chapter-3.11 frozen suite: load the frozen v1.0 items, and grade an in-process
+# model over them (no served endpoint) with the same verifiers 3.11 froze.
 from thesis_suite import load_suite, score_model_local
 
 MODEL = "unsloth/Qwen3-4B-Base"
 RANKS = [4, 8, 16, 32, 64]
 MAX_SEQ = 2048
-SUITE = load_suite()                # frozen thesis suite v1.0 (chapter 3.9)
+SUITE = load_suite()                # frozen thesis suite v1.0 (chapter 3.11)
 OUT = Path("artifacts")
 OUT.mkdir(exist_ok=True)
 
@@ -221,7 +221,7 @@ uv run python sweep.py
 ```
 
 ```admonish gotcha
-`suite_scores` must return per-item scores in the *same item order* for the base and every tuned model, because `bootstrap_paired_diff` and `mcnemar` compare matched pairs, that pairing is the entire reason the CI is tight enough to see a small delta (chapter 3.7 derives why paired resampling beats comparing two independent accuracy numbers). Iterating `SUITE.items` (a fixed, frozen, ordered list) guarantees that order, and greedy decoding in `score_model_local` keeps each grade deterministic; if you shuffle the eval set between runs, or let the sampling go nondeterministic, the pairing breaks and the CIs blow up. Freeze the suite (chapter 3.9 froze v1.0 for exactly this) so the only thing changing between runs is the rank.
+`suite_scores` must return per-item scores in the *same item order* for the base and every tuned model, because `bootstrap_paired_diff` and `mcnemar` compare matched pairs, that pairing is the entire reason the CI is tight enough to see a small delta (chapter 3.7 derives why paired resampling beats comparing two independent accuracy numbers). Iterating `SUITE.items` (a fixed, frozen, ordered list) guarantees that order, and greedy decoding in `score_model_local` keeps each grade deterministic; if you shuffle the eval set between runs, or let the sampling go nondeterministic, the pairing breaks and the CIs blow up. Freeze the suite (chapter 3.11 froze v1.0 for exactly this) so the only thing changing between runs is the rank.
 ```
 
 **What you should see.** The CSV and plot show the eval delta versus the untuned base rising with rank and then flattening, the empirical signature of the low-rank hypothesis: once $r$ exceeds the task's intrinsic update rank, more capacity buys nothing and the confidence intervals of adjacent ranks overlap. Typically the delta from $r=4$ to $r=16$ is real (CI excludes zero) and the delta from $r=16$ to $r=64$ is within noise (CIs overlap), which tells you $r=16$ is the honest choice for this task, more is just memory. All five fine-tunes fit in 16GB by the `vram-budget` above, with peak VRAM creeping up only slightly with rank because the adapter and its optimizer state grow linearly in $r$ but are tiny next to the frozen base. Record peak VRAM per rank and total sweep wall-clock (measured on the baseline machine, record value, date, driver). The headline artifact is a plot that turns "what rank should I use" from a Reddit argument into a measured curve with error bars.

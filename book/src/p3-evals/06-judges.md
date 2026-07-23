@@ -85,7 +85,7 @@ flowchart LR
     F --> G[Save verdicts<br/>verdicts.jsonl]
 ```
 
-The load-bearing idea is that generation and judging never run concurrently. You serve the candidate, generate every response you will ever need, and write them to `generations.jsonl` on the NVMe working tier. Then you free the GPU (in practice: shut down the vLLM process; its VRAM is reclaimed when the process exits), start a second vLLM serving the judge, and stream the saved responses through it. This is the same "never re-generate what you can re-score" principle that Chapter 3.10 turns into an operating discipline: once `generations.jsonl` exists, re-judging with a different judge or a different rubric is cheap and never touches the candidate model again.
+The load-bearing idea is that generation and judging never run concurrently. You serve the candidate, generate every response you will ever need, and write them to `generations.jsonl` on the NVMe working tier. Then you free the GPU (in practice: shut down the vLLM process; its VRAM is reclaimed when the process exits), start a second vLLM serving the judge, and stream the saved responses through it. This is the same "never re-generate what you can re-score" principle that Chapter 3.12 turns into an operating discipline: once `generations.jsonl` exists, re-judging with a different judge or a different rubric is cheap and never touches the candidate model again.
 
 Both candidate judges fit alone, which is all we need. Here is the arithmetic.
 

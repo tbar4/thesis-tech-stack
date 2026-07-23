@@ -65,7 +65,7 @@ On the baseline machine the wall-clock cost is dominated by those $N \cdot E \cd
 
 ### Dedup against the eval suite is not optional
 
-This is the part a committee will actually try to break. In chapter 7.6 I am going to claim a reasoning delta: metric $M$ moved by $\Delta$ from $M_0$ to $M_1$ on the frozen thesis task suite v1.0 (chapter 3.9). That claim is worth exactly nothing if any training prompt overlaps the eval suite, because then I trained on the test and the "delta" is partly just memorized eval items leaking back. The entire causal story of the thesis (chapter 4.5's control runs exist to protect it) collapses at the first contaminated prompt.
+This is the part a committee will actually try to break. In chapter 7.6 I am going to claim a reasoning delta: metric $M$ moved by $\Delta$ from $M_0$ to $M_1$ on the frozen thesis task suite v1.0 (chapter 3.11). That claim is worth exactly nothing if any training prompt overlaps the eval suite, because then I trained on the test and the "delta" is partly just memorized eval items leaking back. The entire causal story of the thesis (chapter 4.5's control runs exist to protect it) collapses at the first contaminated prompt.
 
 So dedup against the eval suite is a hard gate, and I reuse the contamination machinery from chapter 3.8 rather than inventing a weaker one here. The layers, from cheapest to most thorough:
 
@@ -131,7 +131,7 @@ class DifficultySpec(BaseModel):
 
 
 class DedupSpec(BaseModel):
-    eval_suite: str                # e.g. "thesis-suite v1.0 (chapter 3.9)"
+    eval_suite: str                # e.g. "thesis-suite v1.0 (chapter 3.11)"
     eval_suite_revision: str
     removed_exact: int
     removed_normalized: int
@@ -161,7 +161,7 @@ class Manifest(BaseModel):
 
 ### Difficulty estimation against the served baseline
 
-Difficulty estimation is just a small eval: for each candidate prompt, ask the local server for $K$ completions, verifier-score each with the *same* thesis-suite verifier the trainer's reward is built on (`verify_correct` imported straight from `thesis_suite`, the chapter 3.9 package, so the definition of "solved" is identical on both sides), and record the empirical solve rate $\hat p = \frac{1}{K}\sum r_i$.
+Difficulty estimation is just a small eval: for each candidate prompt, ask the local server for $K$ completions, verifier-score each with the *same* thesis-suite verifier the trainer's reward is built on (`verify_correct` imported straight from `thesis_suite`, the chapter 3.11 package, so the definition of "solved" is identical on both sides), and record the empirical solve rate $\hat p = \frac{1}{K}\sum r_i$.
 
 ```python title="curriculum/difficulty.py"
 """Estimate per-prompt solve rate against the served baseline policy.
@@ -176,7 +176,7 @@ from __future__ import annotations
 import numpy as np
 from openai import OpenAI
 
-# The verifier from the thesis suite (chapter 3.9), the same 'solved'
+# The verifier from the thesis suite (chapter 3.11), the same 'solved'
 # definition the 7.3 reward core is built on.
 from thesis_suite import verify_correct  # (prompt, response, answer) -> bool
 
@@ -294,7 +294,7 @@ Pipeline:
   1. load a pinned candidate source dataset
   2. estimate solve rate vs the served baseline (2.6 substrate)
   3. keep prompts inside the solve-rate band
-  4. dedup against the frozen eval suite (3.8 module, 3.9 suite)
+  4. dedup against the frozen eval suite (3.8 module, 3.11 suite)
   5. write prompt set + provenance manifest (gated)
 
 No measured throughput/time numbers are invented here; where a real
@@ -327,7 +327,7 @@ MAX_TOKENS = 512                             # short: verdict, not polish
 BAND_LO, BAND_HI = 0.2, 0.8
 SEED = 0
 
-EVAL_SUITE_PATH = "../thesis_suite_v1.jsonl" # frozen 3.9 suite
+EVAL_SUITE_PATH = "../thesis_suite_v1.jsonl" # frozen 3.11 suite
 EVAL_SUITE_REV = "thesis-suite v1.0"
 OUT_DIR = Path("out")
 
@@ -376,7 +376,7 @@ def main() -> None:
             measured_at="record: ISO date of this run",  # gate() will refuse if left
         ),
         dedup=DedupSpec(
-            eval_suite="thesis-suite v1.0 (chapter 3.9)",
+            eval_suite="thesis-suite v1.0 (chapter 3.11)",
             eval_suite_revision=EVAL_SUITE_REV,
             removed_exact=dd.removed_exact,
             removed_normalized=dd.removed_normalized,

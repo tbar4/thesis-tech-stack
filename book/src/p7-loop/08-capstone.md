@@ -11,7 +11,7 @@ There is no new theory. There is only the shape of the loop, which every prior c
 The loop is a directed sequence with one return edge, and each node is a chapter:
 
 - **Serve $M_0$.** Bring up the baseline policy on the chapter 2.6 inference substrate, the same vLLM configuration every measurement in the book has used. This is the fixed serving substrate; nothing about how the model is served changes between the pre and post halves, so the model is the only thing that varies.
-- **Evaluate $M_0$.** Run the frozen thesis task suite v1.0 (chapter 3.9) against the served baseline, logging per-item, per-sample scores in the chapter 3.7 format. This is the "pre" measurement of chapter 7.6.
+- **Evaluate $M_0$.** Run the frozen thesis task suite v1.0 (chapter 3.11) against the served baseline, logging per-item, per-sample scores in the chapter 3.7 format. This is the "pre" measurement of chapter 7.6.
 - **Train.** Tear down the server to reclaim VRAM, then run GRPO on 16GB (chapter 7.2) with the Part III verifier scorers wired in as rewards (chapter 7.3), on the difficulty-banded, provenance-stamped, eval-deduped prompt set (chapter 7.5). Output is a LoRA adapter.
 - **Merge.** Merge the adapter into the base weights to produce $M_1$, a standalone checkpoint the serving substrate can load exactly as it loads $M_0$. Merging matters because it makes the post model served identically to the pre model, same substrate and same decoding, closing off "you served them differently" as an alternative explanation for the delta. One caveat I state rather than hide: the adapter was trained over an NF4 4-bit base, so the merged $M_1$ is that 4-bit base dequantized and merged, not bit-identical to the full-precision weights $M_0$ is served from, and that quantization step is a named confound, not a silent one. The loop as coded serves full-precision $M_0$ for the pre measurement, so it does not control this, and the capstone's headline delta therefore carries the quantization confound: part of the pre/post difference could be the dequantize-and-merge, not the training. The clean control is to evaluate $M_0$ under the *same* dequantize-and-merge regime, that is, the base with a zero adapter merged in, so $M_0$ and $M_1$ differ only by the trained weights and not by precision. That base-plus-zero-adapter control is the control-run protocol specified in chapter 4.5; running it leaves the training itself as the only difference left to explain the delta.
 - **Re-serve and re-evaluate $M_1$.** Bring the substrate back up on the merged $M_1$ and run the identical suite at the identical sampling budget, logging in the identical format. This is the "post" measurement.
@@ -30,7 +30,7 @@ cd capstone
 uv add "pydantic>=2.7" "pyyaml>=6.0"
 # the actual work lives in the chapter projects, invoked as subprocesses:
 #   ../curriculum  (7.5)   ../analysis (7.6)   ../evalstats (3.7)
-#   plus the 2.6 serving config, 7.2/7.3 trainer, 3.9 frozen suite
+#   plus the 2.6 serving config, 7.2/7.3 trainer, 3.11 frozen suite
 ```
 
 ### The run configuration
@@ -52,7 +52,7 @@ serve:
   endpoint: "http://localhost:8000/v1"
 
 suite:
-  path: "../thesis_suite_v1.jsonl"        # frozen 3.9 suite
+  path: "../thesis_suite_v1.jsonl"        # frozen 3.11 suite
   revision: "thesis-suite v1.0"
   n_samples: 16                            # matched across pre/post
   temperature: 0.8
@@ -254,7 +254,7 @@ if __name__ == "__main__":
 
 ## Lab: run the whole loop
 
-One command, one sitting. The frozen suite, the trained prompt set, and the 2.6 serving config must already exist (they are the artifacts of chapters 3.9, 7.5, and 2.6); the capstone does not rebuild them, it consumes them.
+One command, one sitting. The frozen suite, the trained prompt set, and the 2.6 serving config must already exist (they are the artifacts of chapters 3.11, 7.5, and 2.6); the capstone does not rebuild them, it consumes them.
 
 ```bash title="shell: run the capstone loop"
 # fill loop.yaml's driver and run_date, confirm the referenced artifacts
@@ -269,7 +269,7 @@ The console walks the phases in order, printing each phase banner and the comman
 Every number in that report is stamped as measured on the baseline machine, and until you run the loop for real they read `record value, date, driver`, which is the book keeping its one promise to the end: a measured quantity comes stamped or it comes marked as not yet measured, and there is no third category. The moment those slots fill with real values from a real run, the thesis pipeline is no longer a design. It is a result you can hand a committee, and hand a later version of yourself, and both can reproduce it from one archived directory with one command.
 
 ```admonish thesis-thread
-This closes the thread. The Space Domain Awareness (SDA) verifiable-reasoning example has traveled the whole book: it was a task whose responses could be checked (the preface's promise), it became items in the frozen suite (chapter 3.9), its scorer became a reward (chapter 7.3), its difficulty band shaped the training prompt set (chapter 7.5), and its reasoning delta was measured with paired statistics (chapter 7.6). Here it rides the loop end-to-end and lands in the capstone report as a single paired delta on the SDA items, with a bootstrap CI and a permutation p-value, measured on the baseline machine — record value, date, driver, and hardened by the control runs of chapter 4.5 against the charge that any training at all would have moved it. That was the entire ambition of the thread: to take one concrete problem someone cared enough to write a thesis about and carry it from first eval to trained, re-evaluated model without ever losing the chain of provenance. The chain is now unbroken from the frozen item to the archived delta, and the loop that connects them runs on one 16GB card in one sitting. The general book stands on its own; the thread was the proof that the general machinery composes on a real problem, and this report is that proof made into a file on disk.
+This closes the thread. The Space Domain Awareness (SDA) verifiable-reasoning example has traveled the whole book: it was a task whose responses could be checked (the preface's promise), it became items in the frozen suite (chapter 3.11), its scorer became a reward (chapter 7.3), its difficulty band shaped the training prompt set (chapter 7.5), and its reasoning delta was measured with paired statistics (chapter 7.6). Here it rides the loop end-to-end and lands in the capstone report as a single paired delta on the SDA items, with a bootstrap CI and a permutation p-value, measured on the baseline machine — record value, date, driver, and hardened by the control runs of chapter 4.5 against the charge that any training at all would have moved it. That was the entire ambition of the thread: to take one concrete problem someone cared enough to write a thesis about and carry it from first eval to trained, re-evaluated model without ever losing the chain of provenance. The chain is now unbroken from the frozen item to the archived delta, and the loop that connects them runs on one 16GB card in one sitting. The general book stands on its own; the thread was the proof that the general machinery composes on a real problem, and this report is that proof made into a file on disk.
 ```
 
 ```admonish substack-seed
