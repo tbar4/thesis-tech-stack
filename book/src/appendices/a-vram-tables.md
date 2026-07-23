@@ -180,6 +180,69 @@ every seat count for a fraction of a point of eval metric (measure it with the
 pin it on the machine and re-derive.
 ```
 
+## Embedding + generation co-residency for RAG
+
+The RAG chapter (8.1) adds a second model to the card: a local embedding model that
+turns chunks and queries into vectors, alongside the generation model that answers.
+This is a co-residency budget, and it is cheaper than it looks because an embedding
+model runs one forward pass and reads out a pooled vector; it never autoregressively
+decodes, so it grows *no* KV cache. Its whole resident cost is weights plus one
+prefill's transient activation (chapter 8.1 equation 1.6), with none of the
+linear-in-tokens KV growth that dominates a generation budget. That is why a small
+embedding model is a cheap lodger and not a second full tenant.
+
+$$\underbrace{P_g b_g + M_{\text{KV}}^{(g)}}_{\text{generation}} \;+\; \underbrace{P_e b_e}_{\text{embed weights}} \;+\; M_{\text{ctx}} \;\le\; C, \qquad C \approx 15.5\ \text{GiB usable}$$
+
+The generation side is the book's Qwen3-8B FP8: $P_g b_g \approx 7.7$ GiB of weights,
+a KV pool of ~3.5 GiB at `--max-model-len 8192`, and ~0.6 GiB of CUDA context, so it
+occupies ~11.8 GiB and leaves ~3.7 GiB for the embedding lodger. Every embedding
+model in the repertoire clears that headroom, so the choice is quality-per-byte, not
+fit (pick it with a small recall@k / MRR bake-off, per 8.1).
+
+| Embedding model | $P_e$ | dtype | $P_e b_e$ (weights) | KV term | fits under ~3.7 GiB headroom? |
+|---|---|---|---|---|---|
+| bge-small-en-v1.5 | $\approx33\times10^{6}$ | FP16 | ~0.07 GiB | none (no decode) | yes, trivially |
+| bge-large-en-v1.5 | $\approx335\times10^{6}$ | FP16 | ~0.67 GiB | none | yes |
+| Qwen3-Embedding-0.6B | $\approx0.6\times10^{9}$ | BF16 | ~1.2 GiB | none | yes |
+
+```admonish vram-budget title="Two ways to fit both, chosen by whether retrieval must be live"
+The equation above only bites if you insist on holding both models resident at
+once. Chapter 8.1 gives two honest configurations:
+
+- **Time-share (the 8.1 default).** One server at a time, so peak VRAM is just
+  whichever single model is up, and there is nothing new to budget beyond the 7.7
+  GiB generation figure. Phase A: `vllm serve BAAI/bge-small-en-v1.5 --task embed
+  --gpu-memory-utilization 0.9`, embed the whole corpus *and* every eval query in
+  one batch pass (the suite's queries are known in advance), build the LanceDB
+  index, tear it down. Phase B: `vllm serve Qwen/Qwen3-8B --quantization fp8
+  --max-model-len 8192` and run the eval reading the precomputed query vectors off
+  disk, embedding model no longer resident.
+- **Co-resident (for live retrieval, 8.2 / 8.3).** Both servers up, the card split
+  by `--gpu-memory-utilization` so the fractions sum under 1: generation at 0.75
+  (~11.6 GiB of weights + KV), embedding at 0.15 (bge-small: ~0.07 GiB of weights +
+  activation + its own context), summing to 0.90 and leaving driver/context
+  headroom. Get greedy (a 0.6B decoder-embedder at a large `--max-model-len`, or a
+  fat generation KV pool) and the two servers race for blocks and one OOMs at boot;
+  the fix is to shrink the generation KV pool or the embedder, never to hope for a
+  fit.
+
+The ~11.8 GiB generation occupancy and the ~3.7 GiB headroom depend on the KV-pool
+and CUDA-context figures; pin them on the machine (record value, date, driver) and
+re-derive.
+```
+
+```admonish info title="Two pieces of the loop carry no GPU line at all"
+Not everything the loop runs competes for the 16 GiB. The **3.9 SDA data pipeline**
+(Airflow 3, httpx, the `spacetrack` client, Pydantic/pandera, Parquet/DuckDB, DVC)
+and the **8.2 MCP tool server** (FastMCP over the 3.9 clients and the 3.10 oracle)
+are CPU/IO-bound processes that never touch CUDA. They live in their own uv
+sub-projects (`data/` and `mcp/`), fetch and normalize and propagate on the CPU, and
+have no weight, KV, or activation footprint on the card. So they carry no line in any
+table here: they can run co-resident with a busy vLLM server without taking a byte of
+VRAM from it. The only grounding component that *does* draw VRAM is the embedding
+model above, and only when it is served on the GPU.
+```
+
 ## Decode-throughput ceilings (bandwidth budget)
 
 Not VRAM but the other side of the same coin. From *Prefill, decode, and the

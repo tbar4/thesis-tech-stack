@@ -126,6 +126,17 @@ uv run inspect log dump logs/2026-....eval      # dump one log as JSON
 uv run inspect log list --log-dir logs/         # enumerate runs
 ```
 
+```bash title="agentic tool eval (the 8.2 conjunction-screening task)"
+# vLLM must be launched with tool-calling on (see the FastMCP section below):
+#   --enable-auto-tool-choice --tool-call-parser hermes
+export SDA_MODE=pinned                          # read the frozen 3.9 snapshot
+export SDA_SNAPSHOT=$(dvc get-url .)            # its content hash; pinned => re-runnable
+uv run inspect eval conjunction_task.py@conjunction_screen \
+  --model openai/qwen3-8b \                     # the tool-calling-enabled served model
+  --log-dir logs                                # verifiable-tool-use scored (8.2)
+uv run inspect view --log-dir logs             # inspect the call, oracle result, verdict
+```
+
 ```admonish gotcha
 Inspect talks to vLLM as `openai/<model-id>`, where `<model-id>` must match what
 `vllm serve` advertises (the repo path unless you set `--served-model-name`).
@@ -197,6 +208,136 @@ with mlflow.start_run(run_name="r16-g8"):
 ```bash title="cli"
 uv run mlflow runs list --experiment-id 1
 uv run mlflow artifacts download --run-id <id> --dst-path ./pulled
+```
+
+## airflow (Airflow 3)
+
+The orchestrator for the 3.9 SDA data pipeline, run single-node in Docker Compose
+next to the MLflow spine. The discipline from 3.9 is that Airflow only *schedules*;
+every task shells out to a thin `uv run python -m ...` module I can also run by hand.
+So there are two layers of command here: the Airflow control surface, and the
+standalone task modules the DAGs call.
+
+```bash title="bring the stack up (once, then daemon)"
+cd data
+docker compose -f docker-compose.airflow.yml up airflow-init   # ONCE: db migrate + admin
+docker compose -f docker-compose.airflow.yml up -d             # apiserver + scheduler
+# UI at http://127.0.0.1:8080 (admin/admin). LocalExecutor, own Postgres for metadata.
+```
+
+```bash title="the airflow CLI (inside the scheduler container, or a local airflow venv)"
+uv run airflow db migrate                       # create/upgrade the metadata DB
+uv run airflow standalone                       # single-process dev: api+scheduler+SQLite
+uv run airflow dags list                        # every DAG the scheduler parsed
+uv run airflow dags unpause sda_ingest          # let the 6-hour producer schedule
+uv run airflow dags trigger sda_ingest          # fire a run now, off-schedule
+uv run airflow tasks list sda_ingest            # tasks in one DAG
+uv run airflow tasks test sda_ingest celestrak_tle 2026-07-01   # run ONE task, no scheduler
+uv run airflow dags backfill sda_ingest -s 2026-07-01 -e 2026-07-03   # materialize past dates
+```
+
+```bash title="the thin task modules (no Airflow imported; debug from a plain terminal)"
+cd data
+uv run python -m sda_data.tasks.celestrak_tle --group active   # fetch, normalize, gate, snapshot
+uv run python -m sda_data.tasks.spacedevs_articles             # the article feed for 8.1 RAG
+uv run python -m sda_data.tasks.spacetrack_cdms                # writes ONLY the embargoed live tier
+uv run python -m sda_data.query                                # DuckDB read-back of the snapshot
+```
+
+```admonish gotcha
+The task modules are the debuggable unit: when a pull breaks, run the module in a
+terminal and read a normal Python traceback instead of clicking four levels deep in
+the web UI. `airflow tasks test` runs a single task with no scheduler and no DB
+state, which is the fastest way to reproduce a DAG failure. Keep `catchup=False` per
+DAG unless backfill is meaningful, or a first `unpause` stampedes one run per logical
+date since `start_date`.
+```
+
+## dvc
+
+Versions the immutable raw SDA snapshots by content hash (3.9). The `.dvc` pointer
+lives in git; the bytes live on the storage tier and an optional remote. Pinning is
+"by revision, not by name": a task references a snapshot through the git commit that
+holds its pointer, so checking out that commit resolves exactly those bytes.
+
+```bash title="track and pin a snapshot"
+cd data
+uv run dvc init --subdir                 # once, inside the data sub-project
+uv run dvc add data/raw/celestrak        # hash the bytes, write celestrak.dvc pointer
+git add data/raw/celestrak.dvc data/.gitignore
+git commit -m "snapshot: celestrak gp-active $(date -u +%FT%TZ)"   # pin by content
+```
+
+```bash title="move bytes and resolve a pin"
+uv run dvc push                          # upload tracked bytes to the remote
+uv run dvc pull                          # fetch the bytes for the current .dvc pointers
+uv run dvc status                        # is the workspace in sync with the pointers?
+uv run dvc get-url .                      # print the content hash / url a task pins to
+# reproduce an exact snapshot from a past commit:
+git checkout <sha> -- data/raw/celestrak.dvc
+uv run dvc checkout data/raw/celestrak.dvc   # resolve pointer -> those exact bytes
+```
+
+```admonish gotcha
+space-track output is fetch-only and NEVER DVC-tracked: it lands on the git-ignored
+`data/live/` tier only. Never widen a `dvc add` or `git add` glob to "just grab the
+data folder"; the 3.9 embargo boundary is a code invariant, and the 10.3 repro-package
+check fails the build if a restricted file is ever staged.
+```
+
+## duckdb
+
+Queries the normalized Parquet snapshots in place, with no load step and no server,
+the way the 3.10 task generator pulls element sets out of a pinned snapshot.
+
+```bash title="query Parquet straight from the shell"
+# one-off SQL over the snapshot glob (DuckDB reads Parquet directly)
+uv run python -c "import duckdb; print(duckdb.sql(\"\"\"
+  SELECT norad_cat_id, object_name, mean_motion, inclination, snapshot_hash
+  FROM read_parquet('data/snapshots/celestrak/element_sets/**/*.parquet')
+  WHERE mean_motion >= 11.25            -- ~LEO: period under ~128 min
+  ORDER BY mean_motion DESC LIMIT 10\"\"\").df())"
+uv run python -m sda_data.query          # the same query as a module
+duckdb -c "SELECT count(*) FROM read_parquet('data/snapshots/**/*.parquet')"   # the duckdb CLI
+```
+
+```admonish gotcha
+The provenance columns (`snapshot_hash`, `source`, `fetch_time`) ride along in the
+Parquet, so every DuckDB result is traceable to the exact raw bytes it was derived
+from. Read a snapshot by its content hash, never by "latest": that is the whole point
+of the 3.9 pipeline, and it is what makes a 3.10 task reproducible forever.
+```
+
+## mcp / fastmcp
+
+The 8.2 tool server: typed SDA tools (get_tle, catalog_lookup, propagate,
+screen_conjunction) over the 3.9 clients and the 3.10 Skyfield/sgp4 oracle. One
+declaration, two transports, and the model reaches it as an MCP client.
+
+```bash title="run the server"
+cd ~/thesis-tech-stack/mcp
+uv run mcp/server.py                     # stdio (default): local dev + co-resident Inspect eval
+uv run mcp/server.py --http              # streamable-HTTP: serving host / many clients
+uv run mcp dev mcp/server.py             # mcp[cli] dev inspector, exercise tools by hand
+```
+
+```bash title="serve the model with tool-calling on, then drive the loop"
+# vLLM must emit and parse tool calls; Qwen3 uses the Hermes parser:
+uv run vllm serve Qwen/Qwen3-8B --quantization fp8 \
+  --served-model-name qwen3-8b --port 8000 \
+  --enable-auto-tool-choice --tool-call-parser hermes
+SDA_MODE=pinned  uv run mcp/loop.py      # thin vLLM+MCP client loop, reproducible snapshot
+SDA_MODE=current uv run mcp/loop.py      # live: fetch under space-track credentials ("now" only)
+```
+
+```admonish gotcha
+Pinned mode is the only mode that goes in a table: `SDA_MODE=pinned` reads a
+DVC-pinned 3.9 snapshot so the oracle ground truth is frozen and the eval is
+re-runnable across days. `SDA_MODE=current` hits the live feed and the gold moves
+between runs, which is the comparability failure to avoid for anything measured.
+Credentials live in the environment, never in the repo (the 3.9 boundary), and the
+tool caches by NORAD id + epoch and backs off on 429 so an unattended run is not
+throttled or locked out.
 ```
 
 ## nvidia-smi / nvtop

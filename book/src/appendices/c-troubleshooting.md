@@ -263,6 +263,156 @@ run. Use `soft,timeo=,retrans=` for the archive mount so a drop fails fast, and
 never point a checkpoint-writer directly at the NAS.
 ```
 
+## Data pipeline and grounding
+
+The failures in this group come from the parts of the loop that never touch the GPU:
+the 3.9 SDA data pipeline (Airflow 3, space-track), the 3.10 SGP4 oracle, and the
+8.1 RAG index. They bite just as hard as a CUDA OOM, and for the same reason, they
+are silent until a number is wrong.
+
+### Single-node Airflow 3 will not start, or a first unpause stampedes
+
+**Symptom.** The scheduler or API server container crash-loops; DAGs never appear in
+the UI; or the first `unpause` of a DAG immediately fires a run for every logical date
+since `start_date`.
+
+**Cause.** Airflow 3 is built for clusters and its defaults assume one. On a single
+box the usual causes are: the one-time `airflow db migrate` (and admin-user create)
+step was never run, so there is no metadata schema; an executor that wants
+infrastructure you do not have (Celery/Kubernetes want a broker and workers); the
+`data/` project is not mounted into the scheduler, so the `uv run` task modules are
+not on the execution path; or `catchup` was left on and the DAG backfilled its whole
+history on first unpause.
+
+**Fix.**
+```bash
+cd data
+docker compose -f docker-compose.airflow.yml up airflow-init   # ONCE: db migrate + admin
+docker compose -f docker-compose.airflow.yml up -d
+docker compose -f docker-compose.airflow.yml logs -f airflow-scheduler   # read the parse error
+```
+Use `LocalExecutor` (tasks run as subprocesses on the one box), keep Airflow's own
+Postgres for metadata entirely separate from the data tiers, mount `..:/opt/project`
+so the task modules and their `uv.lock` are visible, and set `catchup=False` per DAG
+unless backfill is genuinely meaningful. Reproduce a broken task with
+`uv run airflow tasks test <dag> <task> <date>`, which runs one task with no scheduler.
+
+```admonish gotcha
+The single most useful move when a DAG task fails is to ignore Airflow entirely and
+run the underlying module by hand: `cd data && uv run python -m
+sda_data.tasks.celestrak_tle --group active`. Because the DAGs are thin (they only
+shell out to these modules), a plain-terminal traceback is the real error, not the
+Airflow task-instance log four clicks deep. If the module runs clean but the DAG task
+fails, the problem is the mount or the environment, not your code.
+```
+
+### space-track auth fails, or you get throttled / locked out
+
+**Symptom.** `spacetrack` login raises an auth error; a whole logical date's task
+fails; or repeated pulls start returning 429s and then the account is temporarily
+blocked.
+
+**Cause.** space-track is a session login (a cookie), not an API key, so a missing or
+wrong credential fails the login outright. And it enforces strict per-minute and
+per-hour rate limits with throttling and temporary blocks for abuse, so a naive loop
+that fetches one object per request, or an unattended pipeline that re-fetches every
+sample, will trip them.
+
+**Fix.**
+```bash
+# credentials live in the environment, NEVER in the repo (the 3.9 boundary)
+export SPACETRACK_IDENTITY=...   SPACETRACK_PASSWORD=...
+```
+Use the `spacetrack` library so you do not hand-roll the login and session, and let
+its built-in throttling run (do not disable it). Batch queries (ask for many objects
+in one request) instead of looping one object per request, cache by NORAD id plus
+epoch, and back off on 429. For anything that repeats (an eval in a table), pin a 3.9
+snapshot and read that, rather than re-fetching live.
+
+```admonish gotcha
+The redistribution line is a code invariant, not a promise: space-track output must
+land only on the git-ignored, non-DVC `data/live/` tier, never on the shippable raw
+tier. If you ever find a space-track file staged for commit, that is a bug, and the
+Chapter 10.3 embargo check exists to fail the build when it happens. Never widen a
+`git add` or `dvc add` glob to "just grab the data folder".
+```
+
+### SGP4 oracle: wrong frame, wrong units, or a stale-epoch propagation
+
+**Symptom.** A conjunction miss distance is off by thousands of km; a correct-looking
+model answer is graded wrong by exactly 1000x; or gold answers drift the further the
+screening window sits from the TLE epoch.
+
+**Cause.** Three things the `sgp4`/Skyfield libraries will not enforce for you (from
+3.10). **Frame:** `sgp4` returns position and velocity in **TEME** (True Equator,
+Mean Equinox), not ECEF/ECI-of-date and not lat/lon. Differencing two TEME vectors is
+fine (both objects share the frame), but subtracting a TEME vector from a ground
+site's lat/lon silently puts a conjunction off by thousands of km. **Units:**
+everything the library returns is kilometers and km/s; if a model answers in meters
+and the verifier does not fold the unit, a correct answer reads 1000x wrong. **Epoch:**
+SGP4 accuracy degrades away from the TLE's epoch, so a window days from epoch is
+propagating a stale fit; and the classic "minutes since epoch" convention is a trap if
+you do not feed absolute Julian dates.
+
+**Fix.**
+```python
+from sgp4.api import jday
+jd, fr = jday(2026, 7, 22, 0, 0, 0)   # absolute JD, sidesteps "minutes since epoch"
+# ground-site geometry: go through Skyfield's topocentric conversion, never
+# subtract a TEME vector from a lat/lon (sat - site).at(t).altaz()
+# units: fold the model's answer to km before comparing (m -> km) in the verifier
+```
+Keep the screening window near the snapshot's element epochs and record the epoch age,
+because a task built on a week-old TLE has a gold answer with real error bars.
+Km-versus-m, TEME-versus-ECEF, and epoch age are the three checks to run before
+trusting any generated gold.
+
+```admonish gotcha
+Mixing TEME and ECEF is the silent one: no exception, no NaN, just a physically
+impossible miss distance that looks plausible until you check it against a known
+pass. When an oracle number smells wrong, verify the frame before you touch anything
+else. The verifier and the gold generator share the same oracle code path on purpose
+(3.10), so a frame or unit bug corrupts the answer key and the grade identically and
+will not show up as a disagreement between them.
+```
+
+### LanceDB / embedding-model OOM from co-residency on 16GB
+
+**Symptom.** The embedding vLLM server OOMs at boot when the generation server is
+already up; or the generation server fails to allocate its KV pool after the embedding
+server claimed the card; or `--gpu-memory-utilization` fractions that "should" fit
+still race and one server dies.
+
+**Cause.** Two vLLM servers on one 16GB card, each told to claim a fraction, whose
+fractions sum too close to 1 (or a greedy embedder / a fat generation KV pool) so they
+race for blocks (from 8.1). The embedding model itself is cheap (it grows no KV cache,
+equation 1.6), but if you serve a 0.6B decoder-style embedder at a large
+`--max-model-len`, or leave the generation KV pool wide, the sum overruns the ~15.5
+GiB usable capacity.
+
+**Fix.**
+```bash
+# co-resident split (8.1): fractions sum under 1, generation gets the lion's share
+uv run vllm serve Qwen/Qwen3-8B --quantization fp8 \
+  --gpu-memory-utilization 0.75              # ~11.6 GiB weights + KV
+uv run vllm serve BAAI/bge-small-en-v1.5 --task embed --port 8001 \
+  --gpu-memory-utilization 0.15              # ~0.07 GiB weights + activation + context
+```
+The honest fix when they still race is to shrink the generation KV pool or the
+embedder, never to hope for a fit. Better still, do not hold both resident:
+**time-share** the card (8.1 default). Serve the embedding model alone, embed the whole
+corpus and every eval query in one offline pass, build the LanceDB index, tear it
+down, then serve only the generation model reading the precomputed query vectors from
+disk. Peak VRAM is then just whichever single model is up (see *Appendix A*).
+
+```admonish gotcha
+For a *fixed* eval suite the queries are known in advance, so the embedding model
+never has to be resident at eval time at all: precompute every query vector in the
+offline index-build pass and the eval loop reads them from disk. Co-residency
+(equation 1.7 in *Appendix A*) is only worth the OOM risk when retrieval must be
+*live* (8.2 / 8.3); for a batch eval, time-share and the whole problem disappears.
+```
+
 ## How this appendix grows
 
 New failures get appended under the group they belong to, each in the same
