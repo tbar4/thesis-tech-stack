@@ -3,6 +3,7 @@
 [Preface](frontmatter/preface.md)
 [How to read this book](frontmatter/how-to-read.md)
 [The hardware baseline](frontmatter/hardware-baseline.md)
+[System architecture](architecture.md)
 
 # Part 0 — The Machine
 
