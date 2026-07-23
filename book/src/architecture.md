@@ -2,30 +2,257 @@
 
 This page is the whole machine on one screen: how live space data becomes verifiable tasks, how those tasks measure a model, how the measurement becomes the reward that trains it, and how the loop closes on a single 16GB GPU. If you read only one page before diving into the parts, read this one. The diagram is the map; the prose under it is the *why*, because an architecture is a set of decisions, and the decisions are more useful than the boxes.
 
-<iframe id="arch-frame" src="architecture-diagram.html" title="Evals as Rewards system architecture diagram" loading="lazy" style="width:100%;border:1px solid rgba(128,128,128,0.25);border-radius:12px;min-height:1500px;background:transparent;"></iframe>
+<style>
+  /* Self-contained architecture diagram, inlined into the page (no iframe, so
+     the content flows with the page and there is no height to sync). All tokens
+     and rules are scoped under #arch-root; dark palettes ride mdbook's theme
+     classes (coal / navy / ayu) on <html>. */
+  #arch-root {
+    --panel: #ffffff; --panel-2: #f4f7fc;
+    --fg: #1a2236; --muted: #566078; --faint: #8894ab;
+    --line: rgba(40, 60, 100, 0.14); --line-strong: rgba(40, 60, 100, 0.26);
+    --signal: #1f97bd;   /* orbital cyan: the loop / control flow */
+    --verify: #2f9b66;   /* emerald: ground truth, verifiers, oracle */
+    --reward: #b9772a;   /* amber: reward, training energy */
+    --infra: #566d92;    /* slate: hardware, tracking, storage */
+    --product: #b85878;  /* rose: beyond-thesis / product */
+    --radius: 12px;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--fg); font-family: var(--sans); line-height: 1.5;
+    border: 1px solid var(--line); border-radius: 16px;
+    background: var(--panel-2); padding: 30px 26px 40px; margin: 20px 0 8px;
+    -webkit-font-smoothing: antialiased;
+  }
+  html.coal #arch-root, html.navy #arch-root, html.ayu #arch-root {
+    --panel: #121724; --panel-2: #171d2c;
+    --fg: #e2e8f5; --muted: #8b96ac; --faint: #5c667c;
+    --line: rgba(150, 170, 205, 0.16); --line-strong: rgba(150, 170, 205, 0.30);
+    --signal: #4cc2e0; --verify: #57c08a; --reward: #e0a55e; --infra: #8aa0c4; --product: #e0849e;
+  }
 
-<script>
-  // Auto-size the architecture iframe to its content and keep its light/dark
-  // theme in sync with the book's theme toggle (mdbook sets coal/navy/ayu for
-  // dark themes on the <html> element).
-  (function () {
-    var frame = document.getElementById("arch-frame");
-    if (!frame) return;
-    function bookTheme() {
-      return /\b(coal|navy|ayu)\b/.test(document.documentElement.className || "") ? "dark" : "light";
-    }
-    function syncTheme() {
-      try { frame.contentWindow.postMessage({ archTheme: bookTheme() }, "*"); } catch (e) {}
-    }
-    window.addEventListener("message", function (e) {
-      if (e.data && e.data.type === "arch-height" && e.data.height) {
-        frame.style.height = (e.data.height + 8) + "px";
-      }
-    });
-    frame.addEventListener("load", syncTheme);
-    new MutationObserver(syncTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-  })();
-</script>
+  #arch-root, #arch-root * { box-sizing: border-box; }
+  #arch-root code { background: transparent; color: inherit; padding: 0; font-size: inherit; border: 0; font-family: var(--mono); }
+  #arch-root p { margin: 0; }
+
+  #arch-root header { position: relative; margin: 0 0 30px; }
+  #arch-root .orbit { position: absolute; inset: -18px -8px auto auto; width: 200px; height: 200px; pointer-events: none; opacity: 0.5; }
+  #arch-root .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--signal); margin: 0 0 10px; }
+  #arch-root h1 { font-size: clamp(22px, 3.4vw, 32px); line-height: 1.1; margin: 0 0 10px; letter-spacing: -0.015em; font-weight: 650; border: 0; padding: 0; }
+  #arch-root h1 .sub { color: var(--muted); font-weight: 450; }
+  #arch-root .lede { max-width: 62ch; color: var(--muted); margin: 0; font-size: 15px; }
+  #arch-root .legend { display: flex; flex-wrap: wrap; gap: 10px 20px; margin: 16px 0 0; }
+  #arch-root .legend span { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); font-family: var(--mono); }
+  #arch-root .dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+
+  #arch-root .node {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px;
+    margin: 20px 0 28px; padding: 12px 16px; border: 1px solid var(--line);
+    border-radius: var(--radius); background: var(--panel);
+    font-family: var(--mono); font-size: 12.5px; color: var(--muted);
+  }
+  #arch-root .node b { color: var(--fg); font-weight: 600; }
+  #arch-root .node .spark { color: var(--signal); }
+
+  #arch-root .flow { display: grid; gap: 0; }
+  #arch-root .tier { position: relative; display: grid; grid-template-columns: 168px 1fr; gap: 20px; padding: 22px 0; }
+  #arch-root .tier + .tier { border-top: 1px dashed var(--line); }
+  #arch-root .rail .tag { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
+  #arch-root .rail .name { font-weight: 640; font-size: 15px; margin-top: 4px; line-height: 1.25; }
+  #arch-root .rail .accent { display: block; width: 30px; height: 3px; border-radius: 2px; margin-top: 10px; }
+
+  #arch-root .cards { display: flex; flex-wrap: wrap; gap: 10px; align-content: start; }
+  #arch-root .card {
+    border: 1px solid var(--line-strong); border-radius: 10px; background: var(--panel);
+    padding: 11px 13px; min-width: 150px; flex: 1 1 auto; max-width: 260px;
+    transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+  }
+  #arch-root .card:hover { transform: translateY(-2px); border-color: var(--tier, var(--signal)); background: var(--panel-2); }
+  #arch-root .card h3 { margin: 0; font-size: 13.5px; font-weight: 620; display: flex; align-items: center; gap: 8px; border: 0; padding: 0; }
+  #arch-root .card h3 .d { width: 8px; height: 8px; border-radius: 2px; background: var(--tier, var(--signal)); flex: none; }
+  #arch-root .card p { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+  #arch-root .card .parts { margin-top: 8px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.03em; color: var(--faint); }
+
+  #arch-root .loop { grid-column: 1 / -1; margin: 6px 0 2px; padding: 22px;
+    border: 1px solid var(--line-strong); border-radius: 16px;
+    background:
+      radial-gradient(120% 140% at 50% -20%, color-mix(in srgb, var(--signal) 10%, transparent), transparent 60%),
+      var(--panel); }
+  #arch-root .loop-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  #arch-root .loop-head .tag { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--signal); }
+  #arch-root .loop-head h2 { margin: 0; font-size: 17px; font-weight: 660; border: 0; padding: 0; }
+  #arch-root .loop-head .note { color: var(--muted); font-size: 12.5px; margin-left: auto; font-family: var(--mono); }
+  #arch-root .ring { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; align-items: stretch; }
+  #arch-root .stage { position: relative; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--panel-2); padding: 14px; }
+  #arch-root .stage .n { font-family: var(--mono); font-size: 11px; color: var(--signal); letter-spacing: 0.06em; }
+  #arch-root .stage h4 { margin: 4px 0 6px; font-size: 15px; font-weight: 650; border: 0; padding: 0; }
+  #arch-root .stage p { margin: 0; font-size: 11.5px; color: var(--muted); }
+  #arch-root .stage .tools { margin-top: 9px; font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+  #arch-root .stage::after { content: "\2192"; position: absolute; right: -13px; top: 50%; transform: translateY(-50%); color: var(--signal); font-size: 17px; z-index: 2; }
+  #arch-root .stage:last-child::after { content: ""; }
+  #arch-root .loop-return { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-family: var(--mono); font-size: 11.5px; color: var(--signal); }
+  #arch-root .loop-return .line { flex: 1; height: 1px; background: linear-gradient(90deg, var(--signal), transparent); }
+  #arch-root .loop-feeds { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line); font-size: 11.5px; color: var(--muted); }
+  #arch-root .loop-feeds b { color: var(--verify); font-family: var(--mono); font-weight: 600; }
+  #arch-root .loop-feeds .r { color: var(--reward); }
+
+  #arch-root .tier.product .card { border-style: dashed; background: transparent; }
+  #arch-root .fence { grid-column: 1 / -1; font-family: var(--mono); font-size: 11px; color: var(--product); letter-spacing: 0.04em; margin-bottom: 4px; }
+
+  #arch-root .spine { margin-top: 26px; padding: 18px 20px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); display: flex; flex-wrap: wrap; gap: 10px 26px; align-items: center; }
+  #arch-root .spine .t { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--infra); }
+  #arch-root .spine .i { font-size: 12.5px; color: var(--muted); }
+  #arch-root .spine .i b { color: var(--fg); font-family: var(--mono); font-weight: 600; }
+
+  #arch-root .metaline { margin-top: 20px; color: var(--faint); font-size: 12px; font-family: var(--mono); }
+
+  @media (max-width: 720px) {
+    #arch-root .tier { grid-template-columns: 1fr; gap: 12px; }
+    #arch-root .ring { grid-template-columns: 1fr 1fr; }
+    #arch-root .stage:nth-child(2)::after { content: ""; }
+    #arch-root .stage:nth-child(1)::after, #arch-root .stage:nth-child(3)::after { content: "\2192"; }
+    #arch-root .orbit { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { #arch-root .card { transition: none; } }
+</style>
+
+<div id="arch-root">
+  <header>
+    <svg class="orbit" viewBox="0 0 200 200" fill="none" aria-hidden="true">
+      <ellipse cx="100" cy="100" rx="92" ry="52" stroke="var(--signal)" stroke-width="1" opacity="0.55" transform="rotate(-24 100 100)"/>
+      <ellipse cx="100" cy="100" rx="70" ry="88" stroke="var(--verify)" stroke-width="1" opacity="0.4" transform="rotate(18 100 100)"/>
+      <circle cx="100" cy="100" r="6" fill="var(--signal)"/>
+      <circle cx="176" cy="83" r="3" fill="var(--verify)"/>
+    </svg>
+    <p class="eyebrow">System architecture</p>
+    <h1>Evals as Rewards<span class="sub"> &mdash; a serve, evaluate, score, train loop on one GPU</span></h1>
+    <p class="lede">Real space data becomes verifiable tasks; the eval that measures the model becomes
+      the reward that trains it; and the whole loop closes on a single 16&nbsp;GB card. This is the
+      system end to end, from live feeds to a trained, re-evaluated reasoning model.</p>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--signal)"></i>control / the loop</span>
+      <span><i class="dot" style="background:var(--verify)"></i>ground truth / verifiers</span>
+      <span><i class="dot" style="background:var(--reward)"></i>reward / training</span>
+      <span><i class="dot" style="background:var(--infra)"></i>infra / tracking</span>
+      <span><i class="dot" style="background:var(--product)"></i>beyond the thesis</span>
+    </div>
+  </header>
+
+  <div class="node">
+    <span class="spark">&#9670; one node</span>
+    <span><b>MSI Aegis R2</b> &middot; RTX 5080 16&nbsp;GB</span>
+    <span><b>Ubuntu 24.04</b> on Blackwell</span>
+    <span><b>uv</b> two-environment doctrine</span>
+    <span><b>Docker Compose</b> + MLflow spine</span>
+    <span>NVMe / NAS storage tiers</span>
+  </div>
+
+  <div class="flow">
+
+    <section class="tier" style="--tier:var(--verify)">
+      <div class="rail">
+        <div class="tag">Part III &middot; 3.9&ndash;3.10</div>
+        <div class="name">Ground truth &amp; data</div>
+        <span class="accent" style="background:var(--verify)"></span>
+      </div>
+      <div class="cards">
+        <div class="card"><h3><i class="d"></i>Live sources</h3><p>celestrak &middot; space-track &middot; api.nasa.gov &middot; thespacedevs &middot; Spaceflight News</p><div class="parts">httpx &middot; spacetrack</div></div>
+        <div class="card"><h3><i class="d"></i>Ingest pipeline</h3><p>Airflow 3 assets, thin DAGs over <code>uv run</code> modules; Pydantic + pandera gates</p><div class="parts">chapter 3.9</div></div>
+        <div class="card"><h3><i class="d"></i>Snapshots</h3><p>immutable, content-hashed Parquet; DuckDB queries; DVC-pinned</p><div class="parts">Parquet &middot; DuckDB &middot; DVC</div></div>
+        <div class="card"><h3><i class="d"></i>Physics oracle</h3><p>Skyfield / SGP4 generates <em>and</em> grades: conjunction screening, elements, passes</p><div class="parts">chapter 3.10</div></div>
+      </div>
+    </section>
+
+    <section class="tier" style="--tier:var(--verify)">
+      <div class="rail">
+        <div class="tag">Part III &middot; 3.11</div>
+        <div class="name">The frozen instrument</div>
+        <span class="accent" style="background:var(--verify)"></span>
+      </div>
+      <div class="cards">
+        <div class="card" style="max-width:none"><h3><i class="d"></i>Thesis task suite v1.0</h3><p>content-hashed, difficulty-stratified, contamination-scanned, power-sized (about 300 paired items); the fixed instrument every result is measured against</p><div class="parts">tagged suite-v1.0 &middot; datasheet</div></div>
+      </div>
+    </section>
+
+    <div class="loop">
+      <div class="loop-head">
+        <span class="tag">&#9670; the loop</span>
+        <h2>Serve &#8594; Evaluate &#8594; Score &#8594; Train &#8594; re-evaluate</h2>
+        <span class="note">Parts II &middot; III &middot; V &middot; VI &middot; VII</span>
+      </div>
+      <div class="ring">
+        <div class="stage"><div class="n">01 &middot; serve</div><h4>Serve</h4><p>the model under test, on 16&nbsp;GB</p><div class="tools">vLLM &middot; FP8 / AWQ &middot; paged KV</div></div>
+        <div class="stage"><div class="n">02 &middot; evaluate</div><h4>Evaluate</h4><p>run the frozen suite; log per-item, per-sample</p><div class="tools">Inspect &middot; lm-eval &middot; judges</div></div>
+        <div class="stage"><div class="n">03 &middot; score</div><h4>Score</h4><p>the verifier's verdict, with uncertainty</p><div class="tools">evalstats &middot; bootstrap &middot; McNemar</div></div>
+        <div class="stage"><div class="n">04 &middot; train</div><h4>Train</h4><p>the scorer becomes the reward</p><div class="tools">GRPO / RLVR &middot; TRL &middot; Unsloth &middot; LoRA</div></div>
+      </div>
+      <div class="loop-return"><span>&#8635; re-evaluate the trained checkpoint on the same instrument</span><span class="line"></span><span>chapter 7.6 &middot; the reasoning delta</span></div>
+      <div class="loop-feeds">
+        <span><b>the suite</b> feeds Evaluate &nbsp;&middot;&nbsp; <b>the oracle verifier</b> feeds Score &nbsp;&middot;&nbsp; <span class="r">the reward core</span> feeds Train &nbsp;&middot;&nbsp; every run logs to the MLflow spine</span>
+      </div>
+    </div>
+
+    <section class="tier" style="--tier:var(--signal)">
+      <div class="rail">
+        <div class="tag">Part IV</div>
+        <div class="name">Causal validity</div>
+        <span class="accent" style="background:var(--signal)"></span>
+      </div>
+      <div class="cards">
+        <div class="card"><h3><i class="d"></i>DAGs &amp; identification</h3><p>backdoor / front-door; confounders, colliders, mediators in eval pipelines</p><div class="parts">4.2&ndash;4.4</div></div>
+        <div class="card"><h3><i class="d"></i>Interventions</h3><p>training as <code>do(train)</code>; interrupted time series; placebo &amp; negative controls</p><div class="parts">4.5</div></div>
+        <div class="card"><h3><i class="d"></i>Causal audit</h3><p>a standing exhibit the methodology chapter cites verbatim</p><div class="parts">4.6</div></div>
+      </div>
+    </section>
+
+    <section class="tier" style="--tier:var(--signal)">
+      <div class="rail">
+        <div class="tag">Part VIII &middot; 8.1&ndash;8.3</div>
+        <div class="name">Grounding at inference</div>
+        <span class="accent" style="background:var(--signal)"></span>
+      </div>
+      <div class="cards">
+        <div class="card"><h3><i class="d"></i>RAG over space text</h3><p>vLLM-served embeddings, LanceDB index; retrieval metrics vs end-task</p><div class="parts">chapter 8.1</div></div>
+        <div class="card"><h3><i class="d"></i>MCP tools</h3><p>FastMCP wraps the oracle + clients; live numerical data, verifiable tool-use</p><div class="parts">chapter 8.2</div></div>
+        <div class="card"><h3><i class="d"></i>Augmentation arms</h3><p>base / RL-trained / +RAG / +tools at matched budget; what actually caused the gain</p><div class="parts">chapter 8.3</div></div>
+      </div>
+    </section>
+
+    <section class="tier" style="--tier:var(--infra)">
+      <div class="rail">
+        <div class="tag">Parts IX&ndash;X</div>
+        <div class="name">Scale &amp; assembly</div>
+        <span class="accent" style="background:var(--infra)"></span>
+      </div>
+      <div class="cards">
+        <div class="card"><h3><i class="d"></i>Burst</h3><p>containerize the stack; a Lambda GPU burst when 16&nbsp;GB is not enough</p><div class="parts">Part IX</div></div>
+        <div class="card"><h3><i class="d"></i>Assembly</h3><p>logs to figures, the methodology chapter, the reproducibility package</p><div class="parts">Part X</div></div>
+        <div class="card"><h3><i class="d"></i>Substack map</h3><p>an editorial calendar; the book is the reservoir, Substack the tap</p><div class="parts">10.4</div></div>
+      </div>
+    </section>
+
+    <section class="tier product" style="--tier:var(--product)">
+      <div class="fence">&#9622; outside the thesis &mdash; forward-looking product work, no thesis claims</div>
+      <div class="rail">
+        <div class="tag">Part XI</div>
+        <div class="name">Beyond the thesis</div>
+        <span class="accent" style="background:var(--product)"></span>
+      </div>
+      <div class="cards">
+        <div class="card"><h3><i class="d"></i>Agentic RL</h3><p>train the policy to <em>decide</em> when to call its tools; an autonomous SDA agent</p><div class="parts">chapter 11.1</div></div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="spine">
+    <span class="t">Tracking spine</span>
+    <span class="i"><b>MLflow</b> logs every run: model, config, git SHA, uv lock, snapshot hash, metrics with CIs</span>
+    <span class="i"><b>DVC</b> pins every data snapshot; content-addressed &amp; reproducible forever</span>
+  </div>
+
+  <p class="metaline">Evals as Rewards &middot; single-node reasoning-model loop &middot; measured numbers recorded on the baseline machine.</p>
+</div>
 
 ## The one idea the whole thing is built around
 
