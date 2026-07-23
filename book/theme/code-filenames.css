@@ -1,0 +1,29 @@
+/* Filename caption for code blocks, inserted by theme/code-filenames.js from a
+   code fence's title="..." attribute. Styled to sit as a tab flush on top of
+   the code block, and to adapt to every mdbook theme via its CSS variables. */
+.code-filename {
+  display: inline-block;
+  font-family: var(--mono-font, "Source Code Pro", Consolas, monospace);
+  font-size: 0.78em;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--sidebar-active, var(--fg, inherit));
+  background: var(--quote-bg, rgba(127, 127, 127, 0.14));
+  border: 1px solid var(--quote-border, rgba(127, 127, 127, 0.28));
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  padding: 0.3em 0.85em;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+  position: relative;
+  top: 1px;
+}
+
+/* Pull the code block up so the caption reads as attached to it, and square off
+   the corner the caption covers. */
+.code-filename + pre.has-filename,
+.code-filename + pre {
+  margin-top: 0;
+  border-top-left-radius: 0;
+}

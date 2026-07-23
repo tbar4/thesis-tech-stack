@@ -29,7 +29,11 @@ site-url = "/thesis-tech-stack/"
 #   mdbook-admonish install book
 #   mdbook-mermaid install book
 # CI runs both before building; see .github/workflows/book.yml.
-additional-css = ["theme/mdbook-admonish.css"]
+additional-css = ["theme/mdbook-admonish.css", "theme/code-filenames.css"]
+# theme/code-filenames.js renders each code fence's `title="path"` as a filename
+# caption. The mermaid assets are listed explicitly (in the order mdbook-mermaid
+# install produces) so that `mdbook-mermaid install` stays a no-op on this file.
+additional-js = ["theme/code-filenames.js", "mermaid.min.js", "mermaid-init.js"]
 git-repository-url = "https://github.com/tbar4/thesis-tech-stack"
 
 [output.linkcheck]
