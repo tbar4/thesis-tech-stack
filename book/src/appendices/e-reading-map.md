@@ -97,6 +97,8 @@ even as the labs are hands-on; its per-chapter rows are below.
 | 3.6 Judge models | [RLHF]; [AIE] ch. 3 (AI-as-judge) |
 | 3.7 The statistics of evals | [CAI] |
 | 3.8 Contamination and dataset hygiene | [BRM]; [AIE] ch. 8 |
+| 3.9 The SDA data pipeline | [AIE] ch. 8 |
+| 3.10 From orbital data to verifiable tasks | [BRM] ch. 3; [AIE] ch. 8 |
 | 3.12 Eval ops | [RLHF]; [AIE] ch. 10 |
 
 ### Part IV — Causal Inference for Evaluation
@@ -146,6 +148,14 @@ Part-wide spine: **[CAI] Parts 1–3.**
 | 7.3 Scorers as rewards | [RLHF] |
 | 7.4 Reward hacking and Goodhart | [RLHF] |
 | 7.5 Data and curriculum for RLVR | [AIE] ch. 8 |
+
+### Part VIII — Grounding: Retrieval and Tools
+
+| Chapter | Read-along |
+|---|---|
+| 8.1 RAG over space text | [AIE] ch. 6 |
+| 8.2 MCP tools for live SDA data | [AIE] ch. 6 |
+| 8.3 The augmentation arms: what caused the gain | [CAI] Part 3; [RLHF] ch. 7 |
 
 ### Part IX — Burst and Scale
 
