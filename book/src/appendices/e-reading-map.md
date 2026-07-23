@@ -34,18 +34,22 @@ seat (evaluation methodology, AI-as-judge, finetuning, dataset engineering,
 inference optimization), so I cite it where a chapter benefits from the
 systems-level framing rather than for derivations.
 
-## Practical references for grounding and pipelines
+## Practical and framework references
 
-Four hands-on references back the grounding chapters (Part VIII) and the data
-pipeline (3.9). They are framework- and tool-level rather than theory, so I cite
-them for how to build a thing, not for why it is true.
+These hands-on references back the grounding chapters (Part VIII), the data
+pipeline (3.9), the post-training landscape (6.1), and the agentic-RL product
+chapter (11.1). They are framework-, tool-, and adaptation-level rather than
+theory, so I cite them for how to build a thing, not for why it is true.
 
 | Key | Book | Primary chapters served |
 |---|---|---|
 | **[RAG]** | Rothman, *RAG-Driven Generative AI* | 8.1 (naive/advanced/modular RAG, retrieval metrics, evaluation) |
-| **[LC]** | Auffarth & Kuligin, *Generative AI with LangChain* (2e) | 8.1 (RAG systems), 8.2 (tools, agents, MCP in ch. 9) |
-| **[GADP]** | Lakshmanan & Hapke, *Generative AI Design Patterns* | 8.1 (RAG patterns), 8.2 (agentic AI, MCP in ch. 7) |
+| **[LC]** | Auffarth & Kuligin, *Generative AI with LangChain* (2e) | 8.1 (RAG systems), 8.2 (tools, agents, MCP in ch. 9), 11.1 (ReAct, LangGraph, memory) |
+| **[GADP]** | Lakshmanan & Hapke, *Generative AI Design Patterns* | 8.1 (RAG patterns), 8.2 (agentic AI, MCP in ch. 7), 8.3 (evaluation, ch. 5–6) |
 | **[DPA]** | Harenslak et al., *Data Pipelines with Apache Airflow* (2e) | 3.9 (DAG anatomy, scheduling, asset-aware scheduling) |
+| **[AGENTS]** | Infante, *AI Agents and Applications* | 11.1 (LangGraph tool-agents ch. 5/11, multi-agent ch. 12, memory/guardrails ch. 14), 8.2 (MCP servers, ch. 13) |
+| **[CUST]** | Bahree & Tok, *LLM Customization and Fine-Tuning* | 6.1 (the adaptation continuum, when not to adapt), Part VI |
+| **[PDL]** | Dürr, Sick & Murina, *Probabilistic Deep Learning* | Part I (probabilistic view of the LM objective), 3.7 (uncertainty; concepts, not its Keras/TFP code) |
 
 **[RAG]** is the dedicated retrieval text and the closest companion to 8.1: its
 naive/advanced/modular framing, retrieval metrics, and cosine-similarity
@@ -58,6 +62,22 @@ for why a physics oracle behind a typed tool is the version worth grading.
 (ch. 4) is the same data-aware pattern the pipeline uses to rebuild the task asset
 when a snapshot updates, and its incremental-and-backfill chapter (ch. 3) is the
 "why an orchestrator, not cron" argument in concrete form.
+
+**[AGENTS]** and **[CUST]** back the product-facing and post-training chapters.
+**[AGENTS]** is the agent-framework companion for 11.1: its LangGraph tool-agent
+chapters (ch. 5, ch. 11), multi-agent chapter (ch. 12), MCP-server chapter
+(ch. 13, which also backs 8.2), and productionization chapter (ch. 14, memory and
+guardrails) are the scaffolded-agent world that agentic RL learns to drive from
+inside. **[CUST]** frames 6.1: its adaptation continuum and its "when not to
+adapt" discipline are the wide-angle version of this book's post-training
+landscape, and it works on the same Qwen3 instruct family this book serves.
+**[PDL]** is a lighter, concepts-only reference (it is Keras/TensorFlow-Probability,
+so I cite it for the probabilistic view of the LM objective in Part I and for
+uncertainty framing in 3.7, not for its code). Two books in this batch I do not
+cite: *Math and Architectures of Deep Learning* is already the Part I math spine
+above ([MADL]), and *Evolutionary Deep Learning* sits outside this book's scope,
+since population-based neuroevolution is a different paradigm from single-GPU
+RLVR and is impractical on one 16GB card.
 
 ## Suggested order
 
@@ -163,7 +183,7 @@ Part-wide spine: **[CAI] Parts 1–3.**
 
 | Chapter | Read-along |
 |---|---|
-| 6.1 The post-training landscape | [RLHF] ch. 1–3; [AIE] ch. 2 (post-training) |
+| 6.1 The post-training landscape | [RLHF] ch. 1–3; [AIE] ch. 2 (post-training); [CUST] ch. 1–2 (the adaptation continuum) |
 | 6.2 SFT and instruction tuning | [RLHF] ch. 4; [BLLM] ch. 7; [AIE] ch. 7 |
 | 6.3 LoRA and QLoRA, mathematically | [RLHF] ch. 4; Part II ch. 3; [AIE] ch. 7 |
 | 6.4 Reward models and preference data | [RLHF] ch. 5 |
@@ -199,7 +219,7 @@ Part-wide spine: **[CAI] Parts 1–3.**
 
 | Chapter | Read-along |
 |---|---|
-| 11.1 Agentic RL: training the model to use its tools | [RLHF] ch. 7 |
+| 11.1 Agentic RL: training the model to use its tools | [RLHF] ch. 7; [LC] and [AGENTS] (agent patterns: ReAct, LangGraph, memory, MCP) |
 
 (Part X, Assembly, leans on the book's own artifacts rather than outside reading, so it carries no read-along rows.)
 
