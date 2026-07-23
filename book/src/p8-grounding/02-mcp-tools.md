@@ -476,6 +476,8 @@ SDA_MODE=current uv run mcp/loop.py
 
 ```admonish read-along
 **[AIE] Huyen ch. 6 (agents and tools)** is the conceptual backing for this chapter: it frames tool-use as extending a model's action space beyond text generation and lays out the plan-act-observe loop that my thin vLLM loop implements in twenty lines. Read Huyen's treatment of tool selection and failure handling against the verifiable-tool-use scorer here: her agents chapter motivates *why* tools help, and this chapter's oracle-grounded scoring is how I *prove* a specific tool call helped for the right reason rather than by luck, which is the bridge into the causal arms of 8.3.
+
+For the tool-and-agent ecosystem around MCP specifically, **[LC] Auffarth & Kuligin, chapter 9** and **[GADP] Lakshmanan & Hapke, chapter 7** both cover the Model Context Protocol directly, alongside tool definition, tool-calling loops, and agentic patterns. Read them for how MCP sits in the wider LangChain and design-pattern landscape (transports, servers, the general tool interface); read this chapter for the verifiable-tool-use twist that a physics oracle behind the tool makes possible, where I grade not just the answer but that the model called the right tool and carried its result through.
 ```
 
 ```admonish substack-seed

@@ -1,13 +1,14 @@
 # Appendix E: Reading map
 
-**Goal.** Pair the eight reference books to the chapters they serve, and suggest
+**Goal.** Pair the reference books to the chapters they serve, and suggest
 an order to read them in relative to the book's five authoring waves.
 
-I lean on eight reference books. None is quoted at length anywhere in the text;
-instead each chapter carries a `read-along` pointer by short key, and this
-appendix is the master index behind those pointers. Local copies live in
-`references/` at the repo root (see that directory's `README.md`); they are not
-distributed with the book.
+I lean on eight core reference books for the theory spine, plus four practical
+references for the grounding chapters (Part VIII) and the data pipeline (3.9).
+None is quoted at length anywhere in the text; instead each chapter carries a
+`read-along` pointer by short key, and this appendix is the master index behind
+those pointers. Local copies live in `references/` at the repo root (see that
+directory's `README.md`); they are not distributed with the book.
 
 ## The eight books
 
@@ -33,6 +34,31 @@ seat (evaluation methodology, AI-as-judge, finetuning, dataset engineering,
 inference optimization), so I cite it where a chapter benefits from the
 systems-level framing rather than for derivations.
 
+## Practical references for grounding and pipelines
+
+Four hands-on references back the grounding chapters (Part VIII) and the data
+pipeline (3.9). They are framework- and tool-level rather than theory, so I cite
+them for how to build a thing, not for why it is true.
+
+| Key | Book | Primary chapters served |
+|---|---|---|
+| **[RAG]** | Rothman, *RAG-Driven Generative AI* | 8.1 (naive/advanced/modular RAG, retrieval metrics, evaluation) |
+| **[LC]** | Auffarth & Kuligin, *Generative AI with LangChain* (2e) | 8.1 (RAG systems), 8.2 (tools, agents, MCP in ch. 9) |
+| **[GADP]** | Lakshmanan & Hapke, *Generative AI Design Patterns* | 8.1 (RAG patterns), 8.2 (agentic AI, MCP in ch. 7) |
+| **[DPA]** | Harenslak et al., *Data Pipelines with Apache Airflow* (2e) | 3.9 (DAG anatomy, scheduling, asset-aware scheduling) |
+
+**[RAG]** is the dedicated retrieval text and the closest companion to 8.1: its
+naive/advanced/modular framing, retrieval metrics, and cosine-similarity
+evaluation are exactly the moves 8.1 narrows to a single legible pipeline.
+**[LC]** and **[GADP]** are the tool-and-agent references for 8.2: both cover the
+Model Context Protocol directly ([LC] ch. 9, [GADP] ch. 7) alongside the tool-use
+and agentic-RAG patterns, so read them for the ecosystem of options and read 8.2
+for why a physics oracle behind a typed tool is the version worth grading.
+**[DPA]** is the Airflow book behind 3.9; its asset-aware scheduling chapter
+(ch. 4) is the same data-aware pattern the pipeline uses to rebuild the task asset
+when a snapshot updates, and its incremental-and-backfill chapter (ch. 3) is the
+"why an orchestrator, not cron" argument in concrete form.
+
 ## Suggested order
 
 The books are not read cover-to-cover front-to-back; they are read alongside the
@@ -57,6 +83,12 @@ parts they serve, in roughly the authoring-wave order (spec §8).
    (ch. 7) with Part VI, dataset engineering (ch. 8) with 3.8/7.5, inference
    optimization (ch. 9) with Part II, and its architecture chapter (ch. 10)
    with 3.12.
+8. **With the pipeline and grounding chapters (3.9, Part VIII):** **[DPA]**
+   ch. 2–4 alongside 3.9 (its asset-aware scheduling chapter is the closest
+   match to the Airflow-3 pattern used there); **[RAG]** and **[LC]**'s RAG
+   chapters alongside 8.1; and **[LC]** ch. 9 with **[GADP]** ch. 7 alongside
+   8.2, since both cover MCP directly. These are consulted as build references
+   when a chapter's lab is in front of you, not read end to end.
 
 ## Per-chapter pairings
 
@@ -97,7 +129,7 @@ even as the labs are hands-on; its per-chapter rows are below.
 | 3.6 Judge models | [RLHF]; [AIE] ch. 3 (AI-as-judge) |
 | 3.7 The statistics of evals | [CAI] |
 | 3.8 Contamination and dataset hygiene | [BRM]; [AIE] ch. 8 |
-| 3.9 The SDA data pipeline | [AIE] ch. 8 |
+| 3.9 The SDA data pipeline | [DPA] ch. 2–4; [AIE] ch. 8 |
 | 3.10 From orbital data to verifiable tasks | [BRM] ch. 3; [AIE] ch. 8 |
 | 3.12 Eval ops | [RLHF]; [AIE] ch. 10 |
 
@@ -153,9 +185,9 @@ Part-wide spine: **[CAI] Parts 1–3.**
 
 | Chapter | Read-along |
 |---|---|
-| 8.1 RAG over space text | [AIE] ch. 6 |
-| 8.2 MCP tools for live SDA data | [AIE] ch. 6 |
-| 8.3 The augmentation arms: what caused the gain | [CAI] Part 3; [RLHF] ch. 7 |
+| 8.1 RAG over space text | [RAG] (esp. Pt. 2); [LC] RAG systems; [GADP] Pattern 6; [AIE] ch. 6 |
+| 8.2 MCP tools for live SDA data | [LC] ch. 9 (MCP); [GADP] ch. 7 (MCP); [AIE] ch. 6 |
+| 8.3 The augmentation arms: what caused the gain | [CAI] Part 3; [RLHF] ch. 7; [GADP] (evaluation) |
 
 ### Part IX — Burst and Scale
 

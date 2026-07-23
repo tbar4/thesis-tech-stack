@@ -361,6 +361,8 @@ A RAG gain is only interesting if it is grounding, not leakage. Here is the trap
 
 ```admonish read-along
 [AIE] ch. 6 (RAG and agents) is the production-side companion to this chapter: it treats chunking strategy, embedding-model choice, hybrid (dense + lexical) retrieval, and reranking as the engineering decisions they are, and its evaluation section makes the same split this chapter insists on between retrieval quality and answer quality. Read it for the breadth of options I deliberately narrowed (I chose one embedding model, one metric, exact search, and a thin loop); read this chapter for why, in a thesis where retrieval is a variable in a causal claim, the narrow legible version is the one worth building.
+
+For depth on RAG itself, **[RAG] Rothman, *RAG-Driven Generative AI*** is the dedicated text: its naive, advanced, and modular framing, its retrieval metrics, and its cosine-similarity evaluation map almost one to one onto this chapter's pipeline. **[LC] Auffarth & Kuligin**'s RAG-systems chapter covers the LangChain-shaped build with hybrid and agentic retrieval, and **[GADP] Lakshmanan & Hapke**'s Basic-RAG and index-aware patterns (Patterns 6 and 9) are the pattern-catalog view. I cite the three for the breadth of retrieval technique they lay out, and this chapter for the single legible slice of it I chose to make retrieval a clean variable in a causal claim.
 ```
 
 ```admonish substack-seed
