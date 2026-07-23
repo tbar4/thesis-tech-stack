@@ -16,7 +16,7 @@ directory's `README.md`); they are not distributed with the book.
 |---|---|---|
 | **[S&B]** | Sutton & Barto, *Reinforcement Learning: An Introduction* (2e) | Part V |
 | **[RLHF]** | Lambert, *RLHF: LLM Alignment and Post-Training* | Parts IV–VI (esp. ch. 5–8) |
-| **[BRM]** | Raschka, *Build a Reasoning Model (From Scratch)* | Parts III, V, VI (ch. 3–8; App. C Qwen3 source) |
+| **[BRM]** | Raschka, *Build a Reasoning Model (From Scratch)* | Parts III, V, VI, VII (ch. 3–8; App. C Qwen3 source, App. F evaluation) |
 | **[BLLM]** | Raschka, *Build a Large Language Model (From Scratch)* | Part I |
 | **[MADL]** | Chaudhuri, *Math and Architectures of Deep Learning* | Part I math spine (ch. 2–9) |
 | **[GAIA]** | Hurbans, *Grokking AI Algorithms* (2e) | Pre-reading only; RL intuition (ch. 10) |
@@ -196,10 +196,11 @@ Part-wide spine: **[CAI] Parts 1–3.**
 | Chapter | Read-along |
 |---|---|
 | 7.1 Unsloth internals | [MADL] ch. 3–4 |
-| 7.2 GRPO on 16GB | [RLHF]; [S&B] ch. 13 |
-| 7.3 Scorers as rewards | [RLHF] |
-| 7.4 Reward hacking and Goodhart | [RLHF] |
+| 7.2 GRPO on 16GB | [BRM] ch. 6 (GRPO from scratch), 7.2–7.3 (metrics); [RLHF]; [S&B] ch. 13 |
+| 7.3 Scorers as rewards | [BRM] ch. 3 (math verifier), 6.6 (reward); [RLHF] |
+| 7.4 Reward hacking and Goodhart | [BRM] 7.6 (format reward); [RLHF] |
 | 7.5 Data and curriculum for RLVR | [AIE] ch. 8 |
+| 7.6 Measuring the reasoning delta | [BRM] ch. 3 + App. F (evaluation); [RLHF] |
 
 ### Part VIII — Grounding: Retrieval and Tools
 
