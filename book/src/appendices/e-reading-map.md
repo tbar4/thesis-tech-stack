@@ -163,6 +163,14 @@ Part-wide spine: **[CAI] Parts 1–3.**
 |---|---|
 | 9.3 When to burst | [RLHF] ch. 6 (infra notes) |
 
+### Part XI — Beyond the Thesis: Toward a Product
+
+| Chapter | Read-along |
+|---|---|
+| 11.1 Agentic RL: training the model to use its tools | [RLHF] ch. 7 |
+
+(Part X, Assembly, leans on the book's own artifacts rather than outside reading, so it carries no read-along rows.)
+
 ```admonish read-along
 When a chapter's `read-along` pointer and this table disagree, the chapter is
 the source of truth: update this appendix, not the chapter. This index accretes

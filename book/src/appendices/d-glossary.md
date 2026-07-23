@@ -17,6 +17,19 @@ reward of each completion minus the mean reward of its group, with no learned
 *value* function at all. See *Actor-critic and GAE* and *The policy gradient
 theorem*.
 
+### Agentic RL (tool-use RL)
+
+Reinforcement learning where the policy's action space includes emitting *tool
+calls*, so a rollout interleaves reasoning tokens, tool calls, and tool results
+returned by an environment, and the reward credits both the correct final answer
+and correct, efficient tool use. The tool-result tokens come from the environment,
+not the policy, so they are masked out of the loss the same way prompt tokens are.
+In this book agentic RL is deliberately *out of thesis scope*: it lives in Part XI
+(chapter 11.1) as a product capability, because training the tool-calling policy
+confounds reasoning with tool strategy, the very confound the thesis's four-arm
+comparison (8.3) works to isolate. Distinct from the thesis loop, where tools are
+handed to a fixed policy (8.2) at matched access.
+
 ### Airflow asset / data-aware scheduling
 
 In Airflow 3 an **asset** (renamed from Dataset) is a named, addressable thing a task
