@@ -170,6 +170,46 @@ seeds:
     pull: 5
     embargo: true    # reveals the measured reasoning delta, post-defense only
     hook: "The paired, effect-sized answer to the only question that matters."
+
+  - chapter: "3.10"
+    title: "For space, the answer key is a law of physics"
+    arc: "grounding-in-real-data"
+    standalone: 5
+    pull: 4
+    embargo: false
+    hook: "No human writes the ground truth; orbital mechanics does, and it can't be sweet-talked."
+
+  - chapter: "3.9"
+    title: "Turning live space data into a reproducible eval"
+    arc: "grounding-in-real-data"
+    standalone: 4
+    pull: 3
+    embargo: false
+    hook: "Five live feeds, one content-hashed snapshot: how a task built today still runs in five years."
+
+  - chapter: "8.1"
+    title: "Your RAG gain might be a lookup, not reasoning"
+    arc: "grounding-in-real-data"
+    standalone: 4
+    pull: 4
+    embargo: false
+    hook: "Retrieval can leak the answer. Measure retrieval and the task separately or you'll fool yourself."
+
+  - chapter: "8.2"
+    title: "A tool that returns ground truth is a tool you can grade"
+    arc: "grounding-in-real-data"
+    standalone: 4
+    pull: 4
+    embargo: false
+    hook: "Verifiable tool-use: check not just the answer but that the model called the tool and used it."
+
+  - chapter: "8.3"
+    title: "Was it reasoning, or just retrieval and tools?"
+    arc: "grounding-in-real-data"
+    standalone: 4
+    pull: 5
+    embargo: true    # reveals the measured four-arm deltas, post-defense only
+    hook: "The committee's hardest question, answered with a matched-budget causal comparison."
 ```
 
 ### The sequencer
