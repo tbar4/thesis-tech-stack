@@ -148,8 +148,7 @@ uv add --editable ../audit         # chapter 4.6 causal-audit helpers
 
 The lab runs the full arm matrix on the frozen suite and analyzes it. Because there is no GPU in this authoring environment, the script below operates on **clearly-synthetic, illustrative per-item score arrays** with a planted structure, so I can show that the analysis code is correct and that the naive and adjusted contrasts behave as the theory predicts. Every headline number the real run will produce is a placeholder here; the code is real and is exactly what will consume the measured logs.
 
-```python
-# file: labs/p8-03-arms/arm_comparison.py
+```python title="labs/p8-03-arms/arm_comparison.py"
 # /// script
 # requires-python = ">=3.11"
 # dependencies = ["numpy>=2.0"]
