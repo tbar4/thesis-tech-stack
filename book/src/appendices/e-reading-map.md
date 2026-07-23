@@ -187,7 +187,7 @@ Part-wide spine: **[CAI] Parts 1–3.**
 |---|---|
 | 8.1 RAG over space text | [RAG] (esp. Pt. 2); [LC] RAG systems; [GADP] Pattern 6; [AIE] ch. 6 |
 | 8.2 MCP tools for live SDA data | [LC] ch. 9 (MCP); [GADP] ch. 7 (MCP); [AIE] ch. 6 |
-| 8.3 The augmentation arms: what caused the gain | [CAI] Part 3; [RLHF] ch. 7; [GADP] (evaluation) |
+| 8.3 The augmentation arms: what caused the gain | [CAI] Part 3; [RLHF] ch. 7; [GADP] ch. 5–6 (path eval, LLM-as-judge) |
 
 ### Part IX — Burst and Scale
 
