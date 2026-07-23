@@ -184,3 +184,59 @@ the NF4 block size the quantization table writes as $g$. Chapter 6.3 sets these
 symbols, so the appendix follows it rather than renaming; the surrounding equation
 is always what disambiguates.
 ```
+
+## Retrieval and embeddings (RAG)
+
+The symbols from *RAG over space text* (chapter 8.1), where retrieval quality is
+measured separately from end-task quality.
+
+| Symbol | Meaning | First introduced |
+|---|---|---|
+| $q$, $c$ | query and chunk embedding vectors, $q, c \in \mathbb{R}^{d}$ | RAG over space text |
+| $d$ | embedding dimension (e.g. 384 for `bge-small`) | RAG over space text |
+| $\cos(q,c)$ | cosine similarity, $\frac{q\cdot c}{\lVert q\rVert\,\lVert c\rVert} \in [-1,1]$ | RAG over space text |
+| $\hat q$, $\hat c$ | L2-normalized vectors, $\hat q = q/\lVert q\rVert$; then $\cos(q,c) = \hat q \cdot \hat c$ | RAG over space text |
+| $\mathcal{C}$ | the chunk corpus retrieval scans | RAG over space text |
+| $\mathrm{TopK}_k(q)$ | the $k$ chunks with the largest dot product against the query | RAG over space text |
+| $R_q$ | the gold (relevant) chunk set for query $q$ | RAG over space text |
+| $\text{recall@}k$ | fraction of relevant chunks landing in the top $k$, averaged over queries | RAG over space text |
+| $\mathrm{rank}_q$ | 1-indexed position of the first relevant chunk ($\infty$ if none in top $k$) | RAG over space text |
+| $\text{MRR}$ | mean reciprocal rank, the mean of $1/\mathrm{rank}_q$ over queries | RAG over space text |
+
+```admonish gotcha
+$d$ is the embedding dimension here, and it collides with the statistical effect size
+$d$ (statistics table) and the head/model dimensions $d_h$, $d_{\text{model}}$
+(transformer table); the three live in disjoint chapters and the sentence resolves
+which. Likewise $k$ is the retrieval depth in $\text{recall@}k$ and $\mathrm{TopK}_k$,
+the same letter the statistics table uses for pass@k's per-problem sample count: both
+count "how many," in different tasks.
+```
+
+## Orbital mechanics and verifiable SDA tasks
+
+The symbols from *From orbital data to verifiable tasks* (chapter 3.10), where the
+physics oracle (SGP4/Skyfield) both writes and grades the answer. Positions and
+velocities are TEME kilometers and km/s, as `sgp4` returns them.
+
+| Symbol | Meaning | First introduced |
+|---|---|---|
+| $\mathbf{r}_1(t)$, $\mathbf{r}_2(t)$ | TEME positions of the two objects over the screening window | From orbital data to verifiable tasks |
+| $\mathbf{r}(t)$ | relative position, $\mathbf{r}_1(t) - \mathbf{r}_2(t)$ | From orbital data to verifiable tasks |
+| $\mathbf{v}_{\text{rel}}$ | relative velocity, $\mathbf{v}_1 - \mathbf{v}_2$; closest approach is where $\mathbf{r}\cdot\mathbf{v}_{\text{rel}} = 0$ | From orbital data to verifiable tasks |
+| $d^\*$ | miss distance, $\min_t \lVert\mathbf{r}(t)\rVert$ over the window (the gold answer) | From orbital data to verifiable tasks |
+| $t_{\text{TCA}}$ | time of closest approach, $\arg\min_t \lVert\mathbf{r}(t)\rVert$ | From orbital data to verifiable tasks |
+| $[t_0, t_0+W]$ | screening window of length $W$ from start $t_0$ | From orbital data to verifiable tasks |
+| $X$ | conjunction screening threshold (km); the boolean verdict is $d^\* \le X$ | From orbital data to verifiable tasks |
+| $x$, $x^\*$ | a candidate numeric answer and the gold value it is graded against | From orbital data to verifiable tasks |
+| $\texttt{atol}$, $\texttt{rtol}$ | absolute and relative tolerance of the correctness band | From orbital data to verifiable tasks |
+| $n$, $e$, $i$ | TLE mean elements: mean motion, eccentricity, inclination | From orbital data to verifiable tasks |
+| $B^\*$ | TLE drag-like (B-star) coefficient SGP4 uses to model decay | From orbital data to verifiable tasks |
+
+```admonish gotcha
+The correctness band is $\lvert x - x^\* \rvert \le \texttt{atol} + \texttt{rtol}\cdot
+\lvert x^\* \rvert$ (the `numpy.isclose` policy), set per family: miss distance
+$\texttt{atol} = 0.05$ km, $\texttt{rtol} = 0.02$. Watch $n$: it is TLE mean motion
+here but the eval sample size $n$ in the statistics table, and the two never share an
+equation. The star superscript marks the gold/optimum ($d^\*$, $x^\*$, $t_{\text{TCA}}$
+picks out the minimizing time), not a conjugate.
+```

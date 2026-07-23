@@ -17,6 +17,16 @@ reward of each completion minus the mean reward of its group, with no learned
 *value* function at all. See *Actor-critic and GAE* and *The policy gradient
 theorem*.
 
+### Airflow asset / data-aware scheduling
+
+In Airflow 3 an **asset** (renamed from Dataset) is a named, addressable thing a task
+produces, declared as an `outlet`; **data-aware scheduling** lets a DAG be scheduled
+on one or more assets instead of a clock, so a downstream build runs exactly when an
+upstream snapshot it consumes is refreshed. In the SDA pipeline the conjunction-task
+build consumes the `tle_snapshot` asset and reruns off its update rather than on a
+guessed timer, which is how the pipeline stays incremental. See *The SDA data
+pipeline* (chapter 3.9).
+
 ### AWQ (Activation-aware Weight Quantization)
 
 A weight-only 4-bit quantization method that protects the small fraction of weight
@@ -65,6 +75,16 @@ whole prefill in one blocking pass. It smooths inter-token latency for other
 requests when a large prompt arrives, at a small throughput cost. Enabled with
 `--enable-chunked-prefill`. See *vLLM internals* and *prefill/decode*.
 
+### Conjunction / CDM (conjunction data message)
+
+A **conjunction** is a close approach between two orbiting objects; screening for one
+asks whether the miss distance drops below a threshold within a window, which the
+physics oracle settles by propagating both objects and reading off the time of
+closest approach and miss distance. A **CDM** (conjunction data message) is the
+standard formatted report of a screened conjunction issued by the authoritative
+catalog; in this book the gold answers are computed by the oracle, never lifted from
+a CDM. See *From orbital data to verifiable tasks* (chapter 3.10).
+
 ### Continuous batching
 
 The serving strategy that lets sequences enter and leave a running batch at every
@@ -110,6 +130,46 @@ a frozen reference *is* an implicit reward, turning alignment into a single
 classification-style loss. It trades the flexibility of on-policy RL for stability
 and simplicity. See *Direct alignment: DPO and family*.
 
+### DuckDB
+
+An in-process analytical SQL engine that reads *Parquet* files directly with no load
+step and no server, used to query the normalized snapshot tier of the SDA pipeline in
+place. It is the query counterpart to *LanceDB*'s vector storage: both are embedded,
+single-node, and file-backed, which is what a one-machine thesis wants. See *The SDA
+data pipeline* (chapter 3.9).
+
+### DVC (Data Version Control)
+
+The tool that versions raw data snapshots by content hash: `dvc add` records a
+snapshot's hash in a small `.dvc` pointer committed to git while the bytes live on a
+storage tier, so a task pins data by revision rather than by name. It is what makes an
+SDA snapshot's provenance portable and reproducible, and the open-data boundary
+(space-track data is never DVC-tracked) is a code invariant enforced against it. See
+*The SDA data pipeline* (chapter 3.9).
+
+### Embedding
+
+A fixed-length vector that summarizes a span of text so semantic closeness shows up as
+geometric closeness, produced by one forward pass of an embedding model with no
+autoregressive *decode* and therefore no *KV cache* growth. In *RAG* each chunk and
+each query is embedded, and retrieval ranks chunks by cosine similarity to the query
+embedding. See *RAG over space text* (chapter 8.1).
+
+### ephemeris
+
+A table of an object's computed positions (and velocities) over a span of time; for
+SDA it is what *SGP4* produces when propagated across a screening window, the raw
+material the miss-distance search minimizes over. See *From orbital data to verifiable
+tasks* (chapter 3.10).
+
+### epoch
+
+The reference timestamp a *TLE*'s mean elements are stated at. *SGP4* accuracy is best
+near the epoch and degrades away from it, so the book keeps screening windows close to
+a snapshot's element epochs and records the epoch age, because a task built on a stale
+TLE has a gold answer with real error bars. See *From orbital data to verifiable
+tasks* (chapter 3.10).
+
 ### GAE (Generalized Advantage Estimation)
 
 A method for estimating the *advantage* that interpolates between low-variance,
@@ -145,6 +205,13 @@ element), and it is the single most important number in single-GPU serving becau
 after the weights it is the entire budget for context and concurrency. See *KV cache
 arithmetic*.
 
+### LanceDB
+
+An embedded, on-disk, Arrow-native vector store queried in-process with no server,
+holding the *RAG* index of chunk *embedding*s. At a few thousand chunks it does exact
+brute-force cosine search by default and only builds approximate (IVF/HNSW) indexes at
+the million-chunk scale. See *RAG over space text* (chapter 8.1).
+
 ### LoRA (Low-Rank Adaptation)
 
 A parameter-efficient fine-tuning method that freezes the base weights and learns a
@@ -153,6 +220,15 @@ low-rank update $\Delta W = BA$ (with $B \in \mathbb{R}^{d\times r}$, $A \in
 small adapters carry gradients and optimizer state, which is why training memory
 collapses to a fraction of full fine-tuning. Combined with a 4-bit frozen base it
 becomes *QLoRA*. See *LoRA and QLoRA, mathematically*.
+
+### MCP (Model Context Protocol)
+
+A standard for exposing a tool to a model once, as a typed function on a server, so
+its name, JSON-schema signature, and transport are available to any client without
+hand-wired glue. In the book a FastMCP server declares the SDA tools (over the 3.9
+source clients and the 3.10 oracle) a single time and both a vLLM tool-call loop and
+an Inspect eval consume them, which is what makes *tool-use* a reusable surface
+Part IX and Part X can point at. See *MCP tools for live SDA data* (chapter 8.2).
 
 ### MXFP4
 
@@ -179,6 +255,12 @@ shared pool, like virtual-memory paging. This eliminates the fragmentation and
 over-reservation of contiguous caches, letting the card hold far more concurrent
 sequences, and it is what makes *continuous batching* memory-efficient. See *vLLM
 internals*.
+
+### Parquet
+
+A columnar, typed, well-compressing on-disk file format; the normalized storage tier
+of the SDA pipeline is Parquet, written once from the immutable raw bytes and queried
+in place by *DuckDB* with no load step. See *The SDA data pipeline* (chapter 3.9).
 
 ### pass@k
 
@@ -232,6 +314,23 @@ adapters carry all the training. It is what lets a 4B policy fine-tune within th
 GiB budget (base ~1.9 GiB, adapters + optimizer ~0.5 GiB, the rest for activations).
 See *LoRA and QLoRA, mathematically* and *Appendix A*.
 
+### RAG (retrieval-augmented generation)
+
+Three steps stapled to a generation call: index a corpus as *embedding* vectors,
+retrieve the chunks nearest a query, and assemble them into the prompt as context. It
+is the tool for questions whose answers live in prose and cannot be computed (recency,
+qualitative context); a question with a formula belongs behind a tool (chapter 8.2),
+not behind retrieval, because a retrieved number is unverified and possibly stale. See
+*RAG over space text* (chapter 8.1).
+
+### Reranker / cross-encoder
+
+A model that reads a query and a candidate chunk *together* and scores their relevance
+jointly, unlike the bi-encoder that embeds each independently, so it is more accurate
+and more expensive. The standard pattern retrieves a wide top-$k$ cheaply by cosine
+similarity and reranks it down to the few chunks the generator actually sees. See *RAG
+over space text* (chapter 8.1).
+
 ### RLVR (Reinforcement Learning with Verifiable Rewards)
 
 The training paradigm of the book's loop: instead of a learned *reward model*, the
@@ -275,6 +374,50 @@ catalog correlation), where an answer can be checked against ground truth or orb
 mechanics rather than merely judged. That checkability is exactly what makes it a
 verifiable-reward domain and the reason the thread uses it end to end. See *Building
 the thesis task suite* (chapter 3.11).
+
+### SGP4 (Simplified General Perturbations 4)
+
+The standard analytic propagator that turns a *TLE* and a time into a *TEME frame*
+position and velocity, applying secular and periodic perturbations (Earth oblateness,
+drag) in closed form rather than by numerical integration. A TLE's mean elements only
+mean what they mean inside SGP4, so the book locks the stack to `sgp4`/Skyfield and
+treats the library as the specification: this propagator is the physics oracle that
+both writes and grades SDA answers. See *From orbital data to verifiable tasks*
+(chapter 3.10).
+
+### TEME frame
+
+True Equator, Mean Equinox, the inertial-ish coordinate frame *SGP4* returns positions
+and velocities in. Differencing two TEME vectors is valid because both objects share
+the frame, but a ground-site question needs a topocentric conversion (Skyfield), never
+a TEME-minus-lat/lon subtraction; mixing TEME with an Earth-fixed frame is the classic
+silent error that throws a conjunction off by thousands of km. See *From orbital data
+to verifiable tasks* (chapter 3.10).
+
+### TLE (two-line element set)
+
+The standard packed encoding of an object's orbit at an *epoch*, carrying the
+classical mean elements (mean motion, eccentricity, inclination, RAAN, argument of
+perigee, mean anomaly) plus a $B^\*$ drag term. The elements are *mean* elements
+fitted for one propagator, so they are only meaningful fed to *SGP4*; they are the
+input every SDA task family reasons from. See *From orbital data to verifiable tasks*
+(chapter 3.10).
+
+### Tool-use
+
+A model calling an external function at inference and reasoning over what it returns,
+rather than answering from its weights alone. Because the SDA tool returns oracle
+ground truth, the book scores *verifiable* tool-use: it checks that the model called
+the tool, called it with the right arguments, and carried the returned number into its
+answer, which is a claim about process, not just output. See *MCP tools for live SDA
+data* (chapter 8.2).
+
+### Vector store
+
+The datastore that holds *embedding* vectors and answers nearest-neighbor queries over
+them; here it is *LanceDB*, embedded and file-backed. Exact brute-force cosine search
+suffices at a few thousand chunks, and approximate indexes only earn their keep at far
+larger scale. See *RAG over space text* (chapter 8.1).
 
 ### Verifiable reward
 

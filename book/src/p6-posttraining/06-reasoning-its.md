@@ -60,6 +60,8 @@ The inference-time methods live in the *inference/eval* environment (vLLM plus I
 
 The lab produces the central figure of the whole methodology: inference-time scaling curves on the frozen thesis suite. For a fixed model, it sweeps the number of samples $k$ and plots two curves against token budget, self-consistency (majority vote) and best-of-n (verifier-selected), each with bootstrap CIs. This shows the pass@$n$-shaped saturation of equation (6.6.2) directly, quantifies how much a verifier beats voting, and marks the matched budget I will use for every training comparison.
 
+Retrieval (chapter 8.1) and tool access (chapter 8.2) are two more inference-time augmentations that spend the same currency, context and compute per answer, with the weights frozen. That makes them exactly the kind of thing this chapter's matched-budget discipline exists to keep honest: an arm that retrieves passages or calls a tool must be compared at the same budget as the parametric arm, or its gain is confounded with the tokens it spent. Chapter 8.3 takes the four-arm comparison that this discipline enables and turns it into a causal claim about what actually caused the SDA gain.
+
 This is a `uv` project in the inference/eval environment. From the repo root:
 
 ```bash
