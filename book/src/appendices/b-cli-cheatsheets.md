@@ -239,10 +239,14 @@ uv run airflow dags backfill sda_ingest -s 2026-07-01 -e 2026-07-03   # material
 
 ```bash title="the thin task modules (no Airflow imported; debug from a plain terminal)"
 cd data
-uv run python -m sda_data.tasks.celestrak_tle --group active   # fetch, normalize, gate, snapshot
-uv run python -m sda_data.tasks.spacedevs_articles             # the article feed for 8.1 RAG
+uv run python -m sda_data.tasks.celestrak_tle --group active   # httpx single-GET, then freeze
+uv run python -m sda_data.tasks.spacedevs_articles             # dlt resource; the 8.1 RAG feed
+uv run python -m sda_data.tasks.nasa_neows \
+    --start 2026-07-01 --end 2026-07-01                        # dlt extract -> land -> freeze
 uv run python -m sda_data.tasks.spacetrack_cdms                # writes ONLY the embargoed live tier
 uv run python -m sda_data.query                                # DuckDB read-back of the snapshot
+# dlt owns extract+land for the public feeds; the module's freeze step content-
+# addresses the load and DVC pins it, so the snapshot contract is extractor-agnostic.
 ```
 
 ```admonish gotcha
