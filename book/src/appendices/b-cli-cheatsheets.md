@@ -220,9 +220,10 @@ standalone task modules the DAGs call.
 
 ```bash title="bring the stack up (once, then daemon)"
 cd data
-docker compose -f docker-compose.airflow.yml up airflow-init   # ONCE: db migrate + admin
-docker compose -f docker-compose.airflow.yml up -d             # apiserver + scheduler
-# UI at http://127.0.0.1:8080 (admin/admin). LocalExecutor, own Postgres for metadata.
+docker compose -f docker-compose.airflow.yml up airflow-init   # ONCE: db migrate only
+docker compose -f docker-compose.airflow.yml up -d             # api-server + scheduler
+# UI at http://127.0.0.1:8080. Log in as admin; Airflow 3 SimpleAuthManager writes the
+# generated password to simple_auth_manager_passwords.json.generated. LocalExecutor.
 ```
 
 ```bash title="the airflow CLI (inside the scheduler container, or a local airflow venv)"

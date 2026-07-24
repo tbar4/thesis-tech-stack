@@ -86,7 +86,7 @@ space-track is the source most likely to burn you, in three ways. First, **auth*
 The stack is locked, and each piece earns its place. **Apache Airflow 3** is the orchestrator, run in Docker Compose as an extension of the Chapter 0.6 tracking spine (same compose project, same network, so tasks can log to MLflow at `http://mlflow:5000`). It contributes only scheduling, assets/data-aware triggering, retries, and backfill; the DAGs are thin. **httpx** is the HTTP client for celestrak, api.nasa.gov, and thespacedevs, with transport-level retries and sane timeouts. **The `spacetrack` library** wraps space-track's login, session, and rate-limit handling so I never touch raw auth. **Pydantic** models are the per-record ingest contract; **pandera** schemas are the per-frame quality gate. **Parquet** is the normalized storage format (columnar, typed, compresses well), written to the storage tiers and queried in place by **DuckDB**, which reads Parquet directly with zero load step. **DVC** versions the raw snapshots by content hash; **MLflow** logs each snapshot as a dataset input so a run's data provenance sits beside its code and dependency provenance. All of it is CPU/IO work that lives in the `data/` uv sub-project, with its own `pyproject.toml` and committed `uv.lock`, and it never asks for the GPU.
 
 ```admonish gotcha title="Single-node Airflow 3 realities"
-Airflow is designed for clusters, and the defaults assume one. On a single research machine you want the un-fancy configuration and should not fight it. Use `LocalExecutor` (not Celery/Kubernetes, which want a broker and workers you do not have) so tasks run as subprocesses on the one box. Airflow 3 splits out an **API server** and a **scheduler**; in Compose that is a couple of services plus a metadata database, and the official compose ships an `airflow-init` step you must run once to migrate the DB and create the admin user before anything else will start. Keep Airflow's metadata database (its own Postgres) entirely separate from your data tiers: it stores DAG runs and task states, not your snapshots, and conflating the two is how people accidentally put orbital data somewhere it does not belong. Turn `catchup` on deliberately, per-DAG, only where backfill is meaningful, or a first `unpause` will stampede a run for every logical date since `start_date`. And mount your `data/` project into the scheduler and worker containers so the `uv run` task modules and their `uv.lock` are visible; the DAG shells out to them, so they have to be on the path the tasks execute in.
+Airflow is designed for clusters, and the defaults assume one. On a single research machine you want the un-fancy configuration and should not fight it. Use `LocalExecutor` (not Celery/Kubernetes, which want a broker and workers you do not have) so tasks run as subprocesses on the one box. Airflow 3 splits out an **API server** and a **scheduler**; in Compose that is a couple of services plus a metadata database, and you run the `airflow-init` step once to migrate that database before anything else will start. User management changed in Airflow 3: `airflow users create` is gone from core, replaced by the auth-manager interface whose default, the **SimpleAuthManager**, has no CLI at all. You declare users in config instead, `AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS` as `username:role` pairs (roles: viewer, user, op, admin), and each password is generated on first boot into `$AIRFLOW_HOME/simple_auth_manager_passwords.json.generated`, editable in place if you want a memorable one. Keep the init container honest with `set -euo pipefail`: the old `airflow users create ... || true` trap goes green on a failed bootstrap and only surfaces later when the UI won't log you in, which is the worst possible default for a bootstrap step. Keep Airflow's metadata database (its own Postgres) entirely separate from your data tiers: it stores DAG runs and task states, not your snapshots, and conflating the two is how people accidentally put orbital data somewhere it does not belong. Turn `catchup` on deliberately, per-DAG, only where backfill is meaningful, or a first `unpause` will stampede a run for every logical date since `start_date`. And mount your `data/` project into the scheduler and worker containers so the `uv run` task modules and their `uv.lock` are visible; the DAG shells out to them, so they have to be on the path the tasks execute in.
 ```
 
 ## Lab
@@ -458,6 +458,11 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db/airflow
+    # Airflow 3 manages users through the auth manager, not `airflow users create`.
+    # The default SimpleAuthManager reads users from config as username:role pairs
+    # (roles: viewer, user, op, admin). No password here: it is generated on first
+    # boot and written to simple_auth_manager_passwords.json.generated (see below).
+    AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "admin:admin"
     MLFLOW_TRACKING_URI: http://mlflow:5000     # the 0.6 spine, same compose network
     SDA_DATA_HOME: /opt/project
   volumes:
@@ -475,12 +480,13 @@ services:
     volumes:
       - airflow-db-data:/var/lib/postgresql/data
 
-  airflow-init:                                 # run ONCE: migrate DB, make admin
+  airflow-init:                                 # run ONCE: migrate the metadata DB
     <<: *airflow-common
     entrypoint: /bin/bash
-    command: -c "airflow db migrate && airflow users create
-      --username admin --password admin --firstname a --lastname b
-      --role Admin --email admin@example.com || true"
+    # `set -euo pipefail`, not `|| true`: an init container that goes green on a
+    # failed bootstrap hides the breakage until the UI won't authenticate. The
+    # admin user is declared in config above, so migrate is all this step does.
+    command: -c "set -euo pipefail; airflow db migrate"
 
   airflow-apiserver:                            # Airflow 3 splits the API server out
     <<: *airflow-common
@@ -499,9 +505,14 @@ volumes:
 
 ```bash title="shell: bring it up"
 cd data
-docker compose -f docker-compose.airflow.yml up airflow-init   # once
-docker compose -f docker-compose.airflow.yml up -d
-# UI at http://127.0.0.1:8080 (admin/admin). Unpause sda_ingest to schedule it.
+docker compose -f docker-compose.airflow.yml up airflow-init   # once: DB migrate
+docker compose -f docker-compose.airflow.yml up -d             # api-server + scheduler
+# UI at http://127.0.0.1:8080. Log in as `admin`; SimpleAuthManager generated the
+# password on first boot. Read it from the passwords file (edit it in place if you
+# want one you can remember; generation only fills in missing entries):
+docker compose -f docker-compose.airflow.yml exec airflow-apiserver \
+  cat /opt/airflow/simple_auth_manager_passwords.json.generated
+# Then unpause sda_ingest to schedule it.
 ```
 
 **What you should see.** Running the task module directly (`uv run python -m sda_data.tasks.celestrak_tle --group active`) prints one line naming the element-set count, the immutable raw snapshot path, the `sha256:` content address, and the Parquet path (row count measured on the baseline machine, record value, date, driver). On disk you now have an immutable raw snapshot on the shippable `data/raw/celestrak/...` tier named by its own hash, and a normalized `data/snapshots/celestrak/element_sets/...` Parquet derived from it. `uv run python -m sda_data.query` returns the LEO objects straight out of Parquet through DuckDB with their `snapshot_hash` provenance column intact. `dvc add` produces a `celestrak.dvc` pointer that pins those bytes by content into a git commit, so the snapshot is reproducible by revision rather than by name. In the Airflow UI, `sda_ingest` runs on its 6-hour clock, and the moment its `celestrak_tle` task succeeds and marks the `sda://celestrak/element_sets` asset updated, `sda_conjunction_tasks` triggers on its own with no timer, because the asset graph, not a guessed schedule, drives it. The space-track task writes only to the git-ignored `data/live/` tier and produces no shippable artifact. The artifact of the chapter is that pair: a versioned, provenance-stamped SDA snapshot sitting correctly across the raw and normalized tiers, DVC-pinned and MLflow-logged, plus the two thin DAGs that produce and consume it. From here, Chapter 3.10 turns these element sets into verifiable conjunction tasks whose gold answers are reproducible forever because they are bound to the content address in equation (9.1).
