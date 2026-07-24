@@ -1,4 +1,4 @@
-.PHONY: test up down doctor backup
+.PHONY: test up down doctor backup mcp
 
 test:
 	uv run pytest
@@ -15,3 +15,6 @@ down:
 
 backup:
 	./scripts/backup_offsite.sh
+
+mcp:
+	uv run python -m sda_data.mcp_server

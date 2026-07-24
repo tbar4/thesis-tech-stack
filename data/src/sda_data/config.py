@@ -40,6 +40,11 @@ def delta_root() -> Path:
     return data_home() / "data" / "delta"
 
 
+def gold_db() -> Path:
+    """The dbt-built gold DuckDB database."""
+    return data_home() / "data" / "gold" / "sda.duckdb"
+
+
 def s3_storage_options() -> dict[str, str]:
     """delta-rs style storage options for the MinIO endpoint, from env.
     Empty dict when unconfigured, so local-path workflows need no setup."""

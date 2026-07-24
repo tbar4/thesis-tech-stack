@@ -16,10 +16,18 @@ dependencies = [
     "dbt-duckdb>=1.8",
     "sgp4>=2.23",
     "numpy>=1.26",
+    "lancedb>=0.13",
+    "fastmcp>=2.0",
 ]
 
+[project.optional-dependencies]
+embed = ["sentence-transformers>=3.0"]
+
 [dependency-groups]
-dev = ["pytest>=8.0"]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -31,3 +39,4 @@ packages = ["src/sda_data"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+asyncio_mode = "auto"
