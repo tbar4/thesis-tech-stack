@@ -1,7 +1,0 @@
-name: sda_gold
-version: "0.1.0"
-profile: sda
-model-paths: ["models"]
-models:
-  sda_gold:
-    +materialized: table
