@@ -4,7 +4,7 @@ Everything the eval side of this book does with Space Domain Awareness assumes a
 
 So this chapter builds the thing that turns five live feeds into a normalized, provenance-stamped, reproducible store: fetched on a schedule, incrementally, with backfill and retries, every record stamped with where it came from and when, and every snapshot content-hashed and pinned so that a task built from it is reproducible forever. The running constraint, and the reason this is a real engineering chapter and not a `wget` script, is that one of the five sources (space-track) is authenticated, rate-limited, and contractually not redistributable, which forces a hard boundary through the whole design: the public repository ships only the feeds I am allowed to ship, plus derived task instances, and the restricted numerical data is fetched live and never committed. That boundary is what later pushes the live numerical side behind an MCP tool in Chapter 8.2 rather than a shipped dataset.
 
-The stack is deliberately boring and standard: Apache Airflow 3 schedules, plain `uv run` modules do the fetching and normalizing, Pydantic and pandera gate the shapes, Parquet and DuckDB store and query, and DVC plus MLflow pin and log the provenance. It all lives in the CPU/IO `data/` sub-project, which never touches the GPU.
+The stack is deliberately boring and standard: Apache Airflow 3 schedules, **dlt** extracts and lands the public feeds (with the `spacetrack` library for the one authenticated source), plain `uv run` modules freeze each load into an immutable snapshot, Pydantic and pandera gate the shapes, Parquet and DuckDB store and query, and DVC plus MLflow pin and log the provenance. It all lives in the CPU/IO `data/` sub-project, which never touches the GPU.
 
 ## Theory
 
@@ -35,7 +35,7 @@ The third is the **thin-DAG mechanics** the next subsection depends on ([DPA] ch
 
 ### Thin DAGs: Airflow schedules, `uv run` does the work
 
-The single most important discipline in this chapter is that Airflow does not *do* anything. It schedules. Every piece of real logic (the httpx call, the Pydantic normalization, the pandera gate, the Parquet write) lives in a plain Python module in the `data/` sub-project that I can run from the command line with `uv run python -m sda_data.tasks.celestrak_tle`, with no Airflow imported anywhere in it. The DAG is a thin shell whose tasks shell out to those modules.
+The single most important discipline in this chapter is that Airflow does not *do* anything. It schedules. Every piece of real logic (the dlt extract, the Pydantic normalization, the pandera gate, the Parquet write) lives in a plain Python module in the `data/` sub-project that I can run from the command line with `uv run python -m sda_data.tasks.celestrak_tle`, with no Airflow imported anywhere in it. The DAG is a thin shell whose tasks shell out to those modules.
 
 This is not stylistic fussiness; it buys three concrete things. First, **every task is testable and debuggable standalone**: when the celestrak pull breaks, I run the module in a terminal and get a normal Python traceback, not an Airflow task-instance log four clicks deep in a web UI. Second, **the pipeline is not hostage to Airflow's environment**: the task module resolves its own dependencies through the `data/` project's `uv.lock`, so the versions that run in the DAG are byte-identical to the versions that run at my prompt. Third, **the orchestrator is swappable**: if Airflow is ever the wrong tool, the DAG is fifty lines and the thousand lines of real logic do not move. A DAG that reaches into a database, parses JSON, and validates a schema inside a Python task is a DAG you cannot run without Airflow, which means you cannot debug it without Airflow, which means you will debug it slowly.
 
@@ -83,7 +83,13 @@ space-track is the source most likely to burn you, in three ways. First, **auth*
 
 ## Tooling
 
-The stack is locked, and each piece earns its place. **Apache Airflow 3** is the orchestrator, run in Docker Compose as an extension of the Chapter 0.6 tracking spine (same compose project, same network, so tasks can log to MLflow at `http://mlflow:5000`). It contributes only scheduling, assets/data-aware triggering, retries, and backfill; the DAGs are thin. **httpx** is the HTTP client for celestrak, api.nasa.gov, and thespacedevs, with transport-level retries and sane timeouts. **The `spacetrack` library** wraps space-track's login, session, and rate-limit handling so I never touch raw auth. **Pydantic** models are the per-record ingest contract; **pandera** schemas are the per-frame quality gate. **Parquet** is the normalized storage format (columnar, typed, compresses well), written to the storage tiers and queried in place by **DuckDB**, which reads Parquet directly with zero load step. **DVC** versions the raw snapshots by content hash; **MLflow** logs each snapshot as a dataset input so a run's data provenance sits beside its code and dependency provenance. All of it is CPU/IO work that lives in the `data/` uv sub-project, with its own `pyproject.toml` and committed `uv.lock`, and it never asks for the GPU.
+The stack is locked, and each piece earns its place. **Apache Airflow 3** is the orchestrator, run in Docker Compose as an extension of the Chapter 0.6 tracking spine (same compose project, same network, so tasks can log to MLflow at `http://mlflow:5000`). It contributes only scheduling, assets/data-aware triggering, retries, and backfill; the DAGs are thin. **dlt** (data load tool) is the ingest framework for the three public feeds (celestrak, api.nasa.gov, thespacedevs): it owns the plumbing that hand-rolled HTTP does not (pagination, transport retries, incremental cursors keyed to a date, and JSON-to-relational normalization), and lands each run to a Parquet staging area through its filesystem destination. Crucially, dlt *stops at the landing zone*: the immutable-snapshot, content-hash, and DVC steps below take a dlt load and freeze it, so the provenance contract does not depend on the extractor. **The `spacetrack` library** wraps space-track's login, session, and rate-limit handling so I never touch raw auth; dlt has no verified source for a session-authenticated, embargoed feed, and that data wants special handling anyway. **Pydantic** models are the per-record ingest contract and **pandera** schemas are the per-frame quality gate. These divide cleanly from dlt's own schema layer: dlt's *schema contracts* govern table **shape** (freeze, evolve, or discard on a new column or type), while pandera asserts the **physics** dlt cannot express (eccentricity in [0, 1), inclination in [0, 180], a plausible mean motion), so the two are complementary rather than redundant. **Parquet** is the normalized storage format (columnar, typed, compresses well), written to the storage tiers and queried in place by **DuckDB**, which reads Parquet directly with zero load step. **DVC** versions the raw snapshots by content hash; **MLflow** logs each snapshot as a dataset input so a run's data provenance sits beside its code and dependency provenance. All of it is CPU/IO work that lives in the `data/` uv sub-project, with its own `pyproject.toml` and committed `uv.lock`, and it never asks for the GPU.
+
+```admonish thesis-thread title="Why dlt, and why it stops at the landing zone"
+The honest comparison is not "dlt versus an HTTP client"; they sit at different layers. A raw client does the GET and nothing else, so choosing it means hand-rolling pagination, retry policy, incremental state, and JSON-to-relational normalization myself, for every feed. dlt is the framework that owns exactly that undifferentiated plumbing, and for the paginated, parameterized public APIs (NeoWs, the Spaceflight-News feed) it also ships verified/generated sources, so a new feed is a small resource function rather than a bespoke crawler. That is a real reduction in code I would otherwise write and maintain, which is why the public feeds go through dlt.
+
+The one place dlt's grain runs against this thesis is versioning. dlt's native mode is *incremental merge into a mutating destination*; the spine here is the opposite, an *immutable, content-addressed snapshot pinned by DVC* (equation 9.1), because a task instance in Chapter 3.10 must bind to exact bytes to be reproducible forever. I do not resolve that by giving up the snapshot contract. I resolve it by drawing a boundary: dlt owns **extract to land** (fetch, paginate, normalize, write a Parquet partition), and stops. Each run lands a fresh, run-stamped partition rather than merging in place, so dlt's incremental state never competes with DVC as the versioning authority, exactly the discipline the LanceDB index in 8.1 follows to keep Lance's internal versioning from shadowing DVC. Then the freeze layer takes over unchanged: content-hash the landed bytes, register the immutable raw snapshot, gate the frame with pandera, write the normalized Parquet, DVC-pin, MLflow-log. The payoff is that the artifact the rest of the book depends on, a snapshot I can name by hash and reproduce, is identical whether the extractor was dlt, the `spacetrack` library, or a bare client. The extractor is swappable; the provenance contract is not. celestrak is the one feed where the thin path was never the weak link (a single unauthenticated GET of the whole catalog, no pagination, no cursor), so its module below stays deliberately hand-written as the minimal baseline; the dlt path is shown on NeoWs, where the plumbing it removes is real.
+```
 
 ```admonish gotcha title="Single-node Airflow 3 realities"
 Airflow is designed for clusters, and the defaults assume one. On a single research machine you want the un-fancy configuration and should not fight it. Use `LocalExecutor` (not Celery/Kubernetes, which want a broker and workers you do not have) so tasks run as subprocesses on the one box. Airflow 3 splits out an **API server** and a **scheduler**; in Compose that is a couple of services plus a metadata database, and you run the `airflow-init` step once to migrate that database before anything else will start. User management changed in Airflow 3: `airflow users create` is gone from core, replaced by the auth-manager interface whose default, the **SimpleAuthManager**, has no CLI at all. You declare users in config instead, `AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS` as `username:role` pairs (roles: viewer, user, op, admin), and each password is generated on first boot into `$AIRFLOW_HOME/simple_auth_manager_passwords.json.generated`, editable in place if you want a memorable one. Keep the init container honest with `set -euo pipefail`: the old `airflow users create ... || true` trap goes green on a failed bootstrap and only surfaces later when the UI won't log you in, which is the worst possible default for a bootstrap step. Keep Airflow's metadata database (its own Postgres) entirely separate from your data tiers: it stores DAG runs and task states, not your snapshots, and conflating the two is how people accidentally put orbital data somewhere it does not belong. Turn `catchup` on deliberately, per-DAG, only where backfill is meaningful, or a first `unpause` will stampede a run for every logical date since `start_date`. And mount your `data/` project into the scheduler and worker containers so the `uv run` task modules and their `uv.lock` are visible; the DAG shells out to them, so they have to be on the path the tasks execute in.
@@ -97,9 +103,10 @@ I stand up Airflow 3 next to the MLflow spine, write the standalone task module 
 
 ```bash title="shell: create the data sub-project"
 uv init data && cd data
-uv add "httpx>=0.27" "pydantic>=2.7" "pandera>=0.20" "pandas>=2.2" \
-       "pyarrow>=16" "duckdb>=1.0" "spacetrack>=1.3" "mlflow>=2.14"
+uv add "dlt[filesystem,parquet]>=1.0" "httpx>=0.27" "pydantic>=2.7" "pandera>=0.20" \
+       "pandas>=2.2" "pyarrow>=16" "duckdb>=1.0" "spacetrack>=1.3" "mlflow>=2.14"
 uv add --dev "dvc>=3.50"
+# dlt extracts+lands the public feeds; httpx stays for celestrak's single-GET path.
 # pandera >= 0.20 splits the pandas backend into its own import path.
 ```
 
@@ -223,6 +230,22 @@ class ElementSetFrame(pa.DataFrameModel):
     class Config:
         strict = False   # extra provenance columns are allowed
         coerce = True
+
+
+class NeoWsFrame(pa.DataFrameModel):
+    """Per-frame gate for NASA NeoWs close approaches. dlt lands the shape;
+    pandera asserts the physics dlt's schema contract cannot."""
+    neo_reference_id: Series[str] = pa.Field(nullable=False)
+    close_approach_date: Series[str] = pa.Field(nullable=False)
+    miss_distance_km: Series[float] = pa.Field(gt=0)              # positive by definition
+    rel_velocity_kms: Series[float] = pa.Field(ge=0, le=100)      # sane approach speed
+    absolute_magnitude_h: Series[float] = pa.Field(ge=-5, le=40)  # asteroid H range
+    source: Series[str] = pa.Field(isin=["nasa"])
+    snapshot_hash: Series[str] = pa.Field(str_startswith="sha256:")
+
+    class Config:
+        strict = False
+        coerce = True
 ```
 
 ### The standalone task module (the real work)
@@ -306,6 +329,121 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 ```
+
+### A dlt source for the paginated feeds (NASA NeoWs)
+
+celestrak was a single GET, which is the one case where hand-rolled transport was never the weak link. NASA's NeoWs is the opposite: paginated, key-gated, rate-limited, and keyed by date, which is exactly the plumbing dlt is built to own. The module below is the *same shape* as the celestrak one, a standalone `uv run` module with no Airflow, but its fetch-and-normalize half is a dlt resource that lands a run-stamped Parquet partition, and its second half is the identical freeze layer: content-address the landed bytes, gate the frame with pandera, write the normalized snapshot. dlt changed how the bytes arrive; it did not touch how they become a pinned snapshot.
+
+```python title="data/src/sda_data/tasks/nasa_neows.py"
+"""Fetch NASA NeoWs close approaches with dlt, land to Parquet, then FREEZE.
+
+dlt owns extraction (pagination, retries, incremental-by-date, JSON->tables) and
+lands a per-run Parquet partition through its filesystem destination. It stops
+there. The freeze half is the SAME content-hash + pandera + snapshot discipline
+the celestrak module uses, so the immutable, content-addressed snapshot the tasks
+bind to does not depend on the extractor.
+
+Standalone:
+    NASA_API_KEY=... uv run python -m sda_data.tasks.nasa_neows --start 2026-07-01 --end 2026-07-02
+"""
+from __future__ import annotations
+
+import argparse
+import os
+from datetime import datetime, timezone
+from pathlib import Path
+
+import dlt
+import pandas as pd
+from dlt.sources.helpers.rest_client import RESTClient
+from dlt.sources.helpers.rest_client.paginators import JSONLinkPaginator
+
+from sda_data.config import SNAP_ROOT
+from sda_data.gates import NeoWsFrame
+from sda_data.snapshot import write_raw_snapshot
+
+NEOWS = "https://api.nasa.gov/neo/rest/v1"
+
+
+@dlt.resource(name="neo_close_approaches", write_disposition="replace")
+def neows_feed(start: str, end: str):
+    """One dlt resource -> one normalized table. dlt follows the paginator and
+    retries transient failures; I only yield flat records. Swap this hand-written
+    resource for dlt's verified NASA source if you prefer -- the freeze half below
+    is unchanged either way."""
+    client = RESTClient(base_url=NEOWS,
+                        paginator=JSONLinkPaginator(next_url_path="links.next"))
+    params = {"start_date": start, "end_date": end,
+              "api_key": os.environ["NASA_API_KEY"]}
+    for page in client.paginate("/feed", params=params):
+        for _day, objects in page["near_earth_objects"].items():
+            for o in objects:
+                for ca in o["close_approach_data"]:
+                    yield {
+                        "neo_reference_id": o["neo_reference_id"],
+                        "name": o["name"],
+                        "close_approach_date": ca["close_approach_date"],
+                        "miss_distance_km": float(ca["miss_distance"]["kilometers"]),
+                        "rel_velocity_kms": float(
+                            ca["relative_velocity"]["kilometers_per_second"]),
+                        "absolute_magnitude_h": float(o["absolute_magnitude_h"]),
+                    }
+
+
+def extract_to_landing(start: str, end: str) -> Path:
+    """dlt owns this half. write_disposition='replace' into a fresh, run-stamped
+    dataset = an immutable landing partition, NOT an in-place merge, so dlt's
+    incremental state never competes with DVC as the versioning authority."""
+    run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    landing = SNAP_ROOT / "_landing" / "nasa_neows" / run_id
+    pipe = dlt.pipeline(
+        pipeline_name="nasa_neows",
+        destination=dlt.destinations.filesystem(bucket_url=str(landing)),
+        dataset_name="neows",
+    )
+    pipe.run(neows_feed(start, end), loader_file_format="parquet")
+    return landing
+
+
+def freeze(landing: Path) -> str:
+    """The freeze layer, identical in spirit to celestrak: hash the landed bytes,
+    register the immutable raw snapshot, gate the physics, write the silver Parquet.
+    Raw NeoWs bytes are NOT redistributable as a dump, so write_raw_snapshot lands
+    them on the embargoed tier (nasa is absent from REDISTRIBUTABLE); the derived
+    facts here are what ships."""
+    fetch_time = datetime.now(timezone.utc)
+    df = pd.concat([pd.read_parquet(f) for f in sorted(landing.rglob("*.parquet"))],
+                   ignore_index=True)
+    raw = df.to_parquet(index=False)                     # canonical bytes to hash
+    _raw_path, snapshot_hash = write_raw_snapshot("nasa", "neows", raw, fetch_time)
+    df["source"], df["snapshot_hash"] = "nasa", snapshot_hash
+    df = NeoWsFrame.validate(df)                          # physics gate (pandera)
+    out = SNAP_ROOT / "nasa" / "neows" / fetch_time.strftime("%Y-%m-%d")
+    out.mkdir(parents=True, exist_ok=True)
+    parquet_path = out / f"{snapshot_hash.split(':', 1)[1][:16]}.parquet"
+    df.to_parquet(parquet_path, index=False)
+    print(f"nasa neows: {len(df)} approaches  snapshot={snapshot_hash[:19]}...  "
+          f"parquet={parquet_path}")
+    return snapshot_hash
+
+
+def run(start: str, end: str) -> str:
+    return freeze(extract_to_landing(start, end))         # extract (dlt) -> freeze (ours)
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--start", required=True, help="UTC date, e.g. 2026-07-01")
+    ap.add_argument("--end", required=True, help="UTC date, inclusive")
+    args = ap.parse_args()
+    run(args.start, args.end)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+The `--start`/`--end` window is the Airflow data interval made concrete: the consumer DAG passes the run's logical date, so an incremental pull fetches exactly that day and a backfill re-materializes past days deterministically. The Spaceflight-News feed is the same pattern (a dlt resource, incremental by publish date, frozen the same way) and feeds the Chapter 8.1 RAG corpus rather than the numeric tables.
 
 ### Querying the snapshot with DuckDB
 
@@ -391,6 +529,7 @@ from airflow.providers.standard.operators.bash import BashOperator
 # Assets are named, addressable things a task produces.
 TLE_SNAPSHOT = Asset("sda://celestrak/element_sets")
 ARTICLE_SNAPSHOT = Asset("sda://spacedevs/articles")
+NEOWS_SNAPSHOT = Asset("sda://nasa/neows")
 
 RUN = "cd $SDA_DATA_HOME/data && uv run python -m sda_data.tasks.{mod}"
 
@@ -410,8 +549,16 @@ with DAG(
     )
     fetch_articles = BashOperator(
         task_id="spacedevs_articles",
-        bash_command=RUN.format(mod="spacedevs_articles"),
+        bash_command=RUN.format(mod="spacedevs_articles"),   # dlt resource, frozen
         outlets=[ARTICLE_SNAPSHOT],
+    )
+    fetch_neows = BashOperator(
+        task_id="nasa_neows",
+        # dlt extracts + lands; the module's freeze step content-addresses it.
+        # {{ ds }} is the run's logical date: incremental by data interval.
+        bash_command=("cd $SDA_DATA_HOME/data && uv run python -m "
+                      "sda_data.tasks.nasa_neows --start {{ ds }} --end {{ ds }}"),
+        outlets=[NEOWS_SNAPSHOT],
     )
     # space-track runs here too, writing ONLY to the embargoed live tier.
     fetch_cdms = BashOperator(
@@ -515,7 +662,7 @@ docker compose -f docker-compose.airflow.yml exec airflow-apiserver \
 # Then unpause sda_ingest to schedule it.
 ```
 
-**What you should see.** Running the task module directly (`uv run python -m sda_data.tasks.celestrak_tle --group active`) prints one line naming the element-set count, the immutable raw snapshot path, the `sha256:` content address, and the Parquet path (row count measured on the baseline machine, record value, date, driver). On disk you now have an immutable raw snapshot on the shippable `data/raw/celestrak/...` tier named by its own hash, and a normalized `data/snapshots/celestrak/element_sets/...` Parquet derived from it. `uv run python -m sda_data.query` returns the LEO objects straight out of Parquet through DuckDB with their `snapshot_hash` provenance column intact. `dvc add` produces a `celestrak.dvc` pointer that pins those bytes by content into a git commit, so the snapshot is reproducible by revision rather than by name. In the Airflow UI, `sda_ingest` runs on its 6-hour clock, and the moment its `celestrak_tle` task succeeds and marks the `sda://celestrak/element_sets` asset updated, `sda_conjunction_tasks` triggers on its own with no timer, because the asset graph, not a guessed schedule, drives it. The space-track task writes only to the git-ignored `data/live/` tier and produces no shippable artifact. The artifact of the chapter is that pair: a versioned, provenance-stamped SDA snapshot sitting correctly across the raw and normalized tiers, DVC-pinned and MLflow-logged, plus the two thin DAGs that produce and consume it. From here, Chapter 3.10 turns these element sets into verifiable conjunction tasks whose gold answers are reproducible forever because they are bound to the content address in equation (9.1).
+**What you should see.** Running the task module directly (`uv run python -m sda_data.tasks.celestrak_tle --group active`) prints one line naming the element-set count, the immutable raw snapshot path, the `sha256:` content address, and the Parquet path (row count measured on the baseline machine, record value, date, driver). On disk you now have an immutable raw snapshot on the shippable `data/raw/celestrak/...` tier named by its own hash, and a normalized `data/snapshots/celestrak/element_sets/...` Parquet derived from it. `uv run python -m sda_data.query` returns the LEO objects straight out of Parquet through DuckDB with their `snapshot_hash` provenance column intact. `dvc add` produces a `celestrak.dvc` pointer that pins those bytes by content into a git commit, so the snapshot is reproducible by revision rather than by name. In the Airflow UI, `sda_ingest` runs on its 6-hour clock, and the moment its `celestrak_tle` task succeeds and marks the `sda://celestrak/element_sets` asset updated, `sda_conjunction_tasks` triggers on its own with no timer, because the asset graph, not a guessed schedule, drives it. The `nasa_neows` task shows the dlt path end to end: dlt paginates the feed and lands a run-stamped Parquet partition under `data/snapshots/_landing/`, then the module's freeze step content-addresses those bytes and writes the derived NeoWs snapshot, so the extractor differs from celestrak but the pinned-snapshot contract is byte-for-byte the same. The space-track task writes only to the git-ignored `data/live/` tier and produces no shippable artifact. The artifact of the chapter is that pair: a versioned, provenance-stamped SDA snapshot sitting correctly across the raw and normalized tiers, DVC-pinned and MLflow-logged, plus the two thin DAGs that produce and consume it. From here, Chapter 3.10 turns these element sets into verifiable conjunction tasks whose gold answers are reproducible forever because they are bound to the content address in equation (9.1).
 
 ```admonish read-along
 **[DPA] Harenslak et al., *Data Pipelines with Apache Airflow* (2e)** is the direct companion for the orchestration half of this chapter: chapters 2 and 3 build DAGs, run them in Docker, and set up incremental loading and backfilling, and chapter 4 on asset-aware scheduling is the exact Airflow-3 pattern I use so the task asset rebuilds when a snapshot updates. Read it for the orchestrator mechanics I lean on but do not re-derive; read this chapter for what those mechanics buy an eval, which is a snapshot you can name by hash and reproduce forever.

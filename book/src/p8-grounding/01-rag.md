@@ -102,7 +102,7 @@ Two ways to fit both, both honest, chosen by whether retrieval must be live.
 
 ## Tooling
 
-The stack is chosen to keep the loop legible and the serving unified. Embeddings come from a local model served by **vLLM**, the same engine already serving generation, exposing the OpenAI-compatible `/v1/embeddings` endpoint (from 2.4), so the client is the same three-line `openai` call I use everywhere and there is no second serving framework to operate; **`sentence-transformers`** is the in-process fallback when I want embeddings without standing up a server (it is what 3.8's contamination scanner already uses on CPU). The vector store is **LanceDB**: embedded, on-disk, no server process, an Arrow-native table that I query in-process, which suits a one-node thesis the way DuckDB suited the pipeline. The retrieval loop itself is **thin and hand-rolled** (chunk, embed, top-$k$, assemble, with an optional cross-encoder rerank), and I name **LlamaIndex** as the batteries-included alternative I am deliberately not using, for legibility. Scoring the eval reuses **`evalstats`** from 3.7 unchanged: the RAG-vs-parametric comparison is paired over shared items, so it gets a `bootstrap_paired_diff` interval and a `mcnemar` test, never two marginal CIs eyeballed for overlap.
+The stack is chosen to keep the loop legible and the serving unified. Embeddings come from a local model served by **vLLM**, the same engine already serving generation, exposing the OpenAI-compatible `/v1/embeddings` endpoint (from 2.4), so the client is the same three-line `openai` call I use everywhere and there is no second serving framework to operate; **`sentence-transformers`** is the in-process fallback when I want embeddings without standing up a server (it is what 3.8's contamination scanner already uses on CPU). The vector store is **LanceDB**: embedded, on-disk, no server process, an Arrow-native table that I query in-process, which suits a one-node thesis the way DuckDB suited the pipeline; and like those pipeline snapshots the built table is DVC-pinned and rebuilt immutably per corpus snapshot, so retrieval is a frozen instrument for 8.3 rather than a drifting one (the provenance note in the Lab spells out why DVC, not Lance's own versioning, is the authority). The retrieval loop itself is **thin and hand-rolled** (chunk, embed, top-$k$, assemble, with an optional cross-encoder rerank), and I name **LlamaIndex** as the batteries-included alternative I am deliberately not using, for legibility. Scoring the eval reuses **`evalstats`** from 3.7 unchanged: the RAG-vs-parametric comparison is paired over shared items, so it gets a `bootstrap_paired_diff` interval and a `mcnemar` test, never two marginal CIs eyeballed for overlap.
 
 ## Lab
 
@@ -194,6 +194,9 @@ from .chunk import load_chunks
 
 EMBED_URL = "http://localhost:8001/v1"
 EMBED_MODEL = "BAAI/bge-small-en-v1.5"
+# For the frozen 8.3 instrument, key the store by the corpus snapshot hash so each
+# snapshot yields its own immutable table (DVC pins it; Lance's internal versioning
+# stays trivial). A bare path + overwrite is fine only for iterative local dev.
 DB_PATH = "artifacts/space_rag.lance"
 TABLE = "chunks"
 BATCH = 64
@@ -216,6 +219,7 @@ def build(parquet_path: str) -> None:
     for r, v in zip(records, vecs):
         r["vector"] = v.tolist()          # LanceDB reserves the "vector" column
     db = lancedb.connect(DB_PATH)
+    # overwrite is a dev convenience; the frozen build writes a fresh hash-named table
     tbl = db.create_table(TABLE, data=records, mode="overwrite")
     # A few thousand chunks: exact brute-force cosine (eq. 1.3) is fine and is
     # LanceDB's default with no ANN index built. Uncomment to switch on IVF-PQ
@@ -225,6 +229,14 @@ def build(parquet_path: str) -> None:
 
 if __name__ == "__main__":
     build("../data/artifacts/articles_snapshot.parquet")
+```
+
+```admonish thesis-thread title="Two artifacts, one versioning authority"
+DVC governs the text branch exactly as it governs the numeric one, but there are *two* artifacts here and they play different roles, so it is worth being precise about what gets pinned. The **corpus snapshot**, the chunk-ready article text from 3.9, is the source of truth: content-addressed and DVC-pinned upstream, the frozen bytes a retrieval result is a function of. The **LanceDB table** is a *derived* index, embeddings plus an optional ANN structure built from (corpus snapshot + embedding model + chunk and index params). It is not primary; it is rebuildable.
+
+I pin the built index anyway, and the reason is the 8.3 four-arm comparison. The +RAG arm makes retrieval a *variable in a causal claim*, which makes the index an **instrument**, and instruments in this book are frozen and content-addressed exactly like the task suite of 3.11. Re-embedding is expensive and ANN construction (IVF-PQ training) is not bit-deterministic, so "just rebuild it" does not hand back the same instrument. So DVC pins the table too.
+
+The catch is that Lance versions internally on every write, which would put two version histories in play, Lance's and DVC's, doing one job. I resolve it the same way 3.9 resolves dlt versus DVC: build the index **immutably**, one fresh table per corpus snapshot, named by the corpus hash, never an in-place upsert. Lance's internal history then stays trivial and **DVC is the single versioning authority**. MLflow closes the loop by logging both hashes, the corpus snapshot and the built index, next to the embedding-model id and revision and the chunk/index params, so a retrieval number names the exact bytes it came from and the exact recipe that produced them. The embargo rule carries over untouched: any text derived from a non-redistributable source stays on the git-ignored tier, tables included.
 ```
 
 ### The thin retrieval loop and prompt assembly
