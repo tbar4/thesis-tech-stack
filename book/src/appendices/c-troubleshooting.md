@@ -277,8 +277,8 @@ the UI; or the first `unpause` of a DAG immediately fires a run for every logica
 since `start_date`.
 
 **Cause.** Airflow 3 is built for clusters and its defaults assume one. On a single
-box the usual causes are: the one-time `airflow db migrate` (and admin-user create)
-step was never run, so there is no metadata schema; an executor that wants
+box the usual causes are: the one-time `airflow db migrate` step was never run, so
+there is no metadata schema; an executor that wants
 infrastructure you do not have (Celery/Kubernetes want a broker and workers); the
 `data/` project is not mounted into the scheduler, so the `uv run` task modules are
 not on the execution path; or `catchup` was left on and the DAG backfilled its whole
@@ -287,7 +287,7 @@ history on first unpause.
 **Fix.**
 ```bash
 cd data
-docker compose -f docker-compose.airflow.yml up airflow-init   # ONCE: db migrate + admin
+docker compose -f docker-compose.airflow.yml up airflow-init   # ONCE: db migrate only
 docker compose -f docker-compose.airflow.yml up -d
 docker compose -f docker-compose.airflow.yml logs -f airflow-scheduler   # read the parse error
 ```
