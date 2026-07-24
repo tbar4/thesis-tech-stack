@@ -1,0 +1,6 @@
+sda:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('SDA_DATA_HOME') }}/data/gold/sda.duckdb"

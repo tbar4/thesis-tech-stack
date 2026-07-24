@@ -1,0 +1,727 @@
+[0m21:47:54.169281 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f4ad9971e50>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f4ada6f4b90>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f4ada6fab10>]}
+
+
+============================== 21:47:54.275625 | 56564190-5d6b-4ce0-911f-a3dcbb69c56e ==============================
+[0m21:47:54.275625 [info ] [MainThread]: Running with dbt=1.12.0
+[0m21:47:54.276447 [debug] [MainThread]: running dbt with arguments {'use_colors': 'True', 'no_print': 'None', 'quiet': 'False', 'hints_enabled': 'True', 'log_path': '/home/user/thesis-tech-stack/data/dbt/logs', 'introspect': 'True', 'partial_parse': 'True', 'debug': 'False', 'version_check': 'True', 'empty': 'False', 'log_cache_events': 'False', 'log_format': 'default', 'invocation_command': 'dbt build --project-dir /home/user/thesis-tech-stack/data/dbt --profiles-dir /home/user/thesis-tech-stack/data/dbt', 'use_experimental_parser': 'False', 'cache_selected_only': 'False', 'fail_fast': 'False', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'indirect_selection': 'eager', 'static_parser': 'True', 'warn_error': 'None', 'write_json': 'True', 'send_anonymous_usage_stats': 'True', 'target_path': 'None', 'maximum_seed_size_mib': '1', 'printer_width': '80', 'profiles_dir': '/home/user/thesis-tech-stack/data/dbt'}
+[0m21:47:54.625856 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'project_id', 'label': '56564190-5d6b-4ce0-911f-a3dcbb69c56e', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f4ad960d3a0>]}
+[0m21:47:54.734014 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'adapter_info', 'label': '56564190-5d6b-4ce0-911f-a3dcbb69c56e', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f4ada8b7fe0>]}
+[0m21:47:54.737022 [info ] [MainThread]: Registered adapter: duckdb=1.10.1
+[0m21:47:54.823991 [debug] [MainThread]: checksum: 4ac22f1604407870b841847c6e2683966136fb12a904a130c361bf979e6df15d, vars: {}, profile: sda, target: dev, version: 1.12.0
+[0m21:47:54.825056 [info ] [MainThread]: Unable to do partial parsing because saved manifest not found. Starting full parse.
+[0m21:47:54.825658 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'partial_parser', 'label': '56564190-5d6b-4ce0-911f-a3dcbb69c56e', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f4ad986a0f0>]}
+[0m21:47:56.945859 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'load_project', 'label': '56564190-5d6b-4ce0-911f-a3dcbb69c56e', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f4ad2361c70>]}
+[0m21:47:57.065701 [debug] [MainThread]: Wrote artifact WritableManifest to /home/user/thesis-tech-stack/data/dbt/target/manifest.json
+[0m21:47:57.069195 [debug] [MainThread]: Wrote artifact SemanticManifest to /home/user/thesis-tech-stack/data/dbt/target/semantic_manifest.json
+[0m21:47:57.111458 [debug] [MainThread]: Wrote artifact OsiDocument to /home/user/thesis-tech-stack/data/dbt/target/osi_document.json
+[0m21:47:57.575070 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'resource_counts', 'label': '56564190-5d6b-4ce0-911f-a3dcbb69c56e', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f4ad22d49b0>]}
+[0m21:47:57.575971 [info ] [MainThread]: Found 4 models, 8 data tests, 486 macros
+[0m21:47:57.579103 [info ] [MainThread]: 
+[0m21:47:57.579755 [info ] [MainThread]: Concurrency: 1 threads (target='dev')
+[0m21:47:57.580265 [info ] [MainThread]: 
+[0m21:47:57.581064 [debug] [MainThread]: Acquiring new duckdb connection 'master'
+[0m21:47:57.587945 [debug] [ThreadPool]: Acquiring new duckdb connection 'list_sda'
+[0m21:47:57.651218 [debug] [ThreadPool]: Using duckdb connection "list_sda"
+[0m21:47:57.651890 [debug] [ThreadPool]: On list_sda: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "connection_name": "list_sda"} */
+
+    
+    select schema_name
+    from system.information_schema.schemata
+    
+    where lower(catalog_name) = '"sda"'
+    
+  
+  
+[0m21:47:57.652510 [debug] [ThreadPool]: Opening a new connection, currently in state init
+[0m21:47:57.679803 [debug] [ThreadPool]: SQL status: OK in 0.027 seconds
+[0m21:47:57.682001 [debug] [ThreadPool]: On list_sda: Close
+[0m21:47:57.683727 [debug] [ThreadPool]: Re-using an available connection from the pool (formerly list_sda, now create_sda_main)
+[0m21:47:57.684724 [debug] [ThreadPool]: Creating schema "database: "sda"
+schema: "main"
+"
+[0m21:47:57.694837 [debug] [ThreadPool]: Using duckdb connection "create_sda_main"
+[0m21:47:57.695496 [debug] [ThreadPool]: On create_sda_main: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "connection_name": "create_sda_main"} */
+
+    
+        select type from duckdb_databases()
+        where lower(database_name)='sda'
+        and type='sqlite'
+    
+  
+[0m21:47:57.695958 [debug] [ThreadPool]: Opening a new connection, currently in state closed
+[0m21:47:57.698215 [debug] [ThreadPool]: SQL status: OK in 0.002 seconds
+[0m21:47:57.702667 [debug] [ThreadPool]: Using duckdb connection "create_sda_main"
+[0m21:47:57.703365 [debug] [ThreadPool]: On create_sda_main: BEGIN
+[0m21:47:57.704399 [debug] [ThreadPool]: SQL status: OK in 0.001 seconds
+[0m21:47:57.704873 [debug] [ThreadPool]: Using duckdb connection "create_sda_main"
+[0m21:47:57.705366 [debug] [ThreadPool]: On create_sda_main: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "connection_name": "create_sda_main"} */
+
+    
+    
+        create schema if not exists "sda"."main"
+    
+[0m21:47:57.706300 [debug] [ThreadPool]: SQL status: OK in 0.000 seconds
+[0m21:47:57.707482 [debug] [ThreadPool]: On create_sda_main: COMMIT
+[0m21:47:57.708003 [debug] [ThreadPool]: Using duckdb connection "create_sda_main"
+[0m21:47:57.708488 [debug] [ThreadPool]: On create_sda_main: COMMIT
+[0m21:47:57.709310 [debug] [ThreadPool]: SQL status: OK in 0.000 seconds
+[0m21:47:57.709807 [debug] [ThreadPool]: On create_sda_main: Close
+[0m21:47:57.711926 [debug] [ThreadPool]: Re-using an available connection from the pool (formerly create_sda_main, now list_sda_main)
+[0m21:47:57.717871 [debug] [ThreadPool]: Using duckdb connection "list_sda_main"
+[0m21:47:57.718462 [debug] [ThreadPool]: On list_sda_main: BEGIN
+[0m21:47:57.718902 [debug] [ThreadPool]: Opening a new connection, currently in state closed
+[0m21:47:57.720074 [debug] [ThreadPool]: SQL status: OK in 0.001 seconds
+[0m21:47:57.720578 [debug] [ThreadPool]: Using duckdb connection "list_sda_main"
+[0m21:47:57.721103 [debug] [ThreadPool]: On list_sda_main: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "connection_name": "list_sda_main"} */
+select
+      'sda' as database,
+      table_name as name,
+      table_schema as schema,
+      CASE table_type
+        WHEN 'BASE TABLE' THEN 'table'
+        WHEN 'VIEW' THEN 'view'
+        WHEN 'LOCAL TEMPORARY' THEN 'table'
+        END as type
+    from system.information_schema.tables
+    where lower(table_schema) = 'main'
+    and lower(table_catalog) = 'sda'
+  
+[0m21:47:57.725508 [debug] [ThreadPool]: SQL status: OK in 0.004 seconds
+[0m21:47:57.727565 [debug] [ThreadPool]: On list_sda_main: ROLLBACK
+[0m21:47:57.729524 [debug] [ThreadPool]: Failed to rollback 'list_sda_main'
+[0m21:47:57.730037 [debug] [ThreadPool]: On list_sda_main: Close
+[0m21:47:57.731143 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'runnable_timing', 'label': '56564190-5d6b-4ce0-911f-a3dcbb69c56e', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f4ad986d7c0>]}
+[0m21:47:57.732000 [debug] [MainThread]: Using duckdb connection "master"
+[0m21:47:57.732521 [debug] [MainThread]: On master: BEGIN
+[0m21:47:57.732948 [debug] [MainThread]: Opening a new connection, currently in state init
+[0m21:47:57.734161 [debug] [MainThread]: SQL status: OK in 0.001 seconds
+[0m21:47:57.734637 [debug] [MainThread]: On master: COMMIT
+[0m21:47:57.735131 [debug] [MainThread]: Using duckdb connection "master"
+[0m21:47:57.735728 [debug] [MainThread]: On master: COMMIT
+[0m21:47:57.736613 [debug] [MainThread]: SQL status: OK in 0.000 seconds
+[0m21:47:57.737140 [debug] [MainThread]: On master: Close
+[0m21:47:57.742157 [debug] [Thread-1 (]: Began running node model.sda_gold.latest_articles
+[0m21:47:57.743292 [info ] [Thread-1 (]: 1 of 12 START sql table model main.latest_articles ............................. [RUN]
+[0m21:47:57.744868 [debug] [Thread-1 (]: Re-using an available connection from the pool (formerly list_sda_main, now model.sda_gold.latest_articles)
+[0m21:47:57.745486 [debug] [Thread-1 (]: Began compiling node model.sda_gold.latest_articles
+[0m21:47:57.753680 [debug] [Thread-1 (]: Writing injected SQL for node "model.sda_gold.latest_articles"
+[0m21:47:57.754728 [debug] [Thread-1 (]: Began executing node model.sda_gold.latest_articles
+[0m21:47:57.795267 [debug] [Thread-1 (]: Writing runtime sql for node "model.sda_gold.latest_articles"
+[0m21:47:57.796592 [debug] [Thread-1 (]: Using duckdb connection "model.sda_gold.latest_articles"
+[0m21:47:57.797208 [debug] [Thread-1 (]: On model.sda_gold.latest_articles: BEGIN
+[0m21:47:57.797703 [debug] [Thread-1 (]: Opening a new connection, currently in state closed
+[0m21:47:57.799226 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:57.799766 [debug] [Thread-1 (]: Using duckdb connection "model.sda_gold.latest_articles"
+[0m21:47:57.800330 [debug] [Thread-1 (]: On model.sda_gold.latest_articles: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "node_id": "model.sda_gold.latest_articles"} */
+
+  
+    
+    
+
+    create  table
+      "sda"."main"."latest_articles__dbt_tmp"
+  
+    as (
+      -- Deduped article metadata: the queryable face of the 8.1 RAG text branch.
+select * exclude (rn)
+from (
+    select *,
+           row_number() over (partition by id order by fetch_time desc) as rn
+    from read_parquet(
+        '/tmp/pytest-of-root/pytest-14/test_dbt_build_produces_gold0/data/snapshots/spaceflightnews/articles/**/*.parquet',
+        union_by_name = true
+    )
+)
+where rn = 1
+    );
+  
+  
+[0m21:47:57.808391 [debug] [Thread-1 (]: SQL status: OK in 0.007 seconds
+[0m21:47:57.815862 [debug] [Thread-1 (]: Using duckdb connection "model.sda_gold.latest_articles"
+[0m21:47:57.816613 [debug] [Thread-1 (]: On model.sda_gold.latest_articles: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "node_id": "model.sda_gold.latest_articles"} */
+alter table "sda"."main"."latest_articles__dbt_tmp" rename to "latest_articles"
+[0m21:47:57.817960 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:57.836801 [debug] [Thread-1 (]: On model.sda_gold.latest_articles: COMMIT
+[0m21:47:57.837585 [debug] [Thread-1 (]: Using duckdb connection "model.sda_gold.latest_articles"
+[0m21:47:57.838146 [debug] [Thread-1 (]: On model.sda_gold.latest_articles: COMMIT
+[0m21:47:57.843434 [debug] [Thread-1 (]: SQL status: OK in 0.005 seconds
+[0m21:47:57.850101 [debug] [Thread-1 (]: Using duckdb connection "model.sda_gold.latest_articles"
+[0m21:47:57.850715 [debug] [Thread-1 (]: On model.sda_gold.latest_articles: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "node_id": "model.sda_gold.latest_articles"} */
+
+      drop table if exists "sda"."main"."latest_articles__dbt_backup" cascade
+    
+[0m21:47:57.852073 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:57.855137 [debug] [Thread-1 (]: On model.sda_gold.latest_articles: Close
+[0m21:47:57.857575 [debug] [Thread-1 (]: Sending event: {'category': 'dbt', 'action': 'run_model', 'label': '56564190-5d6b-4ce0-911f-a3dcbb69c56e', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f4adaf33500>]}
+[0m21:47:57.858517 [info ] [Thread-1 (]: 1 of 12 OK created sql table model main.latest_articles ........................ [[32mOK[0m in 0.11s]
+[0m21:47:57.859483 [debug] [Thread-1 (]: Finished running node model.sda_gold.latest_articles
+[0m21:47:57.860153 [debug] [Thread-1 (]: Began running node model.sda_gold.latest_element_sets
+[0m21:47:57.860890 [info ] [Thread-1 (]: 2 of 12 START sql table model main.latest_element_sets ......................... [RUN]
+[0m21:47:57.861653 [debug] [Thread-1 (]: Re-using an available connection from the pool (formerly model.sda_gold.latest_articles, now model.sda_gold.latest_element_sets)
+[0m21:47:57.862679 [debug] [Thread-1 (]: Began compiling node model.sda_gold.latest_element_sets
+[0m21:47:57.865855 [debug] [Thread-1 (]: Writing injected SQL for node "model.sda_gold.latest_element_sets"
+[0m21:47:57.866671 [debug] [Thread-1 (]: Began executing node model.sda_gold.latest_element_sets
+[0m21:47:57.870747 [debug] [Thread-1 (]: Writing runtime sql for node "model.sda_gold.latest_element_sets"
+[0m21:47:57.871618 [debug] [Thread-1 (]: Using duckdb connection "model.sda_gold.latest_element_sets"
+[0m21:47:57.872187 [debug] [Thread-1 (]: On model.sda_gold.latest_element_sets: BEGIN
+[0m21:47:57.872712 [debug] [Thread-1 (]: Opening a new connection, currently in state closed
+[0m21:47:57.873976 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:57.874561 [debug] [Thread-1 (]: Using duckdb connection "model.sda_gold.latest_element_sets"
+[0m21:47:57.875245 [debug] [Thread-1 (]: On model.sda_gold.latest_element_sets: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "node_id": "model.sda_gold.latest_element_sets"} */
+
+  
+    
+    
+
+    create  table
+      "sda"."main"."latest_element_sets__dbt_tmp"
+  
+    as (
+      -- Latest element set per object from the shippable celestrak snapshot tier.
+-- Embargoed spacetrack data is deliberately absent from gold.
+with all_sets as (
+    select *
+    from read_parquet(
+        '/tmp/pytest-of-root/pytest-14/test_dbt_build_produces_gold0/data/snapshots/celestrak/element_sets/**/*.parquet',
+        union_by_name = true
+    )
+)
+select * exclude (rn)
+from (
+    select *,
+           row_number() over (partition by norad_cat_id order by fetch_time desc) as rn
+    from all_sets
+)
+where rn = 1
+    );
+  
+  
+[0m21:47:57.899759 [debug] [Thread-1 (]: SQL status: OK in 0.024 seconds
+[0m21:47:57.903288 [debug] [Thread-1 (]: Using duckdb connection "model.sda_gold.latest_element_sets"
+[0m21:47:57.903850 [debug] [Thread-1 (]: On model.sda_gold.latest_element_sets: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "node_id": "model.sda_gold.latest_element_sets"} */
+alter table "sda"."main"."latest_element_sets__dbt_tmp" rename to "latest_element_sets"
+[0m21:47:57.905126 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:57.907746 [debug] [Thread-1 (]: On model.sda_gold.latest_element_sets: COMMIT
+[0m21:47:57.908338 [debug] [Thread-1 (]: Using duckdb connection "model.sda_gold.latest_element_sets"
+[0m21:47:57.908830 [debug] [Thread-1 (]: On model.sda_gold.latest_element_sets: COMMIT
+[0m21:47:57.911986 [debug] [Thread-1 (]: SQL status: OK in 0.003 seconds
+[0m21:47:57.914298 [debug] [Thread-1 (]: Using duckdb connection "model.sda_gold.latest_element_sets"
+[0m21:47:57.914835 [debug] [Thread-1 (]: On model.sda_gold.latest_element_sets: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "node_id": "model.sda_gold.latest_element_sets"} */
+
+      drop table if exists "sda"."main"."latest_element_sets__dbt_backup" cascade
+    
+[0m21:47:57.916453 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:57.918312 [debug] [Thread-1 (]: On model.sda_gold.latest_element_sets: Close
+[0m21:47:57.919291 [debug] [Thread-1 (]: Sending event: {'category': 'dbt', 'action': 'run_model', 'label': '56564190-5d6b-4ce0-911f-a3dcbb69c56e', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f4ad1ca4ce0>]}
+[0m21:47:57.920326 [info ] [Thread-1 (]: 2 of 12 OK created sql table model main.latest_element_sets .................... [[32mOK[0m in 0.06s]
+[0m21:47:57.921525 [debug] [Thread-1 (]: Finished running node model.sda_gold.latest_element_sets
+[0m21:47:57.922176 [debug] [Thread-1 (]: Began running node model.sda_gold.neo_approaches
+[0m21:47:57.922893 [info ] [Thread-1 (]: 3 of 12 START sql table model main.neo_approaches .............................. [RUN]
+[0m21:47:57.924235 [debug] [Thread-1 (]: Re-using an available connection from the pool (formerly model.sda_gold.latest_element_sets, now model.sda_gold.neo_approaches)
+[0m21:47:57.924826 [debug] [Thread-1 (]: Began compiling node model.sda_gold.neo_approaches
+[0m21:47:57.927392 [debug] [Thread-1 (]: Writing injected SQL for node "model.sda_gold.neo_approaches"
+[0m21:47:57.928239 [debug] [Thread-1 (]: Began executing node model.sda_gold.neo_approaches
+[0m21:47:57.932264 [debug] [Thread-1 (]: Writing runtime sql for node "model.sda_gold.neo_approaches"
+[0m21:47:57.933135 [debug] [Thread-1 (]: Using duckdb connection "model.sda_gold.neo_approaches"
+[0m21:47:57.933662 [debug] [Thread-1 (]: On model.sda_gold.neo_approaches: BEGIN
+[0m21:47:57.934197 [debug] [Thread-1 (]: Opening a new connection, currently in state closed
+[0m21:47:57.935372 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:57.935931 [debug] [Thread-1 (]: Using duckdb connection "model.sda_gold.neo_approaches"
+[0m21:47:57.936523 [debug] [Thread-1 (]: On model.sda_gold.neo_approaches: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "node_id": "model.sda_gold.neo_approaches"} */
+
+  
+    
+    
+
+    create  table
+      "sda"."main"."neo_approaches__dbt_tmp"
+  
+    as (
+      -- Deduped NASA NeoWs close approaches (derived facts; raw dumps stay embargoed).
+select * exclude (rn)
+from (
+    select *,
+           row_number() over (
+               partition by neo_reference_id, close_approach_date
+               order by fetch_time desc
+           ) as rn
+    from read_parquet(
+        '/tmp/pytest-of-root/pytest-14/test_dbt_build_produces_gold0/data/snapshots/nasa/neows/**/*.parquet',
+        union_by_name = true
+    )
+)
+where rn = 1
+    );
+  
+  
+[0m21:47:57.951613 [debug] [Thread-1 (]: SQL status: OK in 0.014 seconds
+[0m21:47:57.954979 [debug] [Thread-1 (]: Using duckdb connection "model.sda_gold.neo_approaches"
+[0m21:47:57.955657 [debug] [Thread-1 (]: On model.sda_gold.neo_approaches: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "node_id": "model.sda_gold.neo_approaches"} */
+alter table "sda"."main"."neo_approaches__dbt_tmp" rename to "neo_approaches"
+[0m21:47:57.956945 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:57.959529 [debug] [Thread-1 (]: On model.sda_gold.neo_approaches: COMMIT
+[0m21:47:57.960150 [debug] [Thread-1 (]: Using duckdb connection "model.sda_gold.neo_approaches"
+[0m21:47:57.960696 [debug] [Thread-1 (]: On model.sda_gold.neo_approaches: COMMIT
+[0m21:47:57.963866 [debug] [Thread-1 (]: SQL status: OK in 0.003 seconds
+[0m21:47:57.966425 [debug] [Thread-1 (]: Using duckdb connection "model.sda_gold.neo_approaches"
+[0m21:47:57.966971 [debug] [Thread-1 (]: On model.sda_gold.neo_approaches: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "node_id": "model.sda_gold.neo_approaches"} */
+
+      drop table if exists "sda"."main"."neo_approaches__dbt_backup" cascade
+    
+[0m21:47:57.968238 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:57.970106 [debug] [Thread-1 (]: On model.sda_gold.neo_approaches: Close
+[0m21:47:57.971086 [debug] [Thread-1 (]: Sending event: {'category': 'dbt', 'action': 'run_model', 'label': '56564190-5d6b-4ce0-911f-a3dcbb69c56e', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f4ad1ce9dc0>]}
+[0m21:47:57.972161 [info ] [Thread-1 (]: 3 of 12 OK created sql table model main.neo_approaches ......................... [[32mOK[0m in 0.05s]
+[0m21:47:57.972930 [debug] [Thread-1 (]: Finished running node model.sda_gold.neo_approaches
+[0m21:47:57.973662 [debug] [Thread-1 (]: Began running node model.sda_gold.upcoming_launches
+[0m21:47:57.974418 [info ] [Thread-1 (]: 4 of 12 START sql table model main.upcoming_launches ........................... [RUN]
+[0m21:47:57.975262 [debug] [Thread-1 (]: Re-using an available connection from the pool (formerly model.sda_gold.neo_approaches, now model.sda_gold.upcoming_launches)
+[0m21:47:57.976342 [debug] [Thread-1 (]: Began compiling node model.sda_gold.upcoming_launches
+[0m21:47:57.978785 [debug] [Thread-1 (]: Writing injected SQL for node "model.sda_gold.upcoming_launches"
+[0m21:47:57.979728 [debug] [Thread-1 (]: Began executing node model.sda_gold.upcoming_launches
+[0m21:47:57.983776 [debug] [Thread-1 (]: Writing runtime sql for node "model.sda_gold.upcoming_launches"
+[0m21:47:57.984676 [debug] [Thread-1 (]: Using duckdb connection "model.sda_gold.upcoming_launches"
+[0m21:47:57.985254 [debug] [Thread-1 (]: On model.sda_gold.upcoming_launches: BEGIN
+[0m21:47:57.985738 [debug] [Thread-1 (]: Opening a new connection, currently in state closed
+[0m21:47:57.987081 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:57.987685 [debug] [Thread-1 (]: Using duckdb connection "model.sda_gold.upcoming_launches"
+[0m21:47:57.988256 [debug] [Thread-1 (]: On model.sda_gold.upcoming_launches: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "node_id": "model.sda_gold.upcoming_launches"} */
+
+  
+    
+    
+
+    create  table
+      "sda"."main"."upcoming_launches__dbt_tmp"
+  
+    as (
+      -- Deduped launches still in the future (net = no-earlier-than).
+with all_launches as (
+    select *
+    from read_parquet(
+        '/tmp/pytest-of-root/pytest-14/test_dbt_build_produces_gold0/data/snapshots/spacedevs/launches/**/*.parquet',
+        union_by_name = true
+    )
+),
+latest as (
+    select * exclude (rn)
+    from (
+        select *,
+               row_number() over (partition by id order by fetch_time desc) as rn
+        from all_launches
+    )
+    where rn = 1
+)
+select *
+from latest
+where try_cast(net as timestamptz) >= now()
+    );
+  
+  
+[0m21:47:57.995369 [debug] [Thread-1 (]: SQL status: OK in 0.006 seconds
+[0m21:47:57.998572 [debug] [Thread-1 (]: Using duckdb connection "model.sda_gold.upcoming_launches"
+[0m21:47:57.999428 [debug] [Thread-1 (]: On model.sda_gold.upcoming_launches: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "node_id": "model.sda_gold.upcoming_launches"} */
+alter table "sda"."main"."upcoming_launches__dbt_tmp" rename to "upcoming_launches"
+[0m21:47:58.000896 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:58.003490 [debug] [Thread-1 (]: On model.sda_gold.upcoming_launches: COMMIT
+[0m21:47:58.004078 [debug] [Thread-1 (]: Using duckdb connection "model.sda_gold.upcoming_launches"
+[0m21:47:58.004574 [debug] [Thread-1 (]: On model.sda_gold.upcoming_launches: COMMIT
+[0m21:47:58.007641 [debug] [Thread-1 (]: SQL status: OK in 0.003 seconds
+[0m21:47:58.010380 [debug] [Thread-1 (]: Using duckdb connection "model.sda_gold.upcoming_launches"
+[0m21:47:58.010934 [debug] [Thread-1 (]: On model.sda_gold.upcoming_launches: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "node_id": "model.sda_gold.upcoming_launches"} */
+
+      drop table if exists "sda"."main"."upcoming_launches__dbt_backup" cascade
+    
+[0m21:47:58.012170 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:58.013919 [debug] [Thread-1 (]: On model.sda_gold.upcoming_launches: Close
+[0m21:47:58.014780 [debug] [Thread-1 (]: Sending event: {'category': 'dbt', 'action': 'run_model', 'label': '56564190-5d6b-4ce0-911f-a3dcbb69c56e', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f4ad1cd6690>]}
+[0m21:47:58.015750 [info ] [Thread-1 (]: 4 of 12 OK created sql table model main.upcoming_launches ...................... [[32mOK[0m in 0.04s]
+[0m21:47:58.016584 [debug] [Thread-1 (]: Finished running node model.sda_gold.upcoming_launches
+[0m21:47:58.017368 [debug] [Thread-1 (]: Began running node test.sda_gold.not_null_latest_articles_id.85f0ac3b43
+[0m21:47:58.018021 [info ] [Thread-1 (]: 5 of 12 START test not_null_latest_articles_id ................................. [RUN]
+[0m21:47:58.018775 [debug] [Thread-1 (]: Re-using an available connection from the pool (formerly model.sda_gold.upcoming_launches, now test.sda_gold.not_null_latest_articles_id.85f0ac3b43)
+[0m21:47:58.020096 [debug] [Thread-1 (]: Began compiling node test.sda_gold.not_null_latest_articles_id.85f0ac3b43
+[0m21:47:58.039363 [debug] [Thread-1 (]: Writing injected SQL for node "test.sda_gold.not_null_latest_articles_id.85f0ac3b43"
+[0m21:47:58.040492 [debug] [Thread-1 (]: Began executing node test.sda_gold.not_null_latest_articles_id.85f0ac3b43
+[0m21:47:58.065286 [debug] [Thread-1 (]: Writing runtime sql for node "test.sda_gold.not_null_latest_articles_id.85f0ac3b43"
+[0m21:47:58.066511 [debug] [Thread-1 (]: Using duckdb connection "test.sda_gold.not_null_latest_articles_id.85f0ac3b43"
+[0m21:47:58.067219 [debug] [Thread-1 (]: On test.sda_gold.not_null_latest_articles_id.85f0ac3b43: BEGIN
+[0m21:47:58.067756 [debug] [Thread-1 (]: Opening a new connection, currently in state closed
+[0m21:47:58.069058 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:58.069579 [debug] [Thread-1 (]: Using duckdb connection "test.sda_gold.not_null_latest_articles_id.85f0ac3b43"
+[0m21:47:58.070157 [debug] [Thread-1 (]: On test.sda_gold.not_null_latest_articles_id.85f0ac3b43: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "node_id": "test.sda_gold.not_null_latest_articles_id.85f0ac3b43"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select id
+from "sda"."main"."latest_articles"
+where id is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test
+[0m21:47:58.072383 [debug] [Thread-1 (]: SQL status: OK in 0.002 seconds
+[0m21:47:58.077034 [debug] [Thread-1 (]: On test.sda_gold.not_null_latest_articles_id.85f0ac3b43: ROLLBACK
+[0m21:47:58.078424 [debug] [Thread-1 (]: Failed to rollback 'test.sda_gold.not_null_latest_articles_id.85f0ac3b43'
+[0m21:47:58.078967 [debug] [Thread-1 (]: On test.sda_gold.not_null_latest_articles_id.85f0ac3b43: Close
+[0m21:47:58.080056 [info ] [Thread-1 (]: 5 of 12 PASS not_null_latest_articles_id ....................................... [[32mPASS[0m in 0.06s]
+[0m21:47:58.080874 [debug] [Thread-1 (]: Finished running node test.sda_gold.not_null_latest_articles_id.85f0ac3b43
+[0m21:47:58.081577 [debug] [Thread-1 (]: Began running node test.sda_gold.unique_latest_articles_id.307feb2e8f
+[0m21:47:58.082198 [info ] [Thread-1 (]: 6 of 12 START test unique_latest_articles_id ................................... [RUN]
+[0m21:47:58.082971 [debug] [Thread-1 (]: Re-using an available connection from the pool (formerly test.sda_gold.not_null_latest_articles_id.85f0ac3b43, now test.sda_gold.unique_latest_articles_id.307feb2e8f)
+[0m21:47:58.083649 [debug] [Thread-1 (]: Began compiling node test.sda_gold.unique_latest_articles_id.307feb2e8f
+[0m21:47:58.095103 [debug] [Thread-1 (]: Writing injected SQL for node "test.sda_gold.unique_latest_articles_id.307feb2e8f"
+[0m21:47:58.096137 [debug] [Thread-1 (]: Began executing node test.sda_gold.unique_latest_articles_id.307feb2e8f
+[0m21:47:58.098668 [debug] [Thread-1 (]: Writing runtime sql for node "test.sda_gold.unique_latest_articles_id.307feb2e8f"
+[0m21:47:58.099639 [debug] [Thread-1 (]: Using duckdb connection "test.sda_gold.unique_latest_articles_id.307feb2e8f"
+[0m21:47:58.100230 [debug] [Thread-1 (]: On test.sda_gold.unique_latest_articles_id.307feb2e8f: BEGIN
+[0m21:47:58.100728 [debug] [Thread-1 (]: Opening a new connection, currently in state closed
+[0m21:47:58.102100 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:58.102632 [debug] [Thread-1 (]: Using duckdb connection "test.sda_gold.unique_latest_articles_id.307feb2e8f"
+[0m21:47:58.103268 [debug] [Thread-1 (]: On test.sda_gold.unique_latest_articles_id.307feb2e8f: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "node_id": "test.sda_gold.unique_latest_articles_id.307feb2e8f"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+select
+    id as unique_field,
+    count(*) as n_records
+
+from "sda"."main"."latest_articles"
+where id is not null
+group by id
+having count(*) > 1
+
+
+
+  
+  
+      
+    ) dbt_internal_test
+[0m21:47:58.105747 [debug] [Thread-1 (]: SQL status: OK in 0.002 seconds
+[0m21:47:58.108102 [debug] [Thread-1 (]: On test.sda_gold.unique_latest_articles_id.307feb2e8f: ROLLBACK
+[0m21:47:58.109319 [debug] [Thread-1 (]: Failed to rollback 'test.sda_gold.unique_latest_articles_id.307feb2e8f'
+[0m21:47:58.109854 [debug] [Thread-1 (]: On test.sda_gold.unique_latest_articles_id.307feb2e8f: Close
+[0m21:47:58.110769 [info ] [Thread-1 (]: 6 of 12 PASS unique_latest_articles_id ......................................... [[32mPASS[0m in 0.03s]
+[0m21:47:58.111711 [debug] [Thread-1 (]: Finished running node test.sda_gold.unique_latest_articles_id.307feb2e8f
+[0m21:47:58.112367 [debug] [Thread-1 (]: Began running node test.sda_gold.not_null_latest_element_sets_norad_cat_id.fb2f3427e5
+[0m21:47:58.113090 [info ] [Thread-1 (]: 7 of 12 START test not_null_latest_element_sets_norad_cat_id ................... [RUN]
+[0m21:47:58.113776 [debug] [Thread-1 (]: Re-using an available connection from the pool (formerly test.sda_gold.unique_latest_articles_id.307feb2e8f, now test.sda_gold.not_null_latest_element_sets_norad_cat_id.fb2f3427e5)
+[0m21:47:58.114385 [debug] [Thread-1 (]: Began compiling node test.sda_gold.not_null_latest_element_sets_norad_cat_id.fb2f3427e5
+[0m21:47:58.123313 [debug] [Thread-1 (]: Writing injected SQL for node "test.sda_gold.not_null_latest_element_sets_norad_cat_id.fb2f3427e5"
+[0m21:47:58.124318 [debug] [Thread-1 (]: Began executing node test.sda_gold.not_null_latest_element_sets_norad_cat_id.fb2f3427e5
+[0m21:47:58.127052 [debug] [Thread-1 (]: Writing runtime sql for node "test.sda_gold.not_null_latest_element_sets_norad_cat_id.fb2f3427e5"
+[0m21:47:58.128078 [debug] [Thread-1 (]: Using duckdb connection "test.sda_gold.not_null_latest_element_sets_norad_cat_id.fb2f3427e5"
+[0m21:47:58.128639 [debug] [Thread-1 (]: On test.sda_gold.not_null_latest_element_sets_norad_cat_id.fb2f3427e5: BEGIN
+[0m21:47:58.129208 [debug] [Thread-1 (]: Opening a new connection, currently in state closed
+[0m21:47:58.130475 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:58.131070 [debug] [Thread-1 (]: Using duckdb connection "test.sda_gold.not_null_latest_element_sets_norad_cat_id.fb2f3427e5"
+[0m21:47:58.131707 [debug] [Thread-1 (]: On test.sda_gold.not_null_latest_element_sets_norad_cat_id.fb2f3427e5: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "node_id": "test.sda_gold.not_null_latest_element_sets_norad_cat_id.fb2f3427e5"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select norad_cat_id
+from "sda"."main"."latest_element_sets"
+where norad_cat_id is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test
+[0m21:47:58.133782 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:58.135967 [debug] [Thread-1 (]: On test.sda_gold.not_null_latest_element_sets_norad_cat_id.fb2f3427e5: ROLLBACK
+[0m21:47:58.137239 [debug] [Thread-1 (]: Failed to rollback 'test.sda_gold.not_null_latest_element_sets_norad_cat_id.fb2f3427e5'
+[0m21:47:58.137860 [debug] [Thread-1 (]: On test.sda_gold.not_null_latest_element_sets_norad_cat_id.fb2f3427e5: Close
+[0m21:47:58.138830 [info ] [Thread-1 (]: 7 of 12 PASS not_null_latest_element_sets_norad_cat_id ......................... [[32mPASS[0m in 0.03s]
+[0m21:47:58.139709 [debug] [Thread-1 (]: Finished running node test.sda_gold.not_null_latest_element_sets_norad_cat_id.fb2f3427e5
+[0m21:47:58.140460 [debug] [Thread-1 (]: Began running node test.sda_gold.not_null_latest_element_sets_snapshot_hash.be2b098ea7
+[0m21:47:58.141103 [info ] [Thread-1 (]: 8 of 12 START test not_null_latest_element_sets_snapshot_hash .................. [RUN]
+[0m21:47:58.141917 [debug] [Thread-1 (]: Re-using an available connection from the pool (formerly test.sda_gold.not_null_latest_element_sets_norad_cat_id.fb2f3427e5, now test.sda_gold.not_null_latest_element_sets_snapshot_hash.be2b098ea7)
+[0m21:47:58.142666 [debug] [Thread-1 (]: Began compiling node test.sda_gold.not_null_latest_element_sets_snapshot_hash.be2b098ea7
+[0m21:47:58.151525 [debug] [Thread-1 (]: Writing injected SQL for node "test.sda_gold.not_null_latest_element_sets_snapshot_hash.be2b098ea7"
+[0m21:47:58.152490 [debug] [Thread-1 (]: Began executing node test.sda_gold.not_null_latest_element_sets_snapshot_hash.be2b098ea7
+[0m21:47:58.154953 [debug] [Thread-1 (]: Writing runtime sql for node "test.sda_gold.not_null_latest_element_sets_snapshot_hash.be2b098ea7"
+[0m21:47:58.155907 [debug] [Thread-1 (]: Using duckdb connection "test.sda_gold.not_null_latest_element_sets_snapshot_hash.be2b098ea7"
+[0m21:47:58.156493 [debug] [Thread-1 (]: On test.sda_gold.not_null_latest_element_sets_snapshot_hash.be2b098ea7: BEGIN
+[0m21:47:58.157050 [debug] [Thread-1 (]: Opening a new connection, currently in state closed
+[0m21:47:58.158389 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:58.158910 [debug] [Thread-1 (]: Using duckdb connection "test.sda_gold.not_null_latest_element_sets_snapshot_hash.be2b098ea7"
+[0m21:47:58.159560 [debug] [Thread-1 (]: On test.sda_gold.not_null_latest_element_sets_snapshot_hash.be2b098ea7: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "node_id": "test.sda_gold.not_null_latest_element_sets_snapshot_hash.be2b098ea7"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select snapshot_hash
+from "sda"."main"."latest_element_sets"
+where snapshot_hash is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test
+[0m21:47:58.161496 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:58.163568 [debug] [Thread-1 (]: On test.sda_gold.not_null_latest_element_sets_snapshot_hash.be2b098ea7: ROLLBACK
+[0m21:47:58.164817 [debug] [Thread-1 (]: Failed to rollback 'test.sda_gold.not_null_latest_element_sets_snapshot_hash.be2b098ea7'
+[0m21:47:58.165366 [debug] [Thread-1 (]: On test.sda_gold.not_null_latest_element_sets_snapshot_hash.be2b098ea7: Close
+[0m21:47:58.166319 [info ] [Thread-1 (]: 8 of 12 PASS not_null_latest_element_sets_snapshot_hash ........................ [[32mPASS[0m in 0.02s]
+[0m21:47:58.167106 [debug] [Thread-1 (]: Finished running node test.sda_gold.not_null_latest_element_sets_snapshot_hash.be2b098ea7
+[0m21:47:58.167818 [debug] [Thread-1 (]: Began running node test.sda_gold.unique_latest_element_sets_norad_cat_id.b2382b1589
+[0m21:47:58.168457 [info ] [Thread-1 (]: 9 of 12 START test unique_latest_element_sets_norad_cat_id ..................... [RUN]
+[0m21:47:58.169225 [debug] [Thread-1 (]: Re-using an available connection from the pool (formerly test.sda_gold.not_null_latest_element_sets_snapshot_hash.be2b098ea7, now test.sda_gold.unique_latest_element_sets_norad_cat_id.b2382b1589)
+[0m21:47:58.169881 [debug] [Thread-1 (]: Began compiling node test.sda_gold.unique_latest_element_sets_norad_cat_id.b2382b1589
+[0m21:47:58.179428 [debug] [Thread-1 (]: Writing injected SQL for node "test.sda_gold.unique_latest_element_sets_norad_cat_id.b2382b1589"
+[0m21:47:58.180322 [debug] [Thread-1 (]: Began executing node test.sda_gold.unique_latest_element_sets_norad_cat_id.b2382b1589
+[0m21:47:58.182835 [debug] [Thread-1 (]: Writing runtime sql for node "test.sda_gold.unique_latest_element_sets_norad_cat_id.b2382b1589"
+[0m21:47:58.183726 [debug] [Thread-1 (]: Using duckdb connection "test.sda_gold.unique_latest_element_sets_norad_cat_id.b2382b1589"
+[0m21:47:58.184314 [debug] [Thread-1 (]: On test.sda_gold.unique_latest_element_sets_norad_cat_id.b2382b1589: BEGIN
+[0m21:47:58.184891 [debug] [Thread-1 (]: Opening a new connection, currently in state closed
+[0m21:47:58.186238 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:58.186790 [debug] [Thread-1 (]: Using duckdb connection "test.sda_gold.unique_latest_element_sets_norad_cat_id.b2382b1589"
+[0m21:47:58.187445 [debug] [Thread-1 (]: On test.sda_gold.unique_latest_element_sets_norad_cat_id.b2382b1589: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "node_id": "test.sda_gold.unique_latest_element_sets_norad_cat_id.b2382b1589"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+select
+    norad_cat_id as unique_field,
+    count(*) as n_records
+
+from "sda"."main"."latest_element_sets"
+where norad_cat_id is not null
+group by norad_cat_id
+having count(*) > 1
+
+
+
+  
+  
+      
+    ) dbt_internal_test
+[0m21:47:58.191066 [debug] [Thread-1 (]: SQL status: OK in 0.003 seconds
+[0m21:47:58.193273 [debug] [Thread-1 (]: On test.sda_gold.unique_latest_element_sets_norad_cat_id.b2382b1589: ROLLBACK
+[0m21:47:58.194496 [debug] [Thread-1 (]: Failed to rollback 'test.sda_gold.unique_latest_element_sets_norad_cat_id.b2382b1589'
+[0m21:47:58.195080 [debug] [Thread-1 (]: On test.sda_gold.unique_latest_element_sets_norad_cat_id.b2382b1589: Close
+[0m21:47:58.196092 [info ] [Thread-1 (]: 9 of 12 PASS unique_latest_element_sets_norad_cat_id ........................... [[32mPASS[0m in 0.03s]
+[0m21:47:58.196887 [debug] [Thread-1 (]: Finished running node test.sda_gold.unique_latest_element_sets_norad_cat_id.b2382b1589
+[0m21:47:58.197554 [debug] [Thread-1 (]: Began running node test.sda_gold.not_null_neo_approaches_neo_reference_id.174da5e058
+[0m21:47:58.198272 [info ] [Thread-1 (]: 10 of 12 START test not_null_neo_approaches_neo_reference_id ................... [RUN]
+[0m21:47:58.199233 [debug] [Thread-1 (]: Re-using an available connection from the pool (formerly test.sda_gold.unique_latest_element_sets_norad_cat_id.b2382b1589, now test.sda_gold.not_null_neo_approaches_neo_reference_id.174da5e058)
+[0m21:47:58.199945 [debug] [Thread-1 (]: Began compiling node test.sda_gold.not_null_neo_approaches_neo_reference_id.174da5e058
+[0m21:47:58.208645 [debug] [Thread-1 (]: Writing injected SQL for node "test.sda_gold.not_null_neo_approaches_neo_reference_id.174da5e058"
+[0m21:47:58.209559 [debug] [Thread-1 (]: Began executing node test.sda_gold.not_null_neo_approaches_neo_reference_id.174da5e058
+[0m21:47:58.212154 [debug] [Thread-1 (]: Writing runtime sql for node "test.sda_gold.not_null_neo_approaches_neo_reference_id.174da5e058"
+[0m21:47:58.213066 [debug] [Thread-1 (]: Using duckdb connection "test.sda_gold.not_null_neo_approaches_neo_reference_id.174da5e058"
+[0m21:47:58.213663 [debug] [Thread-1 (]: On test.sda_gold.not_null_neo_approaches_neo_reference_id.174da5e058: BEGIN
+[0m21:47:58.214467 [debug] [Thread-1 (]: Opening a new connection, currently in state closed
+[0m21:47:58.215734 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:58.216316 [debug] [Thread-1 (]: Using duckdb connection "test.sda_gold.not_null_neo_approaches_neo_reference_id.174da5e058"
+[0m21:47:58.216833 [debug] [Thread-1 (]: On test.sda_gold.not_null_neo_approaches_neo_reference_id.174da5e058: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "node_id": "test.sda_gold.not_null_neo_approaches_neo_reference_id.174da5e058"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select neo_reference_id
+from "sda"."main"."neo_approaches"
+where neo_reference_id is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test
+[0m21:47:58.218635 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:58.220616 [debug] [Thread-1 (]: On test.sda_gold.not_null_neo_approaches_neo_reference_id.174da5e058: ROLLBACK
+[0m21:47:58.222091 [debug] [Thread-1 (]: Failed to rollback 'test.sda_gold.not_null_neo_approaches_neo_reference_id.174da5e058'
+[0m21:47:58.222645 [debug] [Thread-1 (]: On test.sda_gold.not_null_neo_approaches_neo_reference_id.174da5e058: Close
+[0m21:47:58.223587 [info ] [Thread-1 (]: 10 of 12 PASS not_null_neo_approaches_neo_reference_id ......................... [[32mPASS[0m in 0.02s]
+[0m21:47:58.224514 [debug] [Thread-1 (]: Finished running node test.sda_gold.not_null_neo_approaches_neo_reference_id.174da5e058
+[0m21:47:58.225206 [debug] [Thread-1 (]: Began running node test.sda_gold.not_null_upcoming_launches_id.4a3e584996
+[0m21:47:58.225802 [info ] [Thread-1 (]: 11 of 12 START test not_null_upcoming_launches_id .............................. [RUN]
+[0m21:47:58.226568 [debug] [Thread-1 (]: Re-using an available connection from the pool (formerly test.sda_gold.not_null_neo_approaches_neo_reference_id.174da5e058, now test.sda_gold.not_null_upcoming_launches_id.4a3e584996)
+[0m21:47:58.227334 [debug] [Thread-1 (]: Began compiling node test.sda_gold.not_null_upcoming_launches_id.4a3e584996
+[0m21:47:58.236132 [debug] [Thread-1 (]: Writing injected SQL for node "test.sda_gold.not_null_upcoming_launches_id.4a3e584996"
+[0m21:47:58.236922 [debug] [Thread-1 (]: Began executing node test.sda_gold.not_null_upcoming_launches_id.4a3e584996
+[0m21:47:58.239390 [debug] [Thread-1 (]: Writing runtime sql for node "test.sda_gold.not_null_upcoming_launches_id.4a3e584996"
+[0m21:47:58.240210 [debug] [Thread-1 (]: Using duckdb connection "test.sda_gold.not_null_upcoming_launches_id.4a3e584996"
+[0m21:47:58.240715 [debug] [Thread-1 (]: On test.sda_gold.not_null_upcoming_launches_id.4a3e584996: BEGIN
+[0m21:47:58.241258 [debug] [Thread-1 (]: Opening a new connection, currently in state closed
+[0m21:47:58.242413 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:58.242991 [debug] [Thread-1 (]: Using duckdb connection "test.sda_gold.not_null_upcoming_launches_id.4a3e584996"
+[0m21:47:58.243559 [debug] [Thread-1 (]: On test.sda_gold.not_null_upcoming_launches_id.4a3e584996: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "node_id": "test.sda_gold.not_null_upcoming_launches_id.4a3e584996"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+
+
+select id
+from "sda"."main"."upcoming_launches"
+where id is null
+
+
+
+  
+  
+      
+    ) dbt_internal_test
+[0m21:47:58.245366 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:58.247505 [debug] [Thread-1 (]: On test.sda_gold.not_null_upcoming_launches_id.4a3e584996: ROLLBACK
+[0m21:47:58.248772 [debug] [Thread-1 (]: Failed to rollback 'test.sda_gold.not_null_upcoming_launches_id.4a3e584996'
+[0m21:47:58.249339 [debug] [Thread-1 (]: On test.sda_gold.not_null_upcoming_launches_id.4a3e584996: Close
+[0m21:47:58.250245 [info ] [Thread-1 (]: 11 of 12 PASS not_null_upcoming_launches_id .................................... [[32mPASS[0m in 0.02s]
+[0m21:47:58.251056 [debug] [Thread-1 (]: Finished running node test.sda_gold.not_null_upcoming_launches_id.4a3e584996
+[0m21:47:58.251691 [debug] [Thread-1 (]: Began running node test.sda_gold.unique_upcoming_launches_id.06a8320e1b
+[0m21:47:58.252331 [info ] [Thread-1 (]: 12 of 12 START test unique_upcoming_launches_id ................................ [RUN]
+[0m21:47:58.253151 [debug] [Thread-1 (]: Re-using an available connection from the pool (formerly test.sda_gold.not_null_upcoming_launches_id.4a3e584996, now test.sda_gold.unique_upcoming_launches_id.06a8320e1b)
+[0m21:47:58.253722 [debug] [Thread-1 (]: Began compiling node test.sda_gold.unique_upcoming_launches_id.06a8320e1b
+[0m21:47:58.262520 [debug] [Thread-1 (]: Writing injected SQL for node "test.sda_gold.unique_upcoming_launches_id.06a8320e1b"
+[0m21:47:58.263568 [debug] [Thread-1 (]: Began executing node test.sda_gold.unique_upcoming_launches_id.06a8320e1b
+[0m21:47:58.265987 [debug] [Thread-1 (]: Writing runtime sql for node "test.sda_gold.unique_upcoming_launches_id.06a8320e1b"
+[0m21:47:58.266840 [debug] [Thread-1 (]: Using duckdb connection "test.sda_gold.unique_upcoming_launches_id.06a8320e1b"
+[0m21:47:58.267491 [debug] [Thread-1 (]: On test.sda_gold.unique_upcoming_launches_id.06a8320e1b: BEGIN
+[0m21:47:58.268033 [debug] [Thread-1 (]: Opening a new connection, currently in state closed
+[0m21:47:58.269297 [debug] [Thread-1 (]: SQL status: OK in 0.001 seconds
+[0m21:47:58.269818 [debug] [Thread-1 (]: Using duckdb connection "test.sda_gold.unique_upcoming_launches_id.06a8320e1b"
+[0m21:47:58.270507 [debug] [Thread-1 (]: On test.sda_gold.unique_upcoming_launches_id.06a8320e1b: /* {"app": "dbt", "dbt_version": "1.12.0", "profile_name": "sda", "target_name": "dev", "node_id": "test.sda_gold.unique_upcoming_launches_id.06a8320e1b"} */
+
+    
+    select
+      count(*) as failures,
+      count(*) != 0 as should_warn,
+      count(*) != 0 as should_error
+    from (
+      
+    
+  
+    
+    
+
+select
+    id as unique_field,
+    count(*) as n_records
+
+from "sda"."main"."upcoming_launches"
+where id is not null
+group by id
+having count(*) > 1
+
+
+
+  
+  
+      
+    ) dbt_internal_test
+[0m21:47:58.274364 [debug] [Thread-1 (]: SQL status: OK in 0.003 seconds
+[0m21:47:58.276426 [debug] [Thread-1 (]: On test.sda_gold.unique_upcoming_launches_id.06a8320e1b: ROLLBACK
+[0m21:47:58.277615 [debug] [Thread-1 (]: Failed to rollback 'test.sda_gold.unique_upcoming_launches_id.06a8320e1b'
+[0m21:47:58.278223 [debug] [Thread-1 (]: On test.sda_gold.unique_upcoming_launches_id.06a8320e1b: Close
+[0m21:47:58.279315 [info ] [Thread-1 (]: 12 of 12 PASS unique_upcoming_launches_id ...................................... [[32mPASS[0m in 0.03s]
+[0m21:47:58.280127 [debug] [Thread-1 (]: Finished running node test.sda_gold.unique_upcoming_launches_id.06a8320e1b
+[0m21:47:58.282714 [debug] [MainThread]: Using duckdb connection "master"
+[0m21:47:58.283372 [debug] [MainThread]: On master: BEGIN
+[0m21:47:58.283859 [debug] [MainThread]: Opening a new connection, currently in state closed
+[0m21:47:58.285102 [debug] [MainThread]: SQL status: OK in 0.001 seconds
+[0m21:47:58.285587 [debug] [MainThread]: On master: COMMIT
+[0m21:47:58.286103 [debug] [MainThread]: Using duckdb connection "master"
+[0m21:47:58.286572 [debug] [MainThread]: On master: COMMIT
+[0m21:47:58.287581 [debug] [MainThread]: SQL status: OK in 0.000 seconds
+[0m21:47:58.288167 [debug] [MainThread]: On master: Close
+[0m21:47:58.288891 [debug] [MainThread]: Connection 'master' was properly closed.
+[0m21:47:58.289439 [debug] [MainThread]: Connection 'test.sda_gold.unique_upcoming_launches_id.06a8320e1b' was properly closed.
+[0m21:47:58.290032 [info ] [MainThread]: 
+[0m21:47:58.290557 [info ] [MainThread]: Finished running 4 table models, 8 data tests in 0 hours 0 minutes and 0.71 seconds (0.71s).
+[0m21:47:58.293002 [debug] [MainThread]: Command end result
+[0m21:47:58.332411 [debug] [MainThread]: Wrote artifact WritableManifest to /home/user/thesis-tech-stack/data/dbt/target/manifest.json
+[0m21:47:58.335990 [debug] [MainThread]: Wrote artifact SemanticManifest to /home/user/thesis-tech-stack/data/dbt/target/semantic_manifest.json
+[0m21:47:58.338926 [debug] [MainThread]: Wrote artifact OsiDocument to /home/user/thesis-tech-stack/data/dbt/target/osi_document.json
+[0m21:47:58.347740 [debug] [MainThread]: Wrote artifact RunExecutionResult to /home/user/thesis-tech-stack/data/dbt/target/run_results.json
+[0m21:47:58.348381 [info ] [MainThread]: 
+[0m21:47:58.348912 [info ] [MainThread]: [32mCompleted successfully[0m
+[0m21:47:58.349454 [info ] [MainThread]: 
+[0m21:47:58.350020 [info ] [MainThread]: Done. PASS=12 WARN=0 ERROR=0 SKIP=0 NO-OP=0 REUSED=0 TOTAL=12
+[0m21:47:58.352319 [debug] [MainThread]: Resource report: {"command_name": "build", "command_success": true, "command_wall_clock_time": 4.3065925, "process_in_blocks": "1072", "process_kernel_time": 0.8739, "process_mem_max_rss": "217932", "process_out_blocks": "41104", "process_user_time": 7.259752}
+[0m21:47:58.353046 [debug] [MainThread]: Command `dbt build` succeeded at 21:47:58.352882 after 4.31 seconds
+[0m21:47:58.353636 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f4ada68b710>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f4ada6a7200>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f4adaf34fe0>]}
+[0m21:47:58.354246 [debug] [MainThread]: Flushing usage events
+[0m21:47:58.694468 [debug] [MainThread]: An error was encountered while trying to flush usage events
