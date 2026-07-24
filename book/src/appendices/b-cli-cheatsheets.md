@@ -376,7 +376,7 @@ were found", that is the driver, not your code; see *Appendix C*.
 ## rsync
 
 The burst-sync workhorse: move checkpoints and run artifacts between the NVMe
-working tier, the 5TB NAS archive, and the Lambda burst box (from *Storage tiers
+working tier, the 4TB NAS archive, and the Lambda burst box (from *Storage tiers
 and cache discipline* and *The Lambda workflow*).
 
 ```bash title="the patterns"

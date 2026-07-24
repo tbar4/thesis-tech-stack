@@ -26,7 +26,7 @@ Params (the inputs that define the run): model name and revision, suite name plu
 
 ### Artifact layout on the working tier
 
-Runs live on the 1TB NVMe working tier in a flat, dated, self-describing convention:
+Runs live on the SSD working tier in a flat, dated, self-describing convention:
 
 ```
 runs/
@@ -42,7 +42,7 @@ The directory name encodes date, model, and suite version so it sorts chronologi
 
 ### Archive policy: promotion to the NAS
 
-The NVMe tier is for the working set; the 5TB NAS is the archive. The discipline from the hardware-baseline chapter becomes a concrete promotion rule here. A run is **promoted** when it is done: tagged, referenced in a result, and unlikely to be re-scored soon. Promotion moves the bulky, cold artifact (`generations.jsonl`, which dominates the byte count) to the NAS, leaves the small hot artifacts (`metrics.json`, `manifest.json`) on NVMe, and records the NAS path in the manifest so the generations are still findable. The metrics stay fast to query; the raw text stops eating the fast disk. Nothing in the hot path ever reaches across the network, because a re-score of an *active* run happens before promotion, while its generations are still on NVMe. The retention rule is simple and generous: generations are never deleted, only moved, because they are the expensive thing and disk is cheaper than a GPU-hour.
+The NVMe tier is for the working set; the 4TB NAS is the archive. The discipline from the hardware-baseline chapter becomes a concrete promotion rule here. A run is **promoted** when it is done: tagged, referenced in a result, and unlikely to be re-scored soon. Promotion moves the bulky, cold artifact (`generations.jsonl`, which dominates the byte count) to the NAS, leaves the small hot artifacts (`metrics.json`, `manifest.json`) on NVMe, and records the NAS path in the manifest so the generations are still findable. The metrics stay fast to query; the raw text stops eating the fast disk. Nothing in the hot path ever reaches across the network, because a re-score of an *active* run happens before promotion, while its generations are still on NVMe. The retention rule is simple and generous: generations are never deleted, only moved, because they are the expensive thing and disk is cheaper than a GPU-hour.
 
 ## Tooling
 
@@ -72,7 +72,7 @@ import mlflow
 import evalstats as es
 
 WORKING = Path("runs")                 # NVMe working tier
-ARCHIVE = Path("/mnt/nas/eval-archive")  # 5TB NAS archive tier
+ARCHIVE = Path("/mnt/nas/eval-archive")  # 4TB NAS archive tier
 
 def _hash_generations(records) -> str:
     h = hashlib.sha256()

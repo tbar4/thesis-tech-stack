@@ -16,7 +16,7 @@ The loop is a directed sequence with one return edge, and each node is a chapter
 - **Merge.** Merge the adapter into the base weights to produce $M_1$, a standalone checkpoint the serving substrate can load exactly as it loads $M_0$. Merging matters because it makes the post model served identically to the pre model, same substrate and same decoding, closing off "you served them differently" as an alternative explanation for the delta. One caveat I state rather than hide: the adapter was trained over an NF4 4-bit base, so the merged $M_1$ is that 4-bit base dequantized and merged, not bit-identical to the full-precision weights $M_0$ is served from, and that quantization step is a named confound, not a silent one. The loop as coded serves full-precision $M_0$ for the pre measurement, so it does not control this, and the capstone's headline delta therefore carries the quantization confound: part of the pre/post difference could be the dequantize-and-merge, not the training. The clean control is to evaluate $M_0$ under the *same* dequantize-and-merge regime, that is, the base with a zero adapter merged in, so $M_0$ and $M_1$ differ only by the trained weights and not by precision. That base-plus-zero-adapter control is the control-run protocol specified in chapter 4.5; running it leaves the training itself as the only difference left to explain the delta.
 - **Re-serve and re-evaluate $M_1$.** Bring the substrate back up on the merged $M_1$ and run the identical suite at the identical sampling budget, logging in the identical format. This is the "post" measurement.
 - **Figures.** Run the chapter 7.6 delta report on the two logs to produce the paired delta, its bootstrap CI, the permutation $p$-value, the effect size, and the pass@k curves.
-- **Archive.** Promote every artifact from working NVMe to the 5TB NAS with a manifest, so the whole run is reproducible from the archive alone.
+- **Archive.** Promote every artifact from the SSD working tier to the 4TB NAS with a manifest, so the whole run is reproducible from the archive alone.
 
 The return edge is the delta: the loop's output is the measured difference between the re-evaluation and the evaluation, which is the dependent variable the entire thesis is organized to estimate. Running it once, cleanly, is the capstone.
 
@@ -71,7 +71,7 @@ merge:
   merged_out: "work/M1_merged"
 
 archive:
-  nas_root: "/mnt/nas/thesis-runs"          # 5TB NAS archive tier
+  nas_root: "/mnt/nas/thesis-runs"          # 4TB NAS archive tier
 ```
 
 ### The orchestrator

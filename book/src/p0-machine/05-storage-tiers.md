@@ -10,12 +10,16 @@
 
 Storage on this machine has to do two jobs that pull in opposite directions, and the mistake is trying to make one device do both. The first job is **fast working access**: when I serve a model or resume a training run, the weights need to stream off disk quickly, and scratch files need to be written and deleted without ceremony. The second job is **durable retention**: the handful of things I actually want to keep (a final checkpoint, an acceptance report, a curated dataset) need to survive a cache purge, a reinstall, or a dead system drive. Fast working access wants the local NVMe. Durable retention wants somewhere I will not casually `rm -rf`. So I run two tiers.
 
-The **working tier** is the 1 TB NVMe. It holds the Hugging Face cache, the currently active model weights, in-flight checkpoints, and scratch. Its defining property is that it is disposable: everything on it should be reconstructible from a revision hash plus a lockfile. If the NVMe died tomorrow I should lose time re-downloading, not lose results. That disposability is a discipline, not just a description: I never put the only copy of something I care about on the working tier.
+The **working tier** is the 2 TB of local SSD: the machine's 1 TB NVMe plus the 1 TB SATA SSD I moved over from the NAS. It holds the Hugging Face cache, the currently active model weights, in-flight checkpoints, scratch, the DuckDB workspace, and the hot copy of any index a query path actually hits (the LanceDB tables of 8.1 are built and queried here). Its defining property is that it is disposable: everything on it should be reconstructible from a revision hash, a lockfile, or a rebuild from the archive tier. If an SSD died tomorrow I should lose time re-downloading and re-syncing, not lose results. That disposability is a discipline, not just a description: I never put the only copy of something I care about on the working tier.
 
-The **archive tier** is the 5 TB NAS. It holds things whose loss would actually hurt: final checkpoints I have decided are worth keeping, acceptance reports, exported MLflow artifact stores, and curated datasets. It is reached over the network, so it is slower than local NVMe (the exact throughput is a machine-log entry; measured on the baseline machine; record value, date, driver), and that is fine, because I touch it deliberately and rarely. The NAS is where a result goes to become permanent.
+The **archive tier** is the 4 TB HDD NAS, and it wears an S3-compatible face: a single **MinIO** instance runs on the NAS, so everything durable is addressable as `s3://` by every tool in the stack (DVC, the data pipeline of 3.9, the Delta tables, the Lance index sync, MLflow artifacts). It holds things whose loss would actually hurt: raw data snapshots, final checkpoints I have decided are worth keeping, acceptance reports, exported MLflow artifact stores, and curated datasets. It is reached over the network on spinning disk, so it is slower than local SSD (the exact throughput is a machine-log entry; measured on the baseline machine; record value, date, driver), and that is fine, because I touch it deliberately and rarely. The NAS is where a result goes to become permanent.
+
+### One object store, not two
+
+Moving the SSD into the machine raised a real topology question: with 2 TB of fast disk local and 4 TB of durable disk remote, should the machine run its own MinIO too? The answer is no, and the reasoning is worth recording because the temptation returns every time the network feels slow. Two MinIO instances means two candidate truths, a replication job between them that can silently fall behind, doubled credentials and lifecycle rules, and a permanent ambiguity about which copy a run actually read. It also buys nothing the filesystem does not already provide: the working tier's whole job is fast local access, and a local path is faster than a local S3 API wrapped around the same disk. So the rule is one object store, on the always-on box: **durable means it lives in MinIO on the NAS; fast means it lives on the local SSD as plain files; and everything on the SSD is a cache or workspace that can be rebuilt from MinIO plus git.** Anything that needs both (a Lance index, a hot Delta table) is built locally, synced to MinIO for durability, and re-pulled on demand. A lost SSD costs hours; only losing the NAS costs data, which is why the NAS, not the machine, gets the backup story. The one configuration I ruled out entirely is stretching a single distributed MinIO across the machine and the NAS: erasure coding wants symmetric, always-on drives, and a gaming desktop that reboots for driver experiments is neither.
 
 ```admonish vram-budget title="Disk is a budget too, just a slower one"
-The 16 GB VRAM ceiling gets all the attention, but the 1 TB NVMe is also a budget, and it fills faster than you expect. A single 7B model in bf16 is ~14 GB on disk; keep a base model, a quantized copy, and a few checkpoints and you are into tens of gigabytes per experiment. The Hugging Face cache silently accumulates every revision you ever touched. Without a retention policy, the working tier fills, downloads start failing mid-stream, and you lose an afternoon to `du -sh` archaeology. The two-tier split is partly about durability and partly about keeping the fast disk lean enough to stay fast.
+The 16 GB VRAM ceiling gets all the attention, but the 2 TB working tier is also a budget, and it fills faster than you expect. A single 7B model in bf16 is ~14 GB on disk; keep a base model, a quantized copy, and a few checkpoints and you are into tens of gigabytes per experiment. The Hugging Face cache silently accumulates every revision you ever touched. Without a retention policy, the working tier fills, downloads start failing mid-stream, and you lose an afternoon to `du -sh` archaeology. The two-tier split is partly about durability and partly about keeping the fast disk lean enough to stay fast.
 ```
 
 ### What "reproducible" means for weights
@@ -81,6 +85,10 @@ export HF_HUB_ENABLE_HF_TRANSFER=1        # accelerated large-file downloads
 # Archive tier: the NAS mount point (see /etc/fstab).
 export NAS_ROOT="/mnt/nas"
 export ARCHIVE_ROOT="${NAS_ROOT}/thesis-loop"   # where kept things go
+
+# The archive tier's S3 face: the single MinIO instance on the NAS.
+# Credentials live in ~/.config/thesis-loop/secrets.env (never committed).
+export S3_ENDPOINT_URL="https://s3.datadazed.com"
 
 # Fail loudly if the working tier is missing, rather than silently
 # scattering a 14 GB download into the wrong place.
@@ -176,12 +184,15 @@ uv run python scripts/fetch_model.py
 # Storage policy - evals-as-rewards loop
 
 ## Tiers
-- **Working tier - 1 TB NVMe (`/data`, `HF_HOME=/data/hf`).**
+- **Working tier - 2 TB local SSD (`/data`, `HF_HOME=/data/hf`).**
   Fast, disposable. Holds the HF cache, active weights, in-flight checkpoints,
-  scratch. Rule: nothing here is the only copy of anything I care about.
-- **Archive tier - 5 TB NAS (`/mnt/nas/thesis-loop`).**
-  Durable, slow, append-mostly. Holds kept checkpoints, acceptance reports,
-  MLflow exports, curated datasets.
+  scratch, the DuckDB workspace, hot Lance/Delta copies. Rule: nothing here is
+  the only copy of anything I care about; everything rebuilds from MinIO + git.
+- **Archive tier - 4 TB HDD NAS (`/mnt/nas/thesis-loop` + MinIO at `s3://`).**
+  Durable, slow, append-mostly. One MinIO instance on the NAS is the single
+  object store; there is deliberately no second MinIO on the machine. Holds raw
+  snapshots, kept checkpoints, acceptance reports, MLflow exports, curated
+  datasets, the DVC remote.
 
 ## Reproducibility rule for weights
 - Always load models/datasets by **revision commit hash**, never by bare name.

@@ -147,7 +147,7 @@ This page is the whole machine on one screen: how live space data becomes verifi
     <span><b>Ubuntu 24.04</b> on Blackwell</span>
     <span><b>uv</b> two-environment doctrine</span>
     <span><b>Docker Compose</b> + MLflow spine</span>
-    <span>NVMe / NAS storage tiers</span>
+    <span>2TB SSD working tier / NAS MinIO archive</span>
   </div>
   <div class="flow">
     <section class="tier" style="--tier:var(--verify)">
@@ -157,9 +157,9 @@ This page is the whole machine on one screen: how live space data becomes verifi
         <span class="accent" style="background:var(--verify)"></span>
       </div>
       <div class="cards">
-        <div class="card"><h3><i class="d"></i>Live sources</h3><p>celestrak &middot; space-track &middot; api.nasa.gov &middot; thespacedevs &middot; Spaceflight News</p><div class="parts">httpx &middot; spacetrack</div></div>
+        <div class="card"><h3><i class="d"></i>Live sources</h3><p>celestrak &middot; space-track &middot; api.nasa.gov &middot; thespacedevs &middot; Spaceflight News</p><div class="parts">dlt &middot; httpx &middot; spacetrack</div></div>
         <div class="card"><h3><i class="d"></i>Ingest pipeline</h3><p>Airflow 3 assets, thin DAGs over <code>uv run</code> modules; Pydantic + pandera gates</p><div class="parts">chapter 3.9</div></div>
-        <div class="card"><h3><i class="d"></i>Snapshots</h3><p>immutable, content-hashed Parquet; DuckDB queries; DVC-pinned</p><div class="parts">Parquet &middot; DuckDB &middot; DVC</div></div>
+        <div class="card"><h3><i class="d"></i>Snapshots &amp; serving</h3><p>immutable, content-hashed Parquet on MinIO; Delta + dbt serving layer; DuckDB queries; DVC-pinned</p><div class="parts">Parquet &middot; Delta &middot; dbt &middot; DuckDB &middot; DVC</div></div>
         <div class="card"><h3><i class="d"></i>Physics oracle</h3><p>Skyfield / SGP4 generates <em>and</em> grades: conjunction screening, elements, passes</p><div class="parts">chapter 3.10</div></div>
       </div>
     </section>
@@ -242,6 +242,7 @@ This page is the whole machine on one screen: how live space data becomes verifi
     <span class="t">Tracking spine</span>
     <span class="i"><b>MLflow</b> logs every run: model, config, git SHA, uv lock, snapshot hash, metrics with CIs</span>
     <span class="i"><b>DVC</b> pins every data snapshot; content-addressed &amp; reproducible forever</span>
+    <span class="i"><b>MinIO</b> on the NAS is the one object store; the local SSD tier is a rebuildable cache</span>
   </div>
   <p class="metaline">Evals as Rewards &middot; single-node reasoning-model loop &middot; measured numbers recorded on the baseline machine.</p>
 </div>

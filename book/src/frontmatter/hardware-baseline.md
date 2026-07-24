@@ -12,8 +12,8 @@ The baseline machine is an MSI Aegis R2, model A2NVV9-2218US, a prebuilt desktop
 | CPU | Intel Core Ultra 9 285 (Arrow Lake) |
 | GPU | NVIDIA GeForce RTX 5080, 16GB GDDR7 (Blackwell), roughly 960 GB/s memory bandwidth |
 | System RAM | 32GB DDR5 |
-| Working storage | 1TB NVMe SSD |
-| Archive storage | 5TB NAS (network-attached) |
+| Working storage | 2TB SSD (1TB NVMe + 1TB SATA SSD moved over from the NAS) |
+| Archive storage | 4TB HDD NAS (network-attached), fronted by MinIO |
 | OS | Ubuntu 24.04 LTS |
 | GPU driver | NVIDIA 570-open (open-kernel-module branch) |
 
@@ -31,9 +31,9 @@ Storage is deliberately split into two tiers, and the split is a design choice, 
 
 ## Working storage versus archive
 
-The 1TB NVMe SSD is working storage. It holds the things a running lab touches constantly: the model weights currently being served or trained, the active dataset, checkpoints being written mid-run, the scratch space for a training job. NVMe is here because weight loading and checkpoint I/O are fast enough to not be the bottleneck, which matters when a lab loads a multi-gigabyte model or writes a checkpoint every few hundred steps.
+The 2TB of local SSD is working storage: a 1TB NVMe drive plus a 1TB SATA SSD I pulled out of the NAS and moved into the machine, precisely because the machine is where fast disk earns its keep. It holds the things a running lab touches constantly: the model weights currently being served or trained, the active dataset, checkpoints being written mid-run, the scratch space for a training job, and the hot copies of any data index a query path hits. Local SSD is here because weight loading and checkpoint I/O are fast enough to not be the bottleneck, which matters when a lab loads a multi-gigabyte model or writes a checkpoint every few hundred steps.
 
-The 5TB NAS is the archive tier. It holds the things I want to keep but am not actively hammering: past checkpoints, completed run artifacts, datasets I am not currently using, the accumulated sediment of every lab I have ever run. It is network-attached and therefore slower than the NVMe, which is fine, because nothing in the hot path should be reaching across the network for it. The discipline is to keep the working set on NVMe and everything else on the NAS, so the fast disk stays fast and the archive grows without pressure.
+The 4TB HDD NAS is the archive tier, and it wears an S3-compatible face: a single MinIO instance runs on the NAS, so everything durable is addressable as `s3://` by every tool in the stack. It holds the things I want to keep but am not actively hammering: past checkpoints, completed run artifacts, raw data snapshots, datasets I am not currently using, the accumulated sediment of every lab I have ever run. It is network-attached spinning disk and therefore slower than local SSD, which is fine, because nothing in the hot path should be reaching across the network for it. The discipline is to keep the working set on local SSD and everything else on the NAS, so the fast disks stay fast and the archive grows without pressure.
 
 That is the high-level shape. The actual mechanics (how the mount is set up, how artifacts get promoted from working to archive, how I keep the two from drifting) are a chapter 0.5 problem, and I will lay out the whole storage workflow there. For now the thing to hold onto is just the two-tier split: NVMe for what is hot, NAS for what is kept.
 

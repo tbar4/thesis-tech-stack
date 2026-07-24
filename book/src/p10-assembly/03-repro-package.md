@@ -81,7 +81,7 @@ The **thesis-specific results**, the actual measured deltas, the checkpoints, th
 
 Durability and reach are different goals, so I use two archives.
 
-The **NAS archive** (the 5TB NAS on the baseline machine's network) is for durability and completeness. It holds the full package including the private results and the large checkpoints, because it's mine and it's under my control. Its job is that I never lose the ability to reproduce my own thesis. I write it as a dated, checksummed tarball, and I keep more than one.
+The **NAS archive** (the 4TB NAS on the baseline machine's network) is for durability and completeness. It holds the full package including the private results and the large checkpoints, because it's mine and it's under my control. Its job is that I never lose the ability to reproduce my own thesis. I write it as a dated, checksummed tarball, and I keep more than one.
 
 The **public mirror** is for reach and for the reproducibility claim itself. It holds everything except the embargoed results: the code under MIT, the prose under CC BY-NC-SA, the configs, the task suite, the seeds, and the figure pipeline. Its job is that a stranger can verify the machinery even before the results go public, and that after the defense the results can be added with a single push. A public git host plus a DOI-minting archive (so the package has a citable, permanent identifier) covers both the "grab and run" and the "cite in a paper" use cases.
 
