@@ -239,7 +239,7 @@ fix batch size and disable chunked prefill, and accept the throughput cost.
 `Stale file handle`, or `Transport endpoint is not connected`, and `ls /mnt/nas`
 hangs.
 
-**Cause.** The network mount (NFS/SMB to the 5TB NAS) dropped, and a process
+**Cause.** The network mount (NFS/SMB to the 4TB NAS) dropped, and a process
 writing checkpoints or reading a dataset across it blocked or errored. Nothing in
 the hot path should live on the NAS, but a checkpoint-archive step or a dataset
 left there will take the run down with it.
@@ -251,7 +251,7 @@ sudo umount -l /mnt/nas               # lazy unmount a wedged handle
 sudo mount -a                         # remount from /etc/fstab
 ```
 Prevention is the real fix: keep the working set (active weights, dataset,
-in-flight checkpoints) on the 1TB NVMe and only `rsync` to the NAS after a run
+in-flight checkpoints) on the local SSD and only `rsync` to the NAS after a run
 completes, per *Storage tiers and cache discipline*. Mount the NAS with `soft` and
 a timeout so a drop returns an error instead of hanging forever, and write
 checkpoints locally, then sync.

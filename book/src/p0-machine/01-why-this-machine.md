@@ -27,7 +27,7 @@ The reason I draw it as a cycle and not a pipeline is that the interesting quant
 
 ### One GPU is a feature, not an apology
 
-The subtitle says "on one GPU," and I mean it as a design constraint I chose, not a limitation I am making excuses for. The baseline machine is an MSI Aegis R2 (A2NVV9-2218US): an Intel Core Ultra 9 285, an NVIDIA RTX 5080 with 16 GB of VRAM (Blackwell, roughly 960 GB/s of memory bandwidth per NVIDIA's RTX 5080 product specification), 32 GB of DDR5, a 1 TB NVMe system drive, and a 5 TB NAS for archive. Ubuntu 24.04 LTS, NVIDIA 570-open driver. Every measured number in this book is relative to exactly that machine, which is why I date and driver-stamp all of them.
+The subtitle says "on one GPU," and I mean it as a design constraint I chose, not a limitation I am making excuses for. The baseline machine is an MSI Aegis R2 (A2NVV9-2218US): an Intel Core Ultra 9 285, an NVIDIA RTX 5080 with 16 GB of VRAM (Blackwell, roughly 960 GB/s of memory bandwidth per NVIDIA's RTX 5080 product specification), 32 GB of DDR5, 2 TB of local SSD (a 1 TB NVMe system drive plus a 1 TB SATA SSD migrated from the NAS), and a 4 TB HDD NAS for archive. Ubuntu 24.04 LTS, NVIDIA 570-open driver. Every measured number in this book is relative to exactly that machine, which is why I date and driver-stamp all of them.
 
 The single most consequential number in that list is 16 GB. Not the core count, not the 960 GB/s, not the 32 GB of system RAM. Sixteen gigabytes of VRAM is the constraint that, once you internalize it, predicts almost every architectural decision I make later. So it is worth sitting with the number before we get anywhere near a command line.
 
@@ -51,9 +51,9 @@ Consider the loop again. Serving needs weights plus KV cache. Training needs wei
 
 The second design input is mundane and I ignored it at my peril the first time: model weights and datasets are large, and the two things I want from them, fast access and durable retention, pull in opposite directions. Fast access wants the local NVMe. Durable retention wants somewhere I will not accidentally `rm -rf` during a cache cleanup. So I split storage into two tiers from day one.
 
-The working tier is the 1 TB NVMe. It holds the Hugging Face cache, the currently active model weights, in-flight checkpoints, and scratch. It is fast (an NVMe Gen4/Gen5 SSD delivers multiple GB/s of sequential read; the exact figure is a machine-log entry, measured on the baseline machine; record value, date, driver) and it is treated as disposable. Anything on the working tier should be reconstructible from a revision hash and a lockfile. If the NVMe died tomorrow, I should lose time, not results.
+The working tier is the 2 TB of local SSD, the NVMe system drive plus the SATA drive moved over from the NAS. It holds the Hugging Face cache, the currently active model weights, in-flight checkpoints, and scratch. It is fast (an NVMe Gen4/Gen5 SSD delivers multiple GB/s of sequential read; the exact figure is a machine-log entry, measured on the baseline machine; record value, date, driver) and it is treated as disposable. Anything on the working tier should be reconstructible from a revision hash and a lockfile. If a drive died tomorrow, I should lose time, not results.
 
-The archive tier is the 5 TB NAS. It holds things I want to keep: final checkpoints I have decided are worth keeping, acceptance reports, MLflow artifact stores I have exported, and datasets I have curated. The NAS is slower over the network than local NVMe, and that is fine, because I touch it deliberately and rarely. Chapter 0.5 makes this split concrete with `HF_HOME`, `hf_transfer`, and a written retention policy; here the point is only that "where does this file live" is a decision I make on purpose, tier by tier, and not something I let a tool decide for me by defaulting into `~/.cache`.
+The archive tier is the 4 TB NAS. It holds things I want to keep: final checkpoints I have decided are worth keeping, acceptance reports, MLflow artifact stores I have exported, and datasets I have curated. The NAS is slower over the network than local NVMe, and that is fine, because I touch it deliberately and rarely. Chapter 0.5 makes this split concrete with `HF_HOME`, `hf_transfer`, and a written retention policy; here the point is only that "where does this file live" is a decision I make on purpose, tier by tier, and not something I let a tool decide for me by defaulting into `~/.cache`.
 
 ### The open-data boundary
 
@@ -102,8 +102,8 @@ flowchart TB
     subgraph HW["Hardware - MSI Aegis R2 (A2NVV9-2218US)"]
         GPU["RTX 5080 · 16 GB VRAM · Blackwell · ~960 GB/s"]
         CPU["Core Ultra 9 285 · 32 GB DDR5"]
-        NVME["1 TB NVMe - working tier"]
-        NAS["5 TB NAS - archive tier"]
+        NVME["2 TB SSD - working tier"]
+        NAS["4 TB NAS + MinIO - archive tier"]
     end
 
     subgraph OS["OS & drivers - Ubuntu 24.04 LTS"]

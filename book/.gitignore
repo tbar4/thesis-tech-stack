@@ -1,2 +1,5 @@
 # mdbook build output
 book/
+# mdbook-mermaid assets, generated locally by `mdbook-mermaid install book`
+mermaid.min.js
+mermaid-init.js
