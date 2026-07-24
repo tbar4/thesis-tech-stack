@@ -16,6 +16,7 @@ def test_redistributable_excludes_restricted_sources():
 
     assert "celestrak" in config.REDISTRIBUTABLE
     assert "spacedevs" in config.REDISTRIBUTABLE
+    assert "spaceflightnews" in config.REDISTRIBUTABLE
     assert "spacetrack" not in config.REDISTRIBUTABLE
     assert "nasa" not in config.REDISTRIBUTABLE
 

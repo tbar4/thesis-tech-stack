@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 
 # Sources allowed onto the shippable raw tier. spacetrack/nasa deliberately absent.
-REDISTRIBUTABLE = {"celestrak", "spacedevs"}
+REDISTRIBUTABLE = {"celestrak", "spacedevs", "spaceflightnews"}
 
 
 def data_home() -> Path:
