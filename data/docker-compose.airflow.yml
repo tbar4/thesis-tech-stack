@@ -1,0 +1,59 @@
+# Single-node Airflow 3, LocalExecutor. In Airflow 3 the scheduler does NOT
+# parse DAGs: the dag-processor service is REQUIRED or the DAG list stays empty.
+x-airflow-common: &airflow-common
+  image: apache/airflow:3.0.0
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db/airflow
+    AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "admin:admin"
+    SDA_DATA_HOME: /opt/project/data
+    S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-}
+    AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+    AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+    NASA_API_KEY: ${NASA_API_KEY:-}
+    SPACETRACK_USER: ${SPACETRACK_USER:-}
+    SPACETRACK_PASSWORD: ${SPACETRACK_PASSWORD:-}
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ..:/opt/project
+  depends_on: [airflow-db]
+
+services:
+  airflow-db:
+    image: postgres:16          # Airflow METADATA only, never our data
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow-db-data:/var/lib/postgresql/data
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command: -c "set -euo pipefail; airflow db migrate"
+
+  airflow-apiserver:
+    <<: *airflow-common
+    command: api-server
+    ports: ["127.0.0.1:8080:8080"]
+    restart: unless-stopped
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    restart: unless-stopped
+
+  airflow-dag-processor:        # REQUIRED in Airflow 3
+    <<: *airflow-common
+    command: dag-processor
+    restart: unless-stopped
+
+  airflow-triggerer:            # deferrable operators + event-driven scheduling
+    <<: *airflow-common
+    command: triggerer
+    restart: unless-stopped
+
+volumes:
+  airflow-db-data:

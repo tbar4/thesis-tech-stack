@@ -1,0 +1,21 @@
+version: 2
+models:
+  - name: latest_element_sets
+    description: One row per catalogued object, newest fetch wins. celestrak only.
+    columns:
+      - name: norad_cat_id
+        tests: [unique, not_null]
+      - name: snapshot_hash
+        tests: [not_null]
+  - name: upcoming_launches
+    columns:
+      - name: id
+        tests: [unique, not_null]
+  - name: latest_articles
+    columns:
+      - name: id
+        tests: [unique, not_null]
+  - name: neo_approaches
+    columns:
+      - name: neo_reference_id
+        tests: [not_null]
