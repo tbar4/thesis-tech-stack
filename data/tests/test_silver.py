@@ -35,3 +35,13 @@ def test_append_returns_new_version(tmp_data_home):
     v0 = append_element_sets(frame([1]))
     v1 = append_element_sets(frame([2]))
     assert (v0, v1) == (0, 1)
+
+
+def test_generic_append_routes_by_table_name(tmp_data_home):
+    from sda_data.silver import append, table_uri
+
+    df = frame([7])
+    version = append("launches", df)
+    assert version == 0
+    assert table_uri("launches") == str(config.delta_root() / "launches")
+    assert len(DeltaTable(table_uri("launches")).to_pandas()) == 1
