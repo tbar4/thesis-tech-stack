@@ -116,6 +116,10 @@ This page is the whole machine on one screen: how live space data becomes verifi
   @media (prefers-reduced-motion: reduce) { #arch-root .card { transition: none; } }
 </style>
 
+<!-- NOTE: this whole <div id="arch-root"> block must contain NO blank lines. In
+     CommonMark (mdbook), a blank line ends a raw-HTML block, after which the
+     indented markup below is parsed as an indented code block and renders as
+     literal source instead of the diagram. Keep it one contiguous block. -->
 <div id="arch-root">
   <header>
     <svg class="orbit" viewBox="0 0 200 200" fill="none" aria-hidden="true">
@@ -137,7 +141,6 @@ This page is the whole machine on one screen: how live space data becomes verifi
       <span><i class="dot" style="background:var(--product)"></i>beyond the thesis</span>
     </div>
   </header>
-
   <div class="node">
     <span class="spark">&#9670; one node</span>
     <span><b>MSI Aegis R2</b> &middot; RTX 5080 16&nbsp;GB</span>
@@ -146,9 +149,7 @@ This page is the whole machine on one screen: how live space data becomes verifi
     <span><b>Docker Compose</b> + MLflow spine</span>
     <span>NVMe / NAS storage tiers</span>
   </div>
-
   <div class="flow">
-
     <section class="tier" style="--tier:var(--verify)">
       <div class="rail">
         <div class="tag">Part III &middot; 3.9&ndash;3.10</div>
@@ -162,7 +163,6 @@ This page is the whole machine on one screen: how live space data becomes verifi
         <div class="card"><h3><i class="d"></i>Physics oracle</h3><p>Skyfield / SGP4 generates <em>and</em> grades: conjunction screening, elements, passes</p><div class="parts">chapter 3.10</div></div>
       </div>
     </section>
-
     <section class="tier" style="--tier:var(--verify)">
       <div class="rail">
         <div class="tag">Part III &middot; 3.11</div>
@@ -173,7 +173,6 @@ This page is the whole machine on one screen: how live space data becomes verifi
         <div class="card" style="max-width:none"><h3><i class="d"></i>Thesis task suite v1.0</h3><p>content-hashed, difficulty-stratified, contamination-scanned, power-sized (about 300 paired items); the fixed instrument every result is measured against</p><div class="parts">tagged suite-v1.0 &middot; datasheet</div></div>
       </div>
     </section>
-
     <div class="loop">
       <div class="loop-head">
         <span class="tag">&#9670; the loop</span>
@@ -191,7 +190,6 @@ This page is the whole machine on one screen: how live space data becomes verifi
         <span><b>the suite</b> feeds Evaluate &nbsp;&middot;&nbsp; <b>the oracle verifier</b> feeds Score &nbsp;&middot;&nbsp; <span class="r">the reward core</span> feeds Train &nbsp;&middot;&nbsp; every run logs to the MLflow spine</span>
       </div>
     </div>
-
     <section class="tier" style="--tier:var(--signal)">
       <div class="rail">
         <div class="tag">Part IV</div>
@@ -204,7 +202,6 @@ This page is the whole machine on one screen: how live space data becomes verifi
         <div class="card"><h3><i class="d"></i>Causal audit</h3><p>a standing exhibit the methodology chapter cites verbatim</p><div class="parts">4.6</div></div>
       </div>
     </section>
-
     <section class="tier" style="--tier:var(--signal)">
       <div class="rail">
         <div class="tag">Part VIII &middot; 8.1&ndash;8.3</div>
@@ -217,7 +214,6 @@ This page is the whole machine on one screen: how live space data becomes verifi
         <div class="card"><h3><i class="d"></i>Augmentation arms</h3><p>base / RL-trained / +RAG / +tools at matched budget; what actually caused the gain</p><div class="parts">chapter 8.3</div></div>
       </div>
     </section>
-
     <section class="tier" style="--tier:var(--infra)">
       <div class="rail">
         <div class="tag">Parts IX&ndash;X</div>
@@ -230,7 +226,6 @@ This page is the whole machine on one screen: how live space data becomes verifi
         <div class="card"><h3><i class="d"></i>Substack map</h3><p>an editorial calendar; the book is the reservoir, Substack the tap</p><div class="parts">10.4</div></div>
       </div>
     </section>
-
     <section class="tier product" style="--tier:var(--product)">
       <div class="fence">&#9622; outside the thesis &mdash; forward-looking product work, no thesis claims</div>
       <div class="rail">
@@ -242,17 +237,15 @@ This page is the whole machine on one screen: how live space data becomes verifi
         <div class="card"><h3><i class="d"></i>Agentic RL</h3><p>train the policy to <em>decide</em> when to call its tools; an autonomous SDA agent</p><div class="parts">chapter 11.1</div></div>
       </div>
     </section>
-
   </div>
-
   <div class="spine">
     <span class="t">Tracking spine</span>
     <span class="i"><b>MLflow</b> logs every run: model, config, git SHA, uv lock, snapshot hash, metrics with CIs</span>
     <span class="i"><b>DVC</b> pins every data snapshot; content-addressed &amp; reproducible forever</span>
   </div>
-
   <p class="metaline">Evals as Rewards &middot; single-node reasoning-model loop &middot; measured numbers recorded on the baseline machine.</p>
 </div>
+
 
 ## The one idea the whole thing is built around
 
