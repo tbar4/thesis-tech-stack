@@ -11,6 +11,9 @@ x-airflow-common: &airflow-common
     S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-}
     AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
     AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+    NASA_API_KEY: ${NASA_API_KEY:-}
+    SPACETRACK_USER: ${SPACETRACK_USER:-}
+    SPACETRACK_PASSWORD: ${SPACETRACK_PASSWORD:-}
   volumes:
     - ./dags:/opt/airflow/dags
     - ..:/opt/project
