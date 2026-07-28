@@ -34,7 +34,7 @@ The host driver must be new enough for the CUDA version *inside* the image, and 
 
 ### Two projects, two images
 
-The two-environment doctrine from Part 0 carries straight through to containers: `serve/` and `train/` have separate lock files because they have genuinely conflicting dependency graphs (vLLM's pins versus Unsloth/TRL's pins), and forcing them into one environment was the original sin I refused to commit. So they get two images. `serve.Dockerfile` builds the vLLM serving environment; `train.Dockerfile` builds the training environment. They share a base and a build pattern but resolve different locks. On the H100 I might run only `train`, or run `serve` and `train` side by side (vLLM generating rollouts, the trainer consuming them), and keeping the images separate means I compose them however the run demands without dragging one project's dependency conflicts into the other.
+The two-environment doctrine carries straight through to containers: `serve/` and `train/` have separate lock files because they have genuinely conflicting dependency graphs (vLLM's pins versus Unsloth/TRL's pins), and forcing them into one environment was the original sin I refused to commit. So they get two images. `serve.Dockerfile` builds the vLLM serving environment; `train.Dockerfile` builds the training environment. They share a base and a build pattern but resolve different locks. On the H100 I might run only `train`, or run `serve` and `train` side by side (vLLM generating rollouts, the trainer consuming them), and keeping the images separate means I compose them however the run demands without dragging one project's dependency conflicts into the other.
 
 ### Why multi-stage, and why not bake weights in
 

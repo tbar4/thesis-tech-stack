@@ -113,8 +113,8 @@ parts they serve, in roughly the authoring-wave order (spec §8).
 ## Per-chapter pairings
 
 Every entry below mirrors the `read-along` admonition in the named chapter.
-Chapters with no reference pairing are hands-on or self-contained (Part 0, parts
-of Part II, and Part X lean on tooling and the book's own artifacts rather than
+Chapters with no reference pairing are hands-on or self-contained (parts
+of Part II and Part X lean on tooling and the book's own artifacts rather than
 outside reading; 2.1, 2.3, and 2.6 pick up [AIE] pairings). Part VII does carry read-along pointers, because the loop
 chapters lean on [RLHF], [S&B], and [MADL] for the algorithm and kernel math
 even as the labs are hands-on; its per-chapter rows are below.

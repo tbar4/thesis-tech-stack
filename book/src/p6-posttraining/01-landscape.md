@@ -64,7 +64,7 @@ The training side is three libraries that layer cleanly. **PEFT** (Parameter-Eff
 
 The evaluation side is the machinery I already built. The `evalstats` module from chapter 3.7 is the reused core: paired-difference tests and bootstrap confidence intervals over the thesis task suite, so that every "this fine-tune helped" claim in this part comes with an interval and a p-value rather than a vibe. Every lab from 6.3 onward closes the loop by running the frozen task suite before and after training and reporting the delta through `evalstats`, which is the concrete meaning of "evals as rewards" at the level of my own workflow: the eval is how I know the training did anything.
 
-Everything is a `uv` project, one directory per lab, following the two-environment doctrine from Part 0: the training environment (Unsloth/TRL/PEFT, which pins a specific torch) stays separate from the inference/eval environment (vLLM, Inspect), because their dependency graphs fight. The landscape lab below only needs the light inference side.
+Everything is a `uv` project, one directory per lab, following the two-environment doctrine: the training environment (Unsloth/TRL/PEFT, which pins a specific torch) stays separate from the inference/eval environment (vLLM, Inspect), because their dependency graphs fight. The landscape lab below only needs the light inference side.
 
 ## Lab
 

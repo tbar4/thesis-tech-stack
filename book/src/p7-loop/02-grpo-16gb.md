@@ -87,7 +87,7 @@ Two objects carry a GRPO run: the model, loaded by `FastLanguageModel` exactly a
 - **`num_iterations`** is $\mu$, the number of optimization passes over each batch of generated data (the PPO inner epochs). More reuse of expensive generations, at the risk of going off-policy.
 - **`loss_type`** selects the aggregation: `"grpo"` (token-mean with the length quirk) or `"dr_grpo"` (the length-bias fix from Part V, the aggregation the DAPO recipe popularized). DAPO itself is a training recipe, not a `loss_type` value, so the valid TRL choice for its length-unbiased aggregation is `dr_grpo`. This choice interacts with reward hacking, so I name it explicitly rather than take the default.
 - **`temperature`**, **`top_p`**: the sampling parameters vLLM uses to generate the group. Diversity in the group is what makes the advantage informative, so I do not sample greedily.
-- **`report_to="mlflow"`** wires the trainer's metrics into the tracking spine from Part 0.
+- **`report_to="mlflow"`** wires the trainer's metrics into the MLflow tracking spine.
 
 ```admonish gotcha title="The batch/group divisibility trap and the length trap"
 Two config mistakes account for most first-run failures. First, `per_device_train_batch_size * gradient_accumulation_steps` must be an integer multiple of `num_generations`; if it is not, TRL either errors at setup or silently regroups in a way that corrupts the advantage estimate. Keep the effective batch a clean multiple of $G$. Second, `max_completion_length` set generously "just in case" is not free even if completions are usually short: vLLM sizes its KV budget and the trainer sizes its activation headroom for the *maximum*, so an 8k cap you rarely hit still shrinks the memory available to everything else and can turn a run that would have fit into one that OOMs on the first long group. Set it to the length you actually need for the task and raise it deliberately.
@@ -101,14 +101,14 @@ TRL's `GRPOConfig` has a `use_vllm` flag and a notion of a vLLM server. Under Un
 
 The goal of a first run is not to train a good model, it is to close the loop and watch every budgeted number appear in the tracker. So the task is deliberately trivial and perfectly verifiable: give the model two integers and ask it to output their sum, requiring the answer inside a specific tag so I also have a *format* signal to reward. This is a stand-in; chapter 7.3 swaps in the real thesis-suite scorers. The artifact is a saved LoRA adapter plus an MLflow run holding the config, the version lock, the reward curve, and the peak VRAM.
 
-Set up the project, letting Unsloth pin the stack, and start the MLflow server from Part 0 (or point at the one already running).
+Set up the project, letting Unsloth pin the stack, and point at the MLflow tracking server (starting one if it is not already running).
 
 ```bash title="shell"
 uv init labs/grpo-first
 cd labs/grpo-first
 uv add "unsloth" "unsloth_zoo" "vllm" "trl" "peft" "bitsandbytes" mlflow
 uv lock
-# MLflow tracking server from the Part 0 spine (localhost):
+# MLflow tracking server (localhost):
 export MLFLOW_TRACKING_URI=http://127.0.0.1:5000
 ```
 

@@ -96,7 +96,7 @@ It is tempting to think that because Inspect or the harness produced the number,
 
 The artifact for a conceptual chapter is a conceptual artifact made concrete: an **eval datasheet**, a small machine-readable registry that forces me to write down, for each instrument, the construct it estimates, the family it belongs to, the metric, the population, and its known failure modes. This is the habit I want burned in before I run a single real eval: no number without a datasheet. The lab writes a validated registry to disk and a tiny script that refuses to let a datasheet be incomplete, so the discipline is enforced by code rather than by my good intentions.
 
-Set up the project with `uv`, consistent with the two-environment doctrine from Part 0.
+Set up the project with `uv`, consistent with the **two-environment doctrine** this book runs on: the inference/eval environment (vLLM, Inspect) and the training environment (Unsloth, TRL, PEFT) are separate `uv` projects with separate committed lock files, because their dependency graphs pin conflicting versions of torch and fight if you force them together. Every lab lives in one or the other, never both.
 
 ```bash
 uv init evals-datasheet

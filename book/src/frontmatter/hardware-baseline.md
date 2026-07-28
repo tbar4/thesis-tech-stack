@@ -35,7 +35,7 @@ The 2TB of local SSD is working storage: a 1TB NVMe drive plus a 1TB SATA SSD I 
 
 The 4TB HDD NAS is the archive tier, and it wears an S3-compatible face: a single MinIO instance runs on the NAS, so everything durable is addressable as `s3://` by every tool in the stack. It holds the things I want to keep but am not actively hammering: past checkpoints, completed run artifacts, raw data snapshots, datasets I am not currently using, the accumulated sediment of every lab I have ever run. It is network-attached spinning disk and therefore slower than local SSD, which is fine, because nothing in the hot path should be reaching across the network for it. The discipline is to keep the working set on local SSD and everything else on the NAS, so the fast disks stay fast and the archive grows without pressure.
 
-That is the high-level shape. The actual mechanics (how the mount is set up, how artifacts get promoted from working to archive, how I keep the two from drifting) are a chapter 0.5 problem, and I will lay out the whole storage workflow there. For now the thing to hold onto is just the two-tier split: NVMe for what is hot, NAS for what is kept.
+That is the high-level shape, and it is the only part of the storage story this book depends on. The mechanics underneath it (how the mount is set up, how artifacts get promoted from working to archive, how I keep the two from drifting) are ordinary sysadmin work that varies with whatever NAS you own, so I will not prescribe it. The thing to hold onto is just the two-tier split: NVMe for what is hot, NAS for what is kept.
 
 ## Dating and driver-stamping every number
 

@@ -5,16 +5,6 @@
 [The hardware baseline](frontmatter/hardware-baseline.md)
 [System architecture](architecture.md)
 
-# Part 0 — The Machine
-
-- [Why this machine, this stack](p0-machine/01-why-this-machine.md)
-- [Firmware first: BIOS and the Windows send-off](p0-machine/02-firmware-first.md)
-- [Ubuntu 24.04 on Blackwell](p0-machine/03-ubuntu-on-blackwell.md)
-- [uv and the two-environment doctrine](p0-machine/04-uv-two-envs.md)
-- [Storage tiers and cache discipline](p0-machine/05-storage-tiers.md)
-- [Containers and the tracking spine](p0-machine/06-containers-mlflow.md)
-- [Acceptance: proving the machine](p0-machine/07-acceptance.md)
-
 # Part I — How LLMs Actually Work
 
 - [Tensors, autograd, and number formats](p1-llms/01-tensors-autograd-dtypes.md)

@@ -1,10 +1,10 @@
 # Appendix B: CLI cheatsheets
 
 One-screen references for the seven command-line tools the loop runs on. These are
-not tutorials; each tool earns a full treatment in its chapter (uv in *uv and the
-two-environment doctrine*, vLLM in *vLLM operations*, Inspect in *Inspect I* and
-*Inspect II*, lm-eval in *lm-evaluation-harness and comparability*, MLflow in
-*Containers and the tracking spine*). This is the copy-pasteable distillation you
+not tutorials; the ones the book teaches in depth earn a full treatment in their
+chapter (vLLM in *vLLM operations*, Inspect in *Inspect I* and *Inspect II*,
+lm-eval in *lm-evaluation-harness and comparability*, MLflow and Airflow in *The
+SDA data pipeline*). This is the copy-pasteable distillation you
 reach for once you already know what each command does. Every command assumes the
 baseline machine and the `uv`-everywhere doctrine: no global `pip`, no bare
 `python`, every invocation prefixed with `uv run` so it resolves against the
@@ -180,8 +180,7 @@ consistent number otherwise. See *lm-evaluation-harness and comparability*.
 
 ## mlflow
 
-The tracking spine: experiment metadata, params, metrics, and artifacts, from
-*Containers and the tracking spine*. Run the server against a local backing store
+The tracking spine: experiment metadata, params, metrics, and artifacts. Run the server against a local backing store
 so every eval and training run is logged.
 
 ```bash title="server + ui"
