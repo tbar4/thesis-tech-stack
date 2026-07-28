@@ -55,4 +55,4 @@ This is an open-source-stack book. Every tool in it is something you can read th
 
 It is also not a business book. There is nothing here about pricing a product, sizing a market, or deciding whether any of this is worth doing commercially. Those are real questions and other people write about them well. My scope is the technical loop and the understanding required to run it, on the assumption that you already decided you want to. Where a real deployment would raise a cost or product question, I will name it and move on rather than pretend to answer it.
 
-That is the deal. One loop, one GPU, all the math, three readers, two tracks, open source only. The next chapter teaches you how the book is put together so the conventions never get in your way. After that we start unboxing the machine.
+That is the deal. One loop, one GPU, all the math, three readers, two tracks, open source only. The next chapter teaches you how the book is put together so the conventions never get in your way. After that the hardware baseline records the machine every number in this book was measured on, and then we start with how the models themselves actually work.

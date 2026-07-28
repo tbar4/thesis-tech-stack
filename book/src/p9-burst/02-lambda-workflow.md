@@ -58,7 +58,7 @@ The one manual step that stays manual is the *confirmation* of termination: afte
 
 ### MLflow as the cost ledger
 
-MLflow already tracks every run's git SHA, lock hash, driver, and metrics (Part 0 set that up). For burst runs I add cost as first-class logged data: the per-GPU-hour rate, GPU count, billable minutes, and the derived dollar cost, all logged as MLflow params and metrics on the same run that holds the training curves. This means "what did this experiment cost" is answerable by querying MLflow, not by reconciling a cloud invoice a month later. The rate is a parameter I pass in (from the current Lambda price on the run date), and the billable minutes come from timestamps the runbook records at boot and teardown.
+MLflow already tracks every run's git SHA, lock hash, driver, and metrics. For burst runs I add cost as first-class logged data: the per-GPU-hour rate, GPU count, billable minutes, and the derived dollar cost, all logged as MLflow params and metrics on the same run that holds the training curves. This means "what did this experiment cost" is answerable by querying MLflow, not by reconciling a cloud invoice a month later. The rate is a parameter I pass in (from the current Lambda price on the run date), and the billable minutes come from timestamps the runbook records at boot and teardown.
 
 ```python title="train/src/train/cost.py"
 """Log burst cost to the active MLflow run.
