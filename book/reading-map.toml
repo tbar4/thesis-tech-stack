@@ -1,0 +1,553 @@
+####################################################################
+# Machine-readable twin of src/appendices/e-reading-map.md.
+#
+# The appendix is the source of truth for *prose* — why a book earns
+# its place, what to skip, how the waves relate. This file is the
+# source of truth for the *joins*: short key -> Zotero item, chapter
+# -> read-along pointer. Consumers (thesis-app) read this, never the
+# markdown.
+#
+# When this file and the appendix disagree, the appendix wins for
+# prose and this file wins for keys and locators. When a chapter's
+# own `read-along` admonition disagrees with either, the chapter wins
+# and both get corrected — that is the rule the appendix declares
+# over its own tables.
+#
+# Zotero keys are items in the personal library (user 16196433).
+# Every book with `in_zotero = true` also carries the `pan-build` tag
+# there; see ~/claude/zotero-tagger/VOCABULARY.md. `pan-build` is an
+# index, not a priority — reading priority lives only in the fire
+# tiers, so `sync_reading_todos` keeps one source of truth.
+####################################################################
+
+[meta]
+appendix = "src/appendices/e-reading-map.md"
+zotero_tag = "pan-build"
+zotero_library = "users/16196433"
+# References dir holds local copies, gitignored; see references/README.md.
+references_dir = "../references"
+
+
+####################################################################
+# The eight core books — the theory spine.
+####################################################################
+
+[[book]]
+key = "S&B"
+title = "Reinforcement Learning: An Introduction"
+edition = "2e"
+author = "Sutton & Barto"
+tier = "core"
+parts = ["V"]
+wave = 5
+zotero_key = "PQ8GA7DF"
+in_zotero = true
+local_file = "BartoSutton-compressed.pdf"
+note = "Backbone of Part V; ch. 2-4 and ch. 13 carry the most weight."
+
+[[book]]
+key = "RLHF"
+title = "RLHF: LLM Alignment and Post-Training"
+author = "Lambert"
+tier = "core"
+parts = ["IV", "V", "VI"]
+wave = 6
+zotero_key = "8CL9GQKZ"
+in_zotero = true
+local_file = "Reinforcement_Learning_from_Human_Feedba.pdf"
+note = "Throughline of Part VI; ch. 5-8 carry the most weight."
+
+[[book]]
+key = "BRM"
+title = "Build a Reasoning Model (From Scratch)"
+author = "Raschka"
+tier = "core"
+parts = ["III", "V", "VI", "VII"]
+wave = 3
+zotero_key = "QJPWVCT6"
+in_zotero = true
+local_file = "Build_a_Reasoning_Model_(From_Scratch).pdf"
+# The one build-track book on the priority axis: single fire tier (p3),
+# so it generates a real todo rather than living only in an appendix.
+priority_tier = 3
+note = "ch. 3-8; App. C Qwen3 source; App. F evaluation."
+
+[[book]]
+key = "BLLM"
+title = "Build a Large Language Model (From Scratch)"
+author = "Raschka"
+tier = "core"
+parts = ["I"]
+wave = 2
+zotero_key = "CS6FKEIS"
+in_zotero = true
+local_file = "Build_a_Large_Language_Model_(From_Scrat.pdf"
+note = "ch. 2-5 run in parallel with Part I, chapter for chapter."
+
+[[book]]
+key = "MADL"
+title = "Math and Architectures of Deep Learning"
+author = "Chaudhuri"
+tier = "core"
+parts = ["I"]
+wave = 2
+zotero_key = "NXS35G7P"
+in_zotero = true
+local_file = "Math_and_Architectures_of_Deep_Learning.pdf"
+note = "Part I math spine, ch. 2-9."
+
+[[book]]
+key = "GAIA"
+title = "Grokking AI Algorithms"
+edition = "2e"
+author = "Hurbans"
+tier = "core"
+parts = []
+wave = 1
+optional = true
+zotero_key = "SSNY43NN"
+in_zotero = true
+local_file = "Grokking_AI_Algorithms_Second_Edition.pdf"
+note = "Pre-reading only, ch. 10 for RL intuition. Never a chapter dependency."
+
+[[book]]
+key = "CAI"
+title = "Causal AI"
+author = "Ness"
+tier = "core"
+parts = ["IV"]
+wave = 4
+zotero_key = "3N3MEFUH"
+in_zotero = true
+local_file = "Causal_AI.pdf"
+note = "Parts 1-3, in order, are the spine of Part IV."
+
+[[book]]
+key = "AIE"
+title = "AI Engineering"
+author = "Huyen"
+tier = "core"
+parts = ["I", "II", "III", "VI"]
+wave = 7
+optional = true
+in_zotero = false
+local_file = "AI Engineering - Chip Huyen.epub"
+note = "Breadth complement, reads well cover to cover. Has a local copy but no Zotero record."
+
+
+####################################################################
+# Practical and framework references — how to build a thing,
+# not why it is true.
+####################################################################
+
+[[book]]
+key = "RAG"
+title = "RAG-Driven Generative AI"
+author = "Rothman"
+tier = "practical"
+parts = ["VIII"]
+wave = 8
+in_zotero = false
+note = "Dedicated retrieval text; closest companion to 8.1."
+
+[[book]]
+key = "LC"
+title = "Generative AI with LangChain"
+edition = "2e"
+author = "Auffarth & Kuligin"
+tier = "practical"
+parts = ["VIII", "XI"]
+wave = 8
+in_zotero = false
+note = "ch. 9 covers MCP directly."
+
+[[book]]
+key = "GADP"
+title = "Generative AI Design Patterns"
+author = "Lakshmanan & Hapke"
+tier = "practical"
+parts = ["VIII"]
+wave = 8
+in_zotero = false
+note = "ch. 7 covers MCP directly; ch. 5-6 cover evaluation."
+
+[[book]]
+key = "DPA"
+title = "Data Pipelines with Apache Airflow"
+edition = "2e"
+author = "Harenslak et al."
+tier = "practical"
+parts = ["III"]
+wave = 8
+zotero_key = "WZ3ZL3XT"
+in_zotero = true
+# Duplicated in Zotero as JC3IIUQG under 02 Data Engineering. Only the
+# canonical 09 Thesis copy is tagged, per the canonical-copy-only rule.
+zotero_duplicate_keys = ["JC3IIUQG"]
+note = "ch. 2-4 alongside 3.9; ch. 4 is the asset-aware scheduling match."
+
+[[book]]
+key = "AGENTS"
+title = "AI Agents and Applications"
+author = "Infante"
+tier = "practical"
+parts = ["VIII", "XI"]
+wave = 8
+zotero_key = "835NEF62"
+in_zotero = true
+note = "LangGraph ch. 5/11, multi-agent ch. 12, MCP ch. 13, memory/guardrails ch. 14."
+
+[[book]]
+key = "CUST"
+title = "LLM Customization and Fine-Tuning"
+author = "Bahree & Tok"
+tier = "practical"
+parts = ["VI"]
+wave = 8
+in_zotero = false
+note = "The adaptation continuum; same Qwen3 instruct family this book serves."
+
+[[book]]
+key = "PDL"
+title = "Probabilistic Deep Learning"
+author = "Dürr, Sick & Murina"
+tier = "practical"
+parts = ["I", "III"]
+wave = 8
+zotero_key = "3NH74HUK"
+in_zotero = true
+note = "Concepts only — it is Keras/TFP, so not cited for its code."
+
+
+####################################################################
+# Per-chapter pairings. Mirrors the `read-along` admonition in each
+# named chapter. Chapters absent from this list are hands-on or
+# self-contained and carry no outside reading.
+####################################################################
+
+# --- Part I — How LLMs Actually Work ---
+
+[[chapter]]
+id = "1.1"
+path = "p1-llms/01-tensors-autograd-dtypes.md"
+title = "Tensors, autograd, and number formats"
+read_along = [{ key = "MADL", locator = "ch. 2-4" }]
+
+[[chapter]]
+id = "1.2"
+path = "p1-llms/02-tokenization-embeddings.md"
+title = "Tokenization and embeddings"
+read_along = [{ key = "BLLM", locator = "ch. 2" }]
+
+[[chapter]]
+id = "1.3"
+path = "p1-llms/03-attention.md"
+title = "Attention from first principles"
+read_along = [{ key = "BLLM", locator = "ch. 3" }, { key = "MADL", locator = "ch. 7-8" }]
+
+[[chapter]]
+id = "1.4"
+path = "p1-llms/04-transformer-block.md"
+title = "The transformer block"
+read_along = [{ key = "BLLM", locator = "ch. 4" }, { key = "BRM", locator = "App. C" }]
+
+[[chapter]]
+id = "1.5"
+path = "p1-llms/05-lm-objective.md"
+title = "The language-modeling objective"
+read_along = [{ key = "BLLM", locator = "ch. 5" }]
+
+[[chapter]]
+id = "1.6"
+path = "p1-llms/06-memory.md"
+title = "Where memory goes: training vs inference"
+read_along = [{ key = "MADL", locator = "ch. 8-9" }]
+
+[[chapter]]
+id = "1.7"
+path = "p1-llms/07-sampling.md"
+title = "Sampling and decoding"
+read_along = [{ key = "BRM", locator = "ch. 2" }, { key = "AIE", locator = "ch. 2 (sampling)" }]
+
+[[chapter]]
+id = "1.8"
+path = "p1-llms/08-model-zoo.md"
+title = "Anatomy of the open-model zoo"
+read_along = [{ key = "BRM", locator = "ch. 1, App. C" }]
+
+# --- Part II — Inference Engineering ---
+
+[[chapter]]
+id = "2.1"
+path = "p2-inference/01-roofline.md"
+title = "Prefill, decode, and the roofline"
+read_along = [{ key = "AIE", locator = "ch. 9" }]
+
+[[chapter]]
+id = "2.3"
+path = "p2-inference/03-quantization.md"
+title = "Quantization: theory and formats"
+read_along = [{ key = "AIE", locator = "ch. 9" }]
+
+[[chapter]]
+id = "2.6"
+path = "p2-inference/06-benchmarking.md"
+title = "Benchmarking without lying to yourself"
+read_along = [{ key = "AIE", locator = "ch. 9" }]
+
+# --- Part III — Evaluation Engineering ---
+
+[[chapter]]
+id = "3.1"
+path = "p3-evals/01-what-an-eval-is.md"
+title = "What an eval is"
+read_along = [{ key = "BRM", locator = "ch. 3" }, { key = "RLHF", locator = "Part 3" }, { key = "AIE", locator = "ch. 3-4" }]
+
+[[chapter]]
+id = "3.2"
+path = "p3-evals/02-metrics.md"
+title = "Metrics and their math"
+read_along = [{ key = "BRM", locator = "ch. 3" }, { key = "RLHF", locator = "Part 3" }, { key = "AIE", locator = "ch. 3" }]
+
+[[chapter]]
+id = "3.6"
+path = "p3-evals/06-judges.md"
+title = "Judge models"
+read_along = [{ key = "RLHF", locator = "" }, { key = "AIE", locator = "ch. 3 (AI-as-judge)" }]
+
+[[chapter]]
+id = "3.7"
+path = "p3-evals/07-eval-statistics.md"
+title = "The statistics of evals"
+read_along = [{ key = "CAI", locator = "" }]
+
+[[chapter]]
+id = "3.8"
+path = "p3-evals/08-contamination.md"
+title = "Contamination and dataset hygiene"
+read_along = [{ key = "BRM", locator = "" }, { key = "AIE", locator = "ch. 8" }]
+
+[[chapter]]
+id = "3.9"
+path = "p3-evals/09-sda-data-pipeline.md"
+title = "The SDA data pipeline"
+read_along = [{ key = "DPA", locator = "ch. 2-4" }, { key = "AIE", locator = "ch. 8" }]
+
+[[chapter]]
+id = "3.10"
+path = "p3-evals/10-verifiable-tasks.md"
+title = "From orbital data to verifiable tasks"
+read_along = [{ key = "BRM", locator = "ch. 3" }, { key = "AIE", locator = "ch. 8" }]
+
+[[chapter]]
+id = "3.12"
+path = "p3-evals/12-eval-ops.md"
+title = "Eval ops"
+read_along = [{ key = "RLHF", locator = "" }, { key = "AIE", locator = "ch. 10" }]
+
+# --- Part IV — Causal Inference for Evaluation ---
+# Part-wide spine: [CAI] Parts 1-3.
+
+[[chapter]]
+id = "4.1"
+path = "p4-causal/01-ladder.md"
+title = "The ladder of causation"
+read_along = [{ key = "CAI", locator = "ch. 1-2" }]
+
+[[chapter]]
+id = "4.2"
+path = "p4-causal/02-dags.md"
+title = "DAGs and d-separation"
+read_along = [{ key = "CAI", locator = "Part 2" }]
+
+[[chapter]]
+id = "4.3"
+path = "p4-causal/03-confounding-evals.md"
+title = "Confounding, colliders, and selection in eval pipelines"
+read_along = [{ key = "CAI", locator = "Parts 2-3" }]
+
+[[chapter]]
+id = "4.4"
+path = "p4-causal/04-identification.md"
+title = "Identification: backdoor and front-door"
+read_along = [{ key = "CAI", locator = "Part 3" }]
+
+[[chapter]]
+id = "4.5"
+path = "p4-causal/05-interventions.md"
+title = "Interventions on models: is the reasoning delta causal?"
+read_along = [{ key = "CAI", locator = "Part 3" }]
+
+# --- Part V — Reinforcement Learning Foundations ---
+
+[[chapter]]
+id = "5.1"
+path = "p5-rl/01-rl-problem.md"
+title = "The RL problem"
+read_along = [{ key = "S&B", locator = "ch. 3" }]
+
+[[chapter]]
+id = "5.2"
+path = "p5-rl/02-values-bellman.md"
+title = "Value functions and Bellman equations"
+read_along = [{ key = "S&B", locator = "ch. 3-4" }]
+
+[[chapter]]
+id = "5.3"
+path = "p5-rl/03-bandits-exploration.md"
+title = "Bandits, exploration, and sampling"
+read_along = [{ key = "S&B", locator = "ch. 2" }, { key = "GAIA", locator = "ch. 10" }]
+
+[[chapter]]
+id = "5.4"
+path = "p5-rl/04-policy-gradient.md"
+title = "The policy gradient theorem"
+read_along = [{ key = "S&B", locator = "ch. 13" }]
+
+[[chapter]]
+id = "5.5"
+path = "p5-rl/05-reinforce.md"
+title = "REINFORCE and variance reduction"
+read_along = [{ key = "S&B", locator = "ch. 13" }, { key = "BRM", locator = "ch. 6 sidebars" }]
+
+[[chapter]]
+id = "5.6"
+path = "p5-rl/06-actor-critic-gae.md"
+title = "Actor-critic and GAE"
+read_along = [{ key = "RLHF", locator = "ch. 6" }]
+
+[[chapter]]
+id = "5.7"
+path = "p5-rl/07-trpo-ppo.md"
+title = "Trust regions: from TRPO to PPO"
+read_along = [{ key = "RLHF", locator = "ch. 6" }, { key = "BRM", locator = "ch. 6" }]
+
+[[chapter]]
+id = "5.8"
+path = "p5-rl/08-grpo.md"
+title = "GRPO"
+read_along = [{ key = "BRM", locator = "ch. 6-7" }, { key = "RLHF", locator = "ch. 6" }]
+
+[[chapter]]
+id = "5.9"
+path = "p5-rl/09-rlvr.md"
+title = "RLVR: reinforcement with verifiable rewards"
+read_along = [{ key = "RLHF", locator = "ch. 7" }, { key = "BRM", locator = "ch. 6" }]
+
+# --- Part VI — Post-Training, the LLM Way ---
+
+[[chapter]]
+id = "6.1"
+path = "p6-posttraining/01-landscape.md"
+title = "The post-training landscape"
+read_along = [{ key = "RLHF", locator = "ch. 1-3" }, { key = "AIE", locator = "ch. 2 (post-training)" }, { key = "CUST", locator = "ch. 1-2" }]
+
+[[chapter]]
+id = "6.2"
+path = "p6-posttraining/02-sft.md"
+title = "SFT and instruction tuning"
+read_along = [{ key = "RLHF", locator = "ch. 4" }, { key = "BLLM", locator = "ch. 7" }, { key = "AIE", locator = "ch. 7" }]
+
+[[chapter]]
+id = "6.3"
+path = "p6-posttraining/03-lora-qlora.md"
+title = "LoRA and QLoRA, mathematically"
+read_along = [{ key = "RLHF", locator = "ch. 4" }, { key = "AIE", locator = "ch. 7" }]
+
+[[chapter]]
+id = "6.4"
+path = "p6-posttraining/04-reward-models.md"
+title = "Reward models and preference data"
+read_along = [{ key = "RLHF", locator = "ch. 5" }]
+
+[[chapter]]
+id = "6.5"
+path = "p6-posttraining/05-dpo.md"
+title = "Direct alignment: DPO and family"
+read_along = [{ key = "RLHF", locator = "ch. 8" }]
+
+[[chapter]]
+id = "6.6"
+path = "p6-posttraining/06-reasoning-its.md"
+title = "Reasoning models and inference-time scaling"
+read_along = [{ key = "BRM", locator = "ch. 4-5" }, { key = "RLHF", locator = "ch. 7" }]
+
+[[chapter]]
+id = "6.7"
+path = "p6-posttraining/07-distillation.md"
+title = "Distillation"
+read_along = [{ key = "BRM", locator = "ch. 8" }]
+
+# --- Part VII — The Loop ---
+
+[[chapter]]
+id = "7.1"
+path = "p7-loop/01-unsloth-internals.md"
+title = "Unsloth internals"
+read_along = [{ key = "MADL", locator = "ch. 3-4" }]
+
+[[chapter]]
+id = "7.2"
+path = "p7-loop/02-grpo-16gb.md"
+title = "GRPO on 16GB"
+read_along = [{ key = "BRM", locator = "ch. 6 (GRPO from scratch), 7.2-7.3 (metrics)" }, { key = "RLHF", locator = "" }, { key = "S&B", locator = "ch. 13" }]
+
+[[chapter]]
+id = "7.3"
+path = "p7-loop/03-scorers-as-rewards.md"
+title = "Scorers as rewards"
+read_along = [{ key = "BRM", locator = "ch. 3 (math verifier), 6.6 (reward)" }, { key = "RLHF", locator = "" }]
+
+[[chapter]]
+id = "7.4"
+path = "p7-loop/04-reward-hacking.md"
+title = "Reward hacking and Goodhart"
+read_along = [{ key = "BRM", locator = "7.6 (format reward)" }, { key = "RLHF", locator = "" }]
+
+[[chapter]]
+id = "7.5"
+path = "p7-loop/05-data-curriculum.md"
+title = "Data and curriculum for RLVR"
+read_along = [{ key = "AIE", locator = "ch. 8" }]
+
+[[chapter]]
+id = "7.6"
+path = "p7-loop/06-reasoning-delta.md"
+title = "Measuring the reasoning delta"
+read_along = [{ key = "BRM", locator = "ch. 3 + App. F (evaluation)" }, { key = "RLHF", locator = "" }]
+
+# --- Part VIII — Grounding: Retrieval and Tools ---
+
+[[chapter]]
+id = "8.1"
+path = "p8-grounding/01-rag.md"
+title = "RAG over space text"
+read_along = [{ key = "RAG", locator = "esp. Pt. 2" }, { key = "LC", locator = "RAG systems" }, { key = "GADP", locator = "Pattern 6" }, { key = "AIE", locator = "ch. 6" }]
+
+[[chapter]]
+id = "8.2"
+path = "p8-grounding/02-mcp-tools.md"
+title = "MCP tools for live SDA data"
+read_along = [{ key = "LC", locator = "ch. 9 (MCP)" }, { key = "GADP", locator = "ch. 7 (MCP)" }, { key = "AIE", locator = "ch. 6" }]
+
+[[chapter]]
+id = "8.3"
+path = "p8-grounding/03-augmentation-arms.md"
+title = "The augmentation arms: what caused the gain"
+read_along = [{ key = "CAI", locator = "Part 3" }, { key = "RLHF", locator = "ch. 7" }, { key = "GADP", locator = "ch. 5-6 (path eval, LLM-as-judge)" }]
+
+# --- Part IX — Burst and Scale ---
+
+[[chapter]]
+id = "9.3"
+path = "p9-burst/03-when-to-burst.md"
+title = "When to burst"
+read_along = [{ key = "RLHF", locator = "ch. 6 (infra notes)" }]
+
+# --- Part XI — Beyond the Thesis: Toward a Product ---
+
+[[chapter]]
+id = "11.1"
+path = "p11-beyond-thesis/01-agentic-rl.md"
+title = "Agentic RL: training the model to use its tools"
+read_along = [{ key = "RLHF", locator = "ch. 7" }, { key = "LC", locator = "agent patterns" }, { key = "AGENTS", locator = "ReAct, LangGraph, memory, MCP" }]
