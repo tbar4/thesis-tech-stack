@@ -230,3 +230,18 @@ the source of truth: update this appendix, not the chapter. This index accretes
 as chapters are drafted, so pairings for chapters still in stub form may be
 refined when their `read-along` blocks are written.
 ```
+
+## The machine-readable twin
+
+Everything above also lives in `book/reading-map.toml`, keyed by the same short
+codes and carrying two things this prose cannot: the **Zotero item key** for each
+book, and the chapter pairings as data rather than table cells. Tooling reads the
+TOML; this appendix stays the place the reasoning lives.
+
+Ten of the fifteen books have a Zotero record and carry the `pan-build` tag
+there. That tag is an *index*, not a priority — it marks "this book is cited by a
+chapter," nothing more. Reading priority lives on a separate axis entirely, so
+there is one source of truth for what is due.
+
+Five books are cited here but have no Zotero record at all: **[AIE]**, **[RAG]**,
+**[LC]**, **[GADP]**, **[CUST]**. Nothing tracks whether they have been read.
